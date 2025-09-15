@@ -1,0 +1,145 @@
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
+import { execSync } from 'child_process';
+import * as YAML from 'yaml';
+
+export interface AisanityConfig {
+  workspace: string;
+  containerName?: string;
+  env?: Record<string, string>;
+}
+
+export function getWorkspaceName(cwd: string): string {
+  // First check if .aisanity config exists and has a workspace defined
+  const existingConfig = loadAisanityConfig(cwd);
+  if (existingConfig && existingConfig.workspace) {
+    return existingConfig.workspace;
+  }
+
+  // Otherwise, generate default workspace name from folder + branch
+  const folderName = path.basename(cwd);
+
+  // Try to get git branch name
+  let branchName = 'main';
+  try {
+    const gitBranch = execSync('git rev-parse --abbrev-ref HEAD', {
+      cwd,
+      encoding: 'utf8',
+      stdio: 'pipe'
+    }).trim();
+    branchName = gitBranch || 'main';
+  } catch (error) {
+    // Git not available or not a git repo, use 'main' as default
+  }
+
+  // Sanitize names: replace non-alphanumeric characters with underscores
+  const sanitizedFolder = folderName.replace(/[^a-zA-Z0-9]/g, '_');
+  const sanitizedBranch = branchName.replace(/[^a-zA-Z0-9]/g, '_');
+
+  return `${sanitizedFolder}_${sanitizedBranch}`;
+}
+
+export function createAisanityConfig(workspaceName: string): string {
+  const config: AisanityConfig = {
+    workspace: workspaceName,
+    containerName: `aisanity-${workspaceName}`,
+    env: {}
+  };
+
+  return YAML.stringify(config);
+}
+
+export async function setupClaudeConfig(workspaceName: string): Promise<void> {
+  const homeDir = os.homedir();
+  const aisanityDir = path.join(homeDir, '.aisanity');
+  const claudeDir = path.join(aisanityDir, 'claude');
+  const defaultConfigPath = path.join(claudeDir, '.claude_default');
+  const workspaceConfigPath = path.join(claudeDir, `.claude_${workspaceName}`);
+
+  // Create directories if they don't exist
+  if (!fs.existsSync(aisanityDir)) {
+    fs.mkdirSync(aisanityDir, { recursive: true });
+  }
+  if (!fs.existsSync(claudeDir)) {
+    fs.mkdirSync(claudeDir, { recursive: true });
+  }
+
+  // Check if default config exists
+  if (!fs.existsSync(defaultConfigPath)) {
+    // Create a basic default config if it doesn't exist
+    const defaultConfig = {
+      version: '1.0',
+      settings: {
+        theme: 'dark',
+        autoSave: true
+      }
+    };
+    fs.writeFileSync(defaultConfigPath, JSON.stringify(defaultConfig, null, 2), 'utf8');
+    console.log(`Created default Claude config at ${defaultConfigPath}`);
+  }
+
+  // Copy default config to workspace config if it doesn't exist
+  if (!fs.existsSync(workspaceConfigPath)) {
+    fs.copyFileSync(defaultConfigPath, workspaceConfigPath);
+    console.log(`Created workspace Claude config at ${workspaceConfigPath}`);
+  } else {
+    console.log(`Workspace Claude config already exists at ${workspaceConfigPath}`);
+  }
+}
+
+export function loadAisanityConfig(cwd: string): AisanityConfig | null {
+  const configPath = path.join(cwd, '.aisanity');
+
+  if (!fs.existsSync(configPath)) {
+    return null;
+  }
+
+  try {
+    const configContent = fs.readFileSync(configPath, 'utf8');
+    return YAML.parse(configContent) as AisanityConfig;
+  } catch (error) {
+    console.error('Failed to parse .aisanity config:', error);
+    return null;
+  }
+}
+
+export function getClaudeConfigPath(workspaceName: string): string {
+  const homeDir = os.homedir();
+  return path.join(homeDir, '.aisanity', 'claude', `.claude_${workspaceName}`);
+}
+
+export type ProjectType = 'python' | 'nodejs' | 'go' | 'rust' | 'java' | 'unknown';
+
+export function detectProjectType(cwd: string): ProjectType {
+  // Check for Python indicators
+  if (fs.existsSync(path.join(cwd, 'requirements.txt')) ||
+      fs.existsSync(path.join(cwd, 'setup.py')) ||
+      fs.existsSync(path.join(cwd, 'pyproject.toml')) ||
+      fs.existsSync(path.join(cwd, 'Pipfile'))) {
+    return 'python';
+  }
+
+  // Check for Node.js indicators
+  if (fs.existsSync(path.join(cwd, 'package.json'))) {
+    return 'nodejs';
+  }
+
+  // Check for Go indicators
+  if (fs.existsSync(path.join(cwd, 'go.mod'))) {
+    return 'go';
+  }
+
+  // Check for Rust indicators
+  if (fs.existsSync(path.join(cwd, 'Cargo.toml'))) {
+    return 'rust';
+  }
+
+  // Check for Java indicators
+  if (fs.existsSync(path.join(cwd, 'pom.xml')) ||
+      fs.existsSync(path.join(cwd, 'build.gradle'))) {
+    return 'java';
+  }
+
+  return 'unknown';
+}
