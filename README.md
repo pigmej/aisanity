@@ -1,6 +1,6 @@
 # Aisanity
 
-A devcontainer wrapper for sandboxed Claude Code CLI and happy-coder development environments.
+A devcontainer wrapper for sandboxed development environments.
 
 ## Installation
 
@@ -20,8 +20,8 @@ aisanity init
 
 This creates:
 - `.aisanity` configuration file with workspace settings
-- Default Claude configuration in `~/.aisanity/claude/.claude_default`
-- Workspace-specific Claude configuration
+- Local development tool configurations in project directories
+- Workspace-specific configuration files
 
 ### Run Commands in Container
 
@@ -88,5 +88,5 @@ Aisanity uses devcontainers for seamless IDE integration. Make sure you have a `
 
 - **Workspace Naming**: `{folder_name}_{branch_name}` (sanitized)
 - **Mounting**: Current directory → `/workspace` in container
-- **Claude Config**: `~/.aisanity/claude/.claude_{workspace}` → `~/.claude` in container
+- **Configuration**: Local tool configurations mounted to containers
 - **Container Management**: Uses devcontainers CLI for lifecycle management

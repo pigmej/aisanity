@@ -50,19 +50,14 @@ export function createAisanityConfig(workspaceName: string): string {
   return YAML.stringify(config);
 }
 
-export async function setupClaudeConfig(workspaceName: string): Promise<void> {
-  const homeDir = os.homedir();
-  const aisanityDir = path.join(homeDir, '.aisanity');
-  const claudeDir = path.join(aisanityDir, 'claude');
-  const defaultConfigPath = path.join(claudeDir, '.claude_default');
-  const workspaceConfigPath = path.join(claudeDir, `.claude_${workspaceName}`);
+export async function setupDevToolConfig(cwd: string, workspaceName: string): Promise<void> {
+  const devToolsDir = path.join(cwd, '.devtools');
+  const defaultConfigPath = path.join(devToolsDir, 'default.json');
+  const workspaceConfigPath = path.join(devToolsDir, `${workspaceName}.json`);
 
-  // Create directories if they don't exist
-  if (!fs.existsSync(aisanityDir)) {
-    fs.mkdirSync(aisanityDir, { recursive: true });
-  }
-  if (!fs.existsSync(claudeDir)) {
-    fs.mkdirSync(claudeDir, { recursive: true });
+  // Create .devtools directory if it doesn't exist
+  if (!fs.existsSync(devToolsDir)) {
+    fs.mkdirSync(devToolsDir, { recursive: true });
   }
 
   // Check if default config exists
@@ -76,15 +71,15 @@ export async function setupClaudeConfig(workspaceName: string): Promise<void> {
       }
     };
     fs.writeFileSync(defaultConfigPath, JSON.stringify(defaultConfig, null, 2), 'utf8');
-    console.log(`Created default Claude config at ${defaultConfigPath}`);
+    console.log(`Created default development tools config at ${defaultConfigPath}`);
   }
 
   // Copy default config to workspace config if it doesn't exist
   if (!fs.existsSync(workspaceConfigPath)) {
     fs.copyFileSync(defaultConfigPath, workspaceConfigPath);
-    console.log(`Created workspace Claude config at ${workspaceConfigPath}`);
+    console.log(`Created workspace development tools config at ${workspaceConfigPath}`);
   } else {
-    console.log(`Workspace Claude config already exists at ${workspaceConfigPath}`);
+    console.log(`Workspace development tools config already exists at ${workspaceConfigPath}`);
   }
 }
 
@@ -104,9 +99,46 @@ export function loadAisanityConfig(cwd: string): AisanityConfig | null {
   }
 }
 
-export function getClaudeConfigPath(workspaceName: string): string {
-  const homeDir = os.homedir();
-  return path.join(homeDir, '.aisanity', 'claude', `.claude_${workspaceName}`);
+export function getDevToolConfigPath(cwd: string, workspaceName: string): string {
+  return path.join(cwd, '.devtools', `${workspaceName}.json`);
+}
+
+export async function setupOpencodeConfig(cwd: string, workspaceName: string): Promise<void> {
+  const opencodeDir = path.join(cwd, '.opencode');
+  const defaultConfigPath = path.join(opencodeDir, 'default.json');
+  const workspaceConfigPath = path.join(opencodeDir, `${workspaceName}.json`);
+
+  // Create .opencode directory if it doesn't exist
+  if (!fs.existsSync(opencodeDir)) {
+    fs.mkdirSync(opencodeDir, { recursive: true });
+  }
+
+  // Check if default config exists
+  if (!fs.existsSync(defaultConfigPath)) {
+    // Create a basic default config if it doesn't exist
+    const defaultConfig = {
+      version: '1.0',
+      settings: {
+        theme: 'dark',
+        autoSave: true,
+        cwd: cwd
+      }
+    };
+    fs.writeFileSync(defaultConfigPath, JSON.stringify(defaultConfig, null, 2), 'utf8');
+    console.log(`Created default opencode config at ${defaultConfigPath}`);
+  }
+
+  // Copy default config to workspace config if it doesn't exist
+  if (!fs.existsSync(workspaceConfigPath)) {
+    fs.copyFileSync(defaultConfigPath, workspaceConfigPath);
+    console.log(`Created workspace opencode config at ${workspaceConfigPath}`);
+  } else {
+    console.log(`Workspace opencode config already exists at ${workspaceConfigPath}`);
+  }
+}
+
+export function getOpencodeConfigPath(cwd: string, workspaceName: string): string {
+  return path.join(cwd, '.opencode', `${workspaceName}.json`);
 }
 
 export type ProjectType = 'python' | 'nodejs' | 'go' | 'rust' | 'java' | 'unknown';

@@ -33,4 +33,6 @@ dist/
 
 # User-specific configurations
 .claude/
+.devtools/
+.opencode/
 .taskmaster/

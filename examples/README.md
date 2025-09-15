@@ -11,6 +11,7 @@ A simple Go web application with health check endpoints.
 - Go 1.21 with proper module setup
 - HTTP server with multiple endpoints
 - Devcontainer with Go tools and VS Code extensions
+- Pre-configured development environment
 
 **Quick Start:**
 ```bash
@@ -27,20 +28,13 @@ A simple Flask REST API with Python 3.11.
 - RESTful API endpoints
 - Python virtual environment
 - Devcontainer with Python tools
-- **Opencode pre-installed** in the container! 🎉
+- Pre-configured development environment
 
 **Quick Start:**
 ```bash
 cd python-flask-api
 aisanity init
 aisanity run python app.py
-```
-
-**Bonus: Opencode Available Inside Container**
-```bash
-# After starting the container, opencode is available globally
-aisanity run opencode --help
-aisanity run opencode status
 ```
 
 ### 🟨 [Node.js TypeScript API](./node-typescript-api/)
@@ -51,6 +45,7 @@ A TypeScript REST API with Express.js framework.
 - Express.js web framework
 - RESTful API endpoints
 - Jest testing framework setup
+- Pre-configured development environment
 
 **Quick Start:**
 ```bash

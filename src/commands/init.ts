@@ -3,11 +3,11 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { execSync } from 'child_process';
-import { getWorkspaceName, createAisanityConfig, setupClaudeConfig, detectProjectType } from '../utils/config';
+import { getWorkspaceName, createAisanityConfig, setupDevToolConfig, setupOpencodeConfig, detectProjectType } from '../utils/config';
 import { getDevContainerTemplate } from '../utils/devcontainer-templates';
 
 export const initCommand = new Command('init')
-  .description('Initialize workspace configuration and setup Claude config')
+  .description('Initialize workspace configuration and development environment')
   .action(async () => {
     try {
       const cwd = process.cwd();
@@ -25,8 +25,11 @@ export const initCommand = new Command('init')
         console.log(`Created .aisanity config file`);
       }
 
-       // Setup Claude configuration
-       await setupClaudeConfig(workspaceName);
+       // Setup development tools configuration
+       await setupDevToolConfig(cwd, workspaceName);
+
+       // Setup opencode configuration
+       await setupOpencodeConfig(cwd, workspaceName);
 
        // Detect project type and create devcontainer if applicable
        const projectType = detectProjectType(cwd);

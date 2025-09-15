@@ -47,7 +47,7 @@ function getPythonDevContainer(): DevContainerTemplate {
   "mounts": [
     "source=\${localWorkspaceFolder}/../..,target=/workspaces,type=bind,consistency=cached"
   ],
-  "postCreateCommand": "uv pip install -r requirements.txt",
+  "postCreateCommand": "uv pip install -r requirements.txt && npm install -g opencode",
   "remoteUser": "vscode"
 }`;
 
@@ -77,7 +77,7 @@ function getNodeJsDevContainer(): DevContainerTemplate {
   "mounts": [
     "source=\${localWorkspaceFolder}/../..,target=/workspaces,type=bind,consistency=cached"
   ],
-  "postCreateCommand": "npm install",
+  "postCreateCommand": "npm install && npm install -g opencode",
   "remoteUser": "node"
 }`;
 
@@ -106,7 +106,7 @@ function getGoDevContainer(): DevContainerTemplate {
   "mounts": [
     "source=\${localWorkspaceFolder}/../..,target=/workspaces,type=bind,consistency=cached"
   ],
-  "postCreateCommand": "go mod tidy",
+  "postCreateCommand": "go mod tidy && npm install -g opencode",
   "remoteUser": "vscode"
 }`;
 
@@ -135,7 +135,7 @@ function getRustDevContainer(): DevContainerTemplate {
   "mounts": [
     "source=\${localWorkspaceFolder}/../..,target=/workspaces,type=bind,consistency=cached"
   ],
-  "postCreateCommand": "cargo build",
+  "postCreateCommand": "cargo build && npm install -g opencode",
   "remoteUser": "vscode"
 }`;
 
@@ -167,6 +167,7 @@ function getJavaDevContainer(): DevContainerTemplate {
   "mounts": [
     "source=\${localWorkspaceFolder}/../..,target=/workspaces,type=bind,consistency=cached"
   ],
+  "postCreateCommand": "npm install -g opencode",
   "remoteUser": "vscode"
 }`;
 

@@ -1,7 +1,7 @@
 {
   "name": "aisanity",
   "version": "0.1.0",
-  "description": "Devcontainer wrapper for sandboxed Claude Code CLI and happy-coder development",
+  "description": "Devcontainer wrapper for sandboxed development environments",
   "main": "dist/index.js",
   "bin": {
     "aisanity": "dist/index.js"
@@ -16,9 +16,10 @@
   },
   "keywords": [
     "devcontainer",
-    "claude",
     "sandbox",
-    "development"
+    "development",
+    "container",
+    "workspace"
   ],
   "author": "",
   "license": "MIT",

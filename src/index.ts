@@ -10,7 +10,7 @@ const program = new Command();
 
 program
   .name('aisanity')
-  .description('Devcontainer wrapper for sandboxed Claude Code CLI and happy-coder development')
+  .description('Devcontainer wrapper for sandboxed development environments')
   .version('0.1.0');
 
 // Register commands
