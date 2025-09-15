@@ -29,8 +29,7 @@ function getPythonDevContainer(): DevContainerTemplate {
   "features": {
     "ghcr.io/devcontainers/features/node:1": {
       "version": "lts"
-    },
-    "ghcr.io/astral-sh/uv:latest": {}
+    }
   },
   "customizations": {
     "vscode": {
@@ -47,7 +46,7 @@ function getPythonDevContainer(): DevContainerTemplate {
   "mounts": [
     "source=\${localWorkspaceFolder}/../..,target=/workspaces,type=bind,consistency=cached"
   ],
-  "postCreateCommand": "uv sync && npm install -g opencode",
+  "postCreateCommand": "curl -LsSf https://astral.sh/uv/install.sh | sh && uv sync && npm install -g opencode",
   "remoteUser": "vscode"
 }`;
 
