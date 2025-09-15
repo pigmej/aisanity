@@ -46,7 +46,7 @@ A simple Flask REST API demonstrating aisanity usage with Python devcontainers.
 
 3. **Install dependencies:**
    ```bash
-   pip install -r requirements.txt
+   uv sync
    ```
 
 4. **Run the application:**
@@ -103,7 +103,7 @@ python app.py
 python app.py --host 0.0.0.0 --port 5000
 
 # Install dependencies
-pip install -r requirements.txt
+uv sync
 
 # Run in production mode (without debug)
 FLASK_ENV=production python app.py

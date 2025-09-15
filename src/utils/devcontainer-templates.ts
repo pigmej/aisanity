@@ -47,7 +47,7 @@ function getPythonDevContainer(): DevContainerTemplate {
   "mounts": [
     "source=\${localWorkspaceFolder}/../..,target=/workspaces,type=bind,consistency=cached"
   ],
-  "postCreateCommand": "uv pip install -r requirements.txt && npm install -g opencode",
+  "postCreateCommand": "uv sync && npm install -g opencode",
   "remoteUser": "vscode"
 }`;
 
