@@ -46,7 +46,7 @@ function getPythonDevContainer(): DevContainerTemplate {
   "mounts": [
     "source=\${localWorkspaceFolder}/../..,target=/workspaces,type=bind,consistency=cached"
   ],
-  "postCreateCommand": "curl -LsSf https://astral.sh/uv/install.sh | sh && uv sync && npm install -g opencode",
+  "postCreateCommand": "curl -LsSf https://astral.sh/uv/install.sh | sh && uv sync && npm install -g opencode-ai",
   "remoteUser": "vscode"
 }`;
 
@@ -76,7 +76,7 @@ function getNodeJsDevContainer(): DevContainerTemplate {
   "mounts": [
     "source=\${localWorkspaceFolder}/../..,target=/workspaces,type=bind,consistency=cached"
   ],
-  "postCreateCommand": "npm install && npm install -g opencode",
+  "postCreateCommand": "npm install && npm install -g opencode-ai",
   "remoteUser": "node"
 }`;
 
@@ -105,7 +105,7 @@ function getGoDevContainer(): DevContainerTemplate {
   "mounts": [
     "source=\${localWorkspaceFolder}/../..,target=/workspaces,type=bind,consistency=cached"
   ],
-  "postCreateCommand": "go mod tidy && npm install -g opencode",
+  "postCreateCommand": "go mod tidy && npm install -g opencode-ai",
   "remoteUser": "vscode"
 }`;
 
@@ -134,7 +134,7 @@ function getRustDevContainer(): DevContainerTemplate {
   "mounts": [
     "source=\${localWorkspaceFolder}/../..,target=/workspaces,type=bind,consistency=cached"
   ],
-  "postCreateCommand": "cargo build && npm install -g opencode",
+  "postCreateCommand": "cargo build && npm install -g opencode-ai",
   "remoteUser": "vscode"
 }`;
 
@@ -166,7 +166,7 @@ function getJavaDevContainer(): DevContainerTemplate {
   "mounts": [
     "source=\${localWorkspaceFolder}/../..,target=/workspaces,type=bind,consistency=cached"
   ],
-  "postCreateCommand": "npm install -g opencode",
+  "postCreateCommand": "npm install -g opencode-ai",
   "remoteUser": "vscode"
 }`;
 
