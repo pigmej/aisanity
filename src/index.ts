@@ -5,6 +5,7 @@ import { initCommand } from './commands/init';
 import { runCommand } from './commands/run';
 import { stopCommand } from './commands/stop';
 import { statusCommand } from './commands/status';
+import { rebuildCommand } from './commands/rebuild';
 
 const program = new Command();
 
@@ -18,6 +19,7 @@ program.addCommand(initCommand);
 program.addCommand(runCommand);
 program.addCommand(stopCommand);
 program.addCommand(statusCommand);
+program.addCommand(rebuildCommand);
 
 // Parse command line arguments
 program.parse();
