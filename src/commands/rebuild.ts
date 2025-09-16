@@ -1,11 +1,12 @@
 import { Command } from 'commander';
 import * as path from 'path';
-import { spawn } from 'child_process';
+import { spawn, execSync } from 'child_process';
 import { loadAisanityConfig } from '../utils/config';
 
 export const rebuildCommand = new Command('rebuild')
   .description('Rebuild the devcontainer')
   .option('--devcontainer-json <path>', 'Path to devcontainer.json file')
+  .option('--clean', 'Remove containers instead of just stopping them')
   .action(async (options) => {
     try {
       const cwd = process.cwd();
@@ -20,29 +21,58 @@ export const rebuildCommand = new Command('rebuild')
 
       console.log(`Rebuilding container for workspace: ${workspaceName}`);
 
-      // Stop the container
-      console.log('Stopping existing container...');
-      const downArgs = ['down', '--workspace-folder', cwd];
+      // Stop/Remove the container
+      const action = options.clean ? 'Removing' : 'Stopping';
+      console.log(`${action} existing container...`);
 
-      if (options.devcontainerJson) {
-        downArgs.push('--config', path.resolve(options.devcontainerJson));
+      const containerName = config.containerName || `aisanity-${workspaceName}`;
+
+      try {
+        // Try to stop/remove the container using docker
+        const dockerCommand = options.clean ? `docker rm -f ${containerName}` : `docker stop ${containerName}`;
+        execSync(dockerCommand, { stdio: 'inherit' });
+        console.log(`${action.slice(0, -3)}ed container: ${containerName}`);
+      } catch (error) {
+        console.log(`Container ${containerName} not found or already ${options.clean ? 'removed' : 'stopped'}`);
       }
 
-      const downResult = spawn('devcontainer', downArgs, {
-        stdio: 'inherit',
-        cwd
-      });
-
-      await new Promise<void>((resolve, reject) => {
-        downResult.on('error', reject);
-        downResult.on('exit', (code) => {
-          if (code === 0 || code === 1) { // 1 if no container running
-            resolve();
-          } else {
-            reject(new Error(`devcontainer down failed with code ${code}`));
-          }
+      // Also try to stop/remove any devcontainer-related containers for this workspace
+      try {
+        const output = execSync(`docker ps --filter "label=devcontainer.local_folder=${cwd}" --format "{{.Names}}"`, {
+          encoding: 'utf8'
         });
-      });
+
+        const containers = output.trim().split('\n').filter(name => name.trim() !== '');
+
+        for (const container of containers) {
+          if (container) {
+            const dockerCommand = options.clean ? `docker rm -f ${container}` : `docker stop ${container}`;
+            execSync(dockerCommand, { stdio: 'inherit' });
+            console.log(`${action.slice(0, -3)}ed devcontainer: ${container}`);
+          }
+        }
+      } catch (error) {
+        // No devcontainers found for this workspace, that's okay
+      }
+
+      // Also stop/remove any containers with the specific workspace name
+      try {
+        const output = execSync(`docker ps --filter "name=aisanity-${workspaceName}" --format "{{.Names}}"`, {
+          encoding: 'utf8'
+        });
+
+        const containers = output.trim().split('\n').filter(name => name.trim() !== '');
+
+        for (const container of containers) {
+          if (container) {
+            const dockerCommand = options.clean ? `docker rm -f ${container}` : `docker stop ${container}`;
+            execSync(dockerCommand, { stdio: 'inherit' });
+            console.log(`${action.slice(0, -3)}ed aisanity container: ${container}`);
+          }
+        }
+      } catch (error) {
+        // No aisanity containers found for this workspace, that's okay
+      }
 
       // Build the container
       console.log('Building dev container...');
