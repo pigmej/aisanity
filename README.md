@@ -20,7 +20,6 @@ aisanity init
 
 This creates:
 - `.aisanity` configuration file with workspace settings
-- Local development tool configurations in project directories
 - Workspace-specific configuration files
 
 ### Run Commands in Container
