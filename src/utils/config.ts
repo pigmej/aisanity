@@ -70,36 +70,30 @@ export function loadAisanityConfig(cwd: string): AisanityConfig | null {
 
 
 
-export async function setupOpencodeConfig(cwd: string, workspaceName: string): Promise<void> {
-  const opencodeDir = path.join(cwd, '.opencode');
-  const defaultConfigPath = path.join(opencodeDir, 'opencode.jsonc');
-  const workspaceConfigPath = path.join(opencodeDir, 'opencode.jsonc');
+export async function setupOpencodeConfig(cwd: string): Promise<void> {
+  const oldConfigPath = path.join(cwd, '.opencode', 'opencode.jsonc');
+  const newConfigPath = path.join(cwd, 'opencode.jsonc');
 
-  // Create .opencode directory if it doesn't exist
-  if (!fs.existsSync(opencodeDir)) {
-    fs.mkdirSync(opencodeDir, { recursive: true });
-  }
-
-  // Check if config exists
-  if (!fs.existsSync(workspaceConfigPath)) {
+  // Check if old config exists
+  if (fs.existsSync(oldConfigPath)) {
+    // Move old config to new location
+    fs.renameSync(oldConfigPath, newConfigPath);
+    // Remove .opencode directory
+    fs.rmSync(path.join(cwd, '.opencode'), { recursive: true, force: true });
+    console.log(`Migrated opencode config to ${newConfigPath}`);
+  } else if (!fs.existsSync(newConfigPath)) {
     // Create a basic config if it doesn't exist
-    const config = {
-      version: '1.0',
-      settings: {
-        theme: 'dark',
-        autoSave: true,
-        cwd: cwd
-      }
+    const config = {}
     };
-    fs.writeFileSync(workspaceConfigPath, JSON.stringify(config, null, 2), 'utf8');
-    console.log(`Created opencode config at ${workspaceConfigPath}`);
+    fs.writeFileSync(newConfigPath, JSON.stringify(config, null, 2), 'utf8');
+    console.log(`Created opencode config at ${newConfigPath}`);
   } else {
-    console.log(`Opencode config already exists at ${workspaceConfigPath}`);
+    console.log(`Opencode config already exists at ${newConfigPath}`);
   }
 }
 
-export function getOpencodeConfigPath(cwd: string, workspaceName: string): string {
-  return path.join(cwd, '.opencode', 'opencode.jsonc');
+export function getOpencodeConfigPath(cwd: string): string {
+  return path.join(cwd, 'opencode.jsonc');
 }
 
 export type ProjectType = 'python' | 'nodejs' | 'go' | 'rust' | 'java' | 'unknown';

@@ -27,8 +27,8 @@ export const initCommand = new Command('init')
 
 
 
-       // Setup opencode configuration
-       await setupOpencodeConfig(cwd, workspaceName);
+        // Setup opencode configuration
+        await setupOpencodeConfig(cwd);
 
        // Detect project type and create devcontainer if applicable
        const projectType = detectProjectType(cwd);
