@@ -30,7 +30,8 @@ function getPythonDevContainer(): DevContainerTemplate {
       "ghcr.io/devcontainers/features/node:1": {
         version: "lts"
       },
-      "ghcr.io/gvatsal60/dev-container-features/uv:0": {}
+      "ghcr.io/gvatsal60/dev-container-features/uv:0": {},
+      "ghcr.io/jsburckhardt/devcontainer-features/ruff:1": {}
     },
     customizations: {
       vscode: {
