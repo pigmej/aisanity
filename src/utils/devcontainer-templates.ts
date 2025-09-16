@@ -29,7 +29,8 @@ function getPythonDevContainer(): DevContainerTemplate {
     features: {
       "ghcr.io/devcontainers/features/node:1": {
         version: "lts"
-      }
+      },
+      "ghcr.io/gvatsal60/dev-container-features/uv:0": {}
     },
     customizations: {
       vscode: {
@@ -52,7 +53,7 @@ function getPythonDevContainer(): DevContainerTemplate {
       "TERM": "xterm-256color",
       "COLORTERM": "truecolor"
     },
-    postCreateCommand: "curl -LsSf https://astral.sh/uv/install.sh | sh && uv sync && npm install -g opencode-ai",
+    postCreateCommand: "uv sync && npm install -g opencode-ai",
     remoteUser: "vscode"
   }, null, 2);
 
