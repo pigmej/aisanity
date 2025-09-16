@@ -47,6 +47,9 @@ function getPythonDevContainer(): DevContainerTemplate {
       "source=${localWorkspaceFolder}/../..,target=/workspaces,type=bind,consistency=cached",
       "source=${localEnv:HOME}/.config/opencode,target=/home/vscode/.config/opencode,type=bind,consistency=cached"
     ],
+    containerEnv: {
+      "TERM": "xterm-256color"
+    },
     postCreateCommand: "curl -LsSf https://astral.sh/uv/install.sh | sh && uv sync && npm install -g opencode-ai",
     remoteUser: "vscode"
   }, null, 2);
@@ -78,6 +81,9 @@ function getNodeJsDevContainer(): DevContainerTemplate {
       "source=${localWorkspaceFolder}/../..,target=/workspaces,type=bind,consistency=cached",
       "source=${localEnv:HOME}/.config/opencode,target=/home/node/.config/opencode,type=bind,consistency=cached"
     ],
+    containerEnv: {
+      "TERM": "xterm-256color"
+    },
     postCreateCommand: "npm install && npm install -g opencode-ai",
     remoteUser: "node"
   }, null, 2);
@@ -108,6 +114,9 @@ function getGoDevContainer(): DevContainerTemplate {
       "source=${localWorkspaceFolder}/../..,target=/workspaces,type=bind,consistency=cached",
       "source=${localEnv:HOME}/.config/opencode,target=/home/vscode/.config/opencode,type=bind,consistency=cached"
     ],
+    containerEnv: {
+      "TERM": "xterm-256color"
+    },
     postCreateCommand: "go mod tidy && npm install -g opencode-ai",
     remoteUser: "vscode"
   }, null, 2);
@@ -138,6 +147,9 @@ function getRustDevContainer(): DevContainerTemplate {
       "source=${localWorkspaceFolder}/../..,target=/workspaces,type=bind,consistency=cached",
       "source=${localEnv:HOME}/.config/opencode,target=/home/vscode/.config/opencode,type=bind,consistency=cached"
     ],
+    containerEnv: {
+      "TERM": "xterm-256color"
+    },
     postCreateCommand: "cargo build && npm install -g opencode-ai",
     remoteUser: "vscode"
   }, null, 2);
@@ -171,6 +183,9 @@ function getJavaDevContainer(): DevContainerTemplate {
       "source=${localWorkspaceFolder}/../..,target=/workspaces,type=bind,consistency=cached",
       "source=${localEnv:HOME}/.config/opencode,target=/home/vscode/.config/opencode,type=bind,consistency=cached"
     ],
+    containerEnv: {
+      "TERM": "xterm-256color"
+    },
     postCreateCommand: "npm install -g opencode-ai",
     remoteUser: "vscode"
   }, null, 2);
