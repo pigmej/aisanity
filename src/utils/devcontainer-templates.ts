@@ -48,7 +48,8 @@ function getPythonDevContainer(): DevContainerTemplate {
       "source=${localEnv:HOME}/.config/opencode,target=/home/vscode/.config/opencode,type=bind,consistency=cached"
     ],
     containerEnv: {
-      "TERM": "xterm-256color"
+      "TERM": "xterm-256color",
+      "COLORTERM": "truecolor"
     },
     postCreateCommand: "curl -LsSf https://astral.sh/uv/install.sh | sh && uv sync && npm install -g opencode-ai",
     remoteUser: "vscode"
@@ -82,7 +83,8 @@ function getNodeJsDevContainer(): DevContainerTemplate {
       "source=${localEnv:HOME}/.config/opencode,target=/home/node/.config/opencode,type=bind,consistency=cached"
     ],
     containerEnv: {
-      "TERM": "xterm-256color"
+      "TERM": "xterm-256color",
+      "COLORTERM": "truecolor"
     },
     postCreateCommand: "npm install && npm install -g opencode-ai",
     remoteUser: "node"
@@ -115,7 +117,8 @@ function getGoDevContainer(): DevContainerTemplate {
       "source=${localEnv:HOME}/.config/opencode,target=/home/vscode/.config/opencode,type=bind,consistency=cached"
     ],
     containerEnv: {
-      "TERM": "xterm-256color"
+      "TERM": "xterm-256color",
+      "COLORTERM": "truecolor"
     },
     postCreateCommand: "go mod tidy && npm install -g opencode-ai",
     remoteUser: "vscode"
@@ -148,7 +151,8 @@ function getRustDevContainer(): DevContainerTemplate {
       "source=${localEnv:HOME}/.config/opencode,target=/home/vscode/.config/opencode,type=bind,consistency=cached"
     ],
     containerEnv: {
-      "TERM": "xterm-256color"
+      "TERM": "xterm-256color",
+      "COLORTERM": "truecolor"
     },
     postCreateCommand: "cargo build && npm install -g opencode-ai",
     remoteUser: "vscode"
@@ -184,7 +188,8 @@ function getJavaDevContainer(): DevContainerTemplate {
       "source=${localEnv:HOME}/.config/opencode,target=/home/vscode/.config/opencode,type=bind,consistency=cached"
     ],
     containerEnv: {
-      "TERM": "xterm-256color"
+      "TERM": "xterm-256color",
+      "COLORTERM": "truecolor"
     },
     postCreateCommand: "npm install -g opencode-ai",
     remoteUser: "vscode"
