@@ -45,7 +45,8 @@ function getPythonDevContainer(): DevContainerTemplate {
     forwardPorts: [5000, 8000],
     mounts: [
       "source=${localWorkspaceFolder}/../..,target=/workspaces,type=bind,consistency=cached",
-      "source=${localEnv:HOME}/.config/opencode,target=/home/vscode/.config/opencode,type=bind,consistency=cached"
+      "source=${localEnv:HOME}/.config/opencode,target=/home/vscode/.config/opencode,type=bind,consistency=cached",
+      "source=${localEnv:HOME}/.local/share/opencode/auth.json,target=/home/vscode/.local/share/opencode/auth.json,type=bind,consistency=cached"
     ],
     containerEnv: {
       "TERM": "xterm-256color",
@@ -80,7 +81,8 @@ function getNodeJsDevContainer(): DevContainerTemplate {
     forwardPorts: [3000, 3001],
     mounts: [
       "source=${localWorkspaceFolder}/../..,target=/workspaces,type=bind,consistency=cached",
-      "source=${localEnv:HOME}/.config/opencode,target=/home/node/.config/opencode,type=bind,consistency=cached"
+      "source=${localEnv:HOME}/.config/opencode,target=/home/node/.config/opencode,type=bind,consistency=cached",
+      "source=${localEnv:HOME}/.local/share/opencode/auth.json,target=/home/node/.local/share/opencode/auth.json,type=bind,consistency=cached"
     ],
     containerEnv: {
       "TERM": "xterm-256color",
@@ -114,7 +116,8 @@ function getGoDevContainer(): DevContainerTemplate {
     forwardPorts: [8080],
     mounts: [
       "source=${localWorkspaceFolder}/../..,target=/workspaces,type=bind,consistency=cached",
-      "source=${localEnv:HOME}/.config/opencode,target=/home/vscode/.config/opencode,type=bind,consistency=cached"
+      "source=${localEnv:HOME}/.config/opencode,target=/home/vscode/.config/opencode,type=bind,consistency=cached",
+      "source=${localEnv:HOME}/.local/share/opencode/auth.json,target=/home/vscode/.local/share/opencode/auth.json,type=bind,consistency=cached"
     ],
     containerEnv: {
       "TERM": "xterm-256color",
@@ -148,7 +151,8 @@ function getRustDevContainer(): DevContainerTemplate {
     forwardPorts: [8080],
     mounts: [
       "source=${localWorkspaceFolder}/../..,target=/workspaces,type=bind,consistency=cached",
-      "source=${localEnv:HOME}/.config/opencode,target=/home/vscode/.config/opencode,type=bind,consistency=cached"
+      "source=${localEnv:HOME}/.config/opencode,target=/home/vscode/.config/opencode,type=bind,consistency=cached",
+      "source=${localEnv:HOME}/.local/share/opencode/auth.json,target=/home/vscode/.local/share/opencode/auth.json,type=bind,consistency=cached"
     ],
     containerEnv: {
       "TERM": "xterm-256color",
@@ -185,7 +189,8 @@ function getJavaDevContainer(): DevContainerTemplate {
     forwardPorts: [8080],
     mounts: [
       "source=${localWorkspaceFolder}/../..,target=/workspaces,type=bind,consistency=cached",
-      "source=${localEnv:HOME}/.config/opencode,target=/home/vscode/.config/opencode,type=bind,consistency=cached"
+      "source=${localEnv:HOME}/.config/opencode,target=/home/vscode/.config/opencode,type=bind,consistency=cached",
+      "source=${localEnv:HOME}/.local/share/opencode/auth.json,target=/home/vscode/.local/share/opencode/auth.json,type=bind,consistency=cached"
     ],
     containerEnv: {
       "TERM": "xterm-256color",
