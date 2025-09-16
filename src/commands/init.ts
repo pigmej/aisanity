@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { execSync } from 'child_process';
-import { getWorkspaceName, createAisanityConfig, setupDevToolConfig, setupOpencodeConfig, detectProjectType } from '../utils/config';
+import { getWorkspaceName, createAisanityConfig, setupOpencodeConfig, detectProjectType } from '../utils/config';
 import { getDevContainerTemplate } from '../utils/devcontainer-templates';
 
 export const initCommand = new Command('init')
@@ -25,8 +25,7 @@ export const initCommand = new Command('init')
         console.log(`Created .aisanity config file`);
       }
 
-       // Setup development tools configuration
-       await setupDevToolConfig(cwd, workspaceName);
+
 
        // Setup opencode configuration
        await setupOpencodeConfig(cwd, workspaceName);

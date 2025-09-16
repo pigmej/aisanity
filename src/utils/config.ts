@@ -50,38 +50,7 @@ export function createAisanityConfig(workspaceName: string): string {
   return YAML.stringify(config);
 }
 
-export async function setupDevToolConfig(cwd: string, workspaceName: string): Promise<void> {
-  const devToolsDir = path.join(cwd, '.devtools');
-  const defaultConfigPath = path.join(devToolsDir, 'default.json');
-  const workspaceConfigPath = path.join(devToolsDir, `${workspaceName}.json`);
 
-  // Create .devtools directory if it doesn't exist
-  if (!fs.existsSync(devToolsDir)) {
-    fs.mkdirSync(devToolsDir, { recursive: true });
-  }
-
-  // Check if default config exists
-  if (!fs.existsSync(defaultConfigPath)) {
-    // Create a basic default config if it doesn't exist
-    const defaultConfig = {
-      version: '1.0',
-      settings: {
-        theme: 'dark',
-        autoSave: true
-      }
-    };
-    fs.writeFileSync(defaultConfigPath, JSON.stringify(defaultConfig, null, 2), 'utf8');
-    console.log(`Created default development tools config at ${defaultConfigPath}`);
-  }
-
-  // Copy default config to workspace config if it doesn't exist
-  if (!fs.existsSync(workspaceConfigPath)) {
-    fs.copyFileSync(defaultConfigPath, workspaceConfigPath);
-    console.log(`Created workspace development tools config at ${workspaceConfigPath}`);
-  } else {
-    console.log(`Workspace development tools config already exists at ${workspaceConfigPath}`);
-  }
-}
 
 export function loadAisanityConfig(cwd: string): AisanityConfig | null {
   const configPath = path.join(cwd, '.aisanity');
@@ -99,24 +68,22 @@ export function loadAisanityConfig(cwd: string): AisanityConfig | null {
   }
 }
 
-export function getDevToolConfigPath(cwd: string, workspaceName: string): string {
-  return path.join(cwd, '.devtools', `${workspaceName}.json`);
-}
+
 
 export async function setupOpencodeConfig(cwd: string, workspaceName: string): Promise<void> {
   const opencodeDir = path.join(cwd, '.opencode');
-  const defaultConfigPath = path.join(opencodeDir, 'default.json');
-  const workspaceConfigPath = path.join(opencodeDir, `${workspaceName}.json`);
+  const defaultConfigPath = path.join(opencodeDir, 'opencode.jsonc');
+  const workspaceConfigPath = path.join(opencodeDir, 'opencode.jsonc');
 
   // Create .opencode directory if it doesn't exist
   if (!fs.existsSync(opencodeDir)) {
     fs.mkdirSync(opencodeDir, { recursive: true });
   }
 
-  // Check if default config exists
-  if (!fs.existsSync(defaultConfigPath)) {
-    // Create a basic default config if it doesn't exist
-    const defaultConfig = {
+  // Check if config exists
+  if (!fs.existsSync(workspaceConfigPath)) {
+    // Create a basic config if it doesn't exist
+    const config = {
       version: '1.0',
       settings: {
         theme: 'dark',
@@ -124,21 +91,15 @@ export async function setupOpencodeConfig(cwd: string, workspaceName: string): P
         cwd: cwd
       }
     };
-    fs.writeFileSync(defaultConfigPath, JSON.stringify(defaultConfig, null, 2), 'utf8');
-    console.log(`Created default opencode config at ${defaultConfigPath}`);
-  }
-
-  // Copy default config to workspace config if it doesn't exist
-  if (!fs.existsSync(workspaceConfigPath)) {
-    fs.copyFileSync(defaultConfigPath, workspaceConfigPath);
-    console.log(`Created workspace opencode config at ${workspaceConfigPath}`);
+    fs.writeFileSync(workspaceConfigPath, JSON.stringify(config, null, 2), 'utf8');
+    console.log(`Created opencode config at ${workspaceConfigPath}`);
   } else {
-    console.log(`Workspace opencode config already exists at ${workspaceConfigPath}`);
+    console.log(`Opencode config already exists at ${workspaceConfigPath}`);
   }
 }
 
 export function getOpencodeConfigPath(cwd: string, workspaceName: string): string {
-  return path.join(cwd, '.opencode', `${workspaceName}.json`);
+  return path.join(cwd, '.opencode', 'opencode.jsonc');
 }
 
 export type ProjectType = 'python' | 'nodejs' | 'go' | 'rust' | 'java' | 'unknown';
