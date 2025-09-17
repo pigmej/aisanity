@@ -17,6 +17,8 @@ export function getDevContainerTemplate(projectType: ProjectType): DevContainerT
       return getRustDevContainer();
     case 'java':
       return getJavaDevContainer();
+    case 'unknown':
+      return getEmptyDevContainer();
     default:
       return null;
   }
@@ -189,6 +191,40 @@ function getJavaDevContainer(): DevContainerTemplate {
       }
     },
     forwardPorts: [8080],
+    mounts: [
+      "source=${localWorkspaceFolder}/../..,target=/workspaces,type=bind,consistency=cached",
+      "source=${localEnv:HOME}/.config/opencode,target=/home/vscode/.config/opencode,type=bind,consistency=cached",
+      "source=${localEnv:HOME}/.local/share/opencode/auth.json,target=/home/vscode/.local/share/opencode/auth.json,type=bind,consistency=cached"
+    ],
+    containerEnv: {
+      "TERM": "xterm-256color",
+      "COLORTERM": "truecolor"
+    },
+    postCreateCommand: "npm install -g opencode-ai",
+    remoteUser: "vscode"
+  }, null, 2);
+
+  return { devcontainerJson };
+}
+
+function getEmptyDevContainer(): DevContainerTemplate {
+  const devcontainerJson = JSON.stringify({
+    name: "Empty Development Environment",
+    image: "mcr.microsoft.com/devcontainers/base:ubuntu",
+    features: {
+      "ghcr.io/devcontainers/features/node:1": {
+        version: "lts"
+      }
+    },
+    customizations: {
+      vscode: {
+        extensions: [
+          "ms-vscode.vscode-json",
+          "ms-vscode.vscode-yaml"
+        ]
+      }
+    },
+    forwardPorts: [],
     mounts: [
       "source=${localWorkspaceFolder}/../..,target=/workspaces,type=bind,consistency=cached",
       "source=${localEnv:HOME}/.config/opencode,target=/home/vscode/.config/opencode,type=bind,consistency=cached",

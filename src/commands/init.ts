@@ -30,29 +30,26 @@ export const initCommand = new Command('init')
         // Setup opencode configuration
         await setupOpencodeConfig(cwd);
 
-       // Detect project type and create devcontainer if applicable
-       const projectType = detectProjectType(cwd);
-       if (projectType !== 'unknown') {
-         const devcontainerDir = path.join(cwd, '.devcontainer');
-         if (!fs.existsSync(devcontainerDir)) {
-           fs.mkdirSync(devcontainerDir, { recursive: true });
-         }
+        // Detect project type and create devcontainer
+        const projectType = detectProjectType(cwd);
+        const devcontainerDir = path.join(cwd, '.devcontainer');
+        if (!fs.existsSync(devcontainerDir)) {
+          fs.mkdirSync(devcontainerDir, { recursive: true });
+        }
 
-         const template = getDevContainerTemplate(projectType);
-         if (template) {
-           const devcontainerPath = path.join(devcontainerDir, 'devcontainer.json');
-           fs.writeFileSync(devcontainerPath, template.devcontainerJson, 'utf8');
-           console.log(`Created devcontainer for ${projectType} project`);
+        const template = getDevContainerTemplate(projectType);
+        if (template) {
+          const devcontainerPath = path.join(devcontainerDir, 'devcontainer.json');
+          fs.writeFileSync(devcontainerPath, template.devcontainerJson, 'utf8');
+          const projectTypeMessage = projectType === 'unknown' ? 'unknown project type' : `${projectType} project`;
+          console.log(`Created devcontainer for ${projectTypeMessage}`);
 
-           if (template.dockerfile) {
-             const dockerfilePath = path.join(devcontainerDir, 'Dockerfile');
-             fs.writeFileSync(dockerfilePath, template.dockerfile, 'utf8');
-             console.log(`Created Dockerfile for ${projectType} project`);
-           }
-         }
-       } else {
-         console.log('No specific project type detected. Devcontainer not created.');
-       }
+          if (template.dockerfile) {
+            const dockerfilePath = path.join(devcontainerDir, 'Dockerfile');
+            fs.writeFileSync(dockerfilePath, template.dockerfile, 'utf8');
+            console.log(`Created Dockerfile for ${projectTypeMessage}`);
+          }
+        }
 
        console.log(`Workspace ${workspaceName} initialized successfully!`);
        console.log(`You can now use 'aisanity run' to start working in the container.`);
