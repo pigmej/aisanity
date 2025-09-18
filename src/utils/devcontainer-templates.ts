@@ -162,7 +162,7 @@ function getRustDevContainer(): DevContainerTemplate {
       "TERM": "xterm-256color",
       "COLORTERM": "truecolor"
     },
-    postCreateCommand: "npm install -g opencode-ai",
+    postCreateCommand: "curl -fsSL https://opencode.ai/install | bash",
     remoteUser: "vscode"
   }, null, 2);
 
@@ -200,7 +200,7 @@ function getJavaDevContainer(): DevContainerTemplate {
       "TERM": "xterm-256color",
       "COLORTERM": "truecolor"
     },
-    postCreateCommand: "npm install -g opencode-ai",
+    postCreateCommand: "curl -fsSL https://opencode.ai/install | bash",
     remoteUser: "vscode"
   }, null, 2);
 
@@ -234,7 +234,7 @@ function getEmptyDevContainer(): DevContainerTemplate {
       "TERM": "xterm-256color",
       "COLORTERM": "truecolor"
     },
-    postCreateCommand: "npm install -g opencode-ai",
+    postCreateCommand: "curl -fsSL https://opencode.ai/install | bash",
     remoteUser: "vscode"
   }, null, 2);
 
