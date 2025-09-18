@@ -56,7 +56,7 @@ function getPythonDevContainer(): DevContainerTemplate {
       "TERM": "xterm-256color",
       "COLORTERM": "truecolor"
     },
-    postCreateCommand: "uv sync && npm install -g opencode-ai",
+    postCreateCommand: "npm install -g opencode-ai",
     remoteUser: "vscode"
   }, null, 2);
 
@@ -92,8 +92,8 @@ function getNodeJsDevContainer(): DevContainerTemplate {
       "TERM": "xterm-256color",
       "COLORTERM": "truecolor"
     },
-    postCreateCommand: "npm install && npm install -g opencode-ai",
-    remoteUser: "node"
+    postCreateCommand: "npm install -g opencode-ai",
+    remoteUser: "vscode"
   }, null, 2);
 
   return { devcontainerJson };
@@ -127,7 +127,7 @@ function getGoDevContainer(): DevContainerTemplate {
       "TERM": "xterm-256color",
       "COLORTERM": "truecolor"
     },
-    postCreateCommand: "go mod tidy && npm install -g opencode-ai",
+    postCreateCommand: "npm install -g opencode-ai",
     remoteUser: "vscode"
   }, null, 2);
 
@@ -162,7 +162,7 @@ function getRustDevContainer(): DevContainerTemplate {
       "TERM": "xterm-256color",
       "COLORTERM": "truecolor"
     },
-    postCreateCommand: "cargo build && npm install -g opencode-ai",
+    postCreateCommand: "npm install -g opencode-ai",
     remoteUser: "vscode"
   }, null, 2);
 
