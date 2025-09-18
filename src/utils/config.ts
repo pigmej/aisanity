@@ -83,14 +83,7 @@ export async function setupOpencodeConfig(cwd: string): Promise<void> {
     console.log(`Migrated opencode config to ${newConfigPath}`);
   } else if (!fs.existsSync(newConfigPath)) {
     // Create a basic config if it doesn't exist
-    const config = {
-      version: '1.0',
-      settings: {
-        theme: 'dark',
-        autoSave: true,
-        cwd: cwd
-      }
-    };
+    const config = {};
     fs.writeFileSync(newConfigPath, JSON.stringify(config, null, 2), 'utf8');
     console.log(`Created opencode config at ${newConfigPath}`);
   } else {
