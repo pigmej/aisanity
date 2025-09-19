@@ -34,7 +34,6 @@ The `.aisanity` file contains workspace configuration:
 ```yaml
 workspace: project_main
 containerName: aisanity-project_main
-env: {}
 ```
 
 ## Requirements
