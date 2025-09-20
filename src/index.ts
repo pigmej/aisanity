@@ -6,6 +6,7 @@ import { runCommand } from './commands/run';
 import { stopCommand } from './commands/stop';
 import { statusCommand } from './commands/status';
 import { rebuildCommand } from './commands/rebuild';
+import { discoverOpencodeCommand } from './commands/discover-opencode';
 
 const program = new Command();
 
@@ -20,6 +21,7 @@ program.addCommand(runCommand);
 program.addCommand(stopCommand);
 program.addCommand(statusCommand);
 program.addCommand(rebuildCommand);
+program.addCommand(discoverOpencodeCommand);
 
 // Parse command line arguments
 program.parse();
