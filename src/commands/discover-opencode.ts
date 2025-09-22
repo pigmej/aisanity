@@ -4,9 +4,10 @@ import * as YAML from 'yaml';
 import chalk from 'chalk';
 import { loadAisanityConfig } from '../utils/config';
 
-interface OpencodeInstance {
+export interface OpencodeInstance {
   containerId: string;
   containerName: string;
+  host: string;
   port: number;
   processId: number;
   elapsedTime: number;
@@ -33,13 +34,13 @@ export function isValidContainerId(containerId: string): boolean {
 }
 
 // Function to check if port serves opencode API
-function isOpencodeApi(containerId: string, port: number): boolean {
+function isOpencodeApi(containerId: string, host: string, port: number): boolean {
   if (!isValidContainerId(containerId)) {
     return false;
   }
 
   try {
-    const result = execSync(`docker exec ${containerId} curl -s "http://localhost:${port}/config"`, {
+    const result = execSync(`docker exec ${containerId} curl -s "http://${host}:${port}/config"`, {
       encoding: 'utf8',
       stdio: 'pipe',
       timeout: 5000
@@ -109,7 +110,7 @@ function getContainerName(containerId: string): string {
 }
 
 // Main discovery function
-async function discoverOpencodeInstances(options: CommandOptions): Promise<DiscoveryResult> {
+export async function discoverOpencodeInstances(options: CommandOptions): Promise<DiscoveryResult> {
   const instances: OpencodeInstance[] = [];
 
   try {
@@ -205,26 +206,32 @@ async function discoverOpencodeInstances(options: CommandOptions): Promise<Disco
 
         if (processes.length === 0) continue;
 
-        // Get listening ports
+        // Get listening ports with hosts
         const portsOutput = execSync(`docker exec ${containerId} netstat -tlnp 2>/dev/null`, {
           encoding: 'utf8',
           timeout: 5000
         });
-        const ports = portsOutput
+        const listeningAddresses = portsOutput
           .split('\n')
-          .filter(line => line.includes('LISTEN') && line.includes('127.0.0.1:'))
+          .filter(line => line.includes('LISTEN'))
           .map(line => {
-            const match = line.match(/127\.0\.0\.1:(\d+)/);
-            return match ? parseInt(match[1]) : null;
+            // Match patterns like "127.0.0.1:3000", "0.0.0.0:3000", "192.168.1.100:3000"
+            const match = line.match(/(\d+\.\d+\.\d+\.\d+|localhost|0\.0\.0\.0):(\d+)/);
+            if (match) {
+              const host = match[1] === '0.0.0.0' ? 'localhost' : match[1]; // Convert 0.0.0.0 to localhost for external access
+              const port = parseInt(match[2]);
+              return { host, port };
+            }
+            return null;
           })
-          .filter(Boolean) as number[];
+          .filter(Boolean) as { host: string; port: number }[];
 
-        if (ports.length === 0) continue;
+        if (listeningAddresses.length === 0) continue;
 
-        // Check each port
-        for (const port of ports) {
-          if (isOpencodeApi(containerId, port)) {
-            console.log(`Found opencode API in container ${containerName} on port ${port}`);
+        // Check each listening address
+        for (const { host, port } of listeningAddresses) {
+          if (isOpencodeApi(containerId, host, port)) {
+            console.log(`Found opencode API in container ${containerName} on ${host}:${port}`);
 
             // Find the most recent process for this port
             let mostRecentProcess = null;
@@ -242,6 +249,7 @@ async function discoverOpencodeInstances(options: CommandOptions): Promise<Disco
               const instance: OpencodeInstance = {
                 containerId,
                 containerName,
+                host,
                 port,
                 processId: mostRecentProcess.pid,
                 elapsedTime: lowestElapsed,
@@ -294,7 +302,7 @@ export function formatText(result: DiscoveryResult, showAll: boolean = false): s
       output += `  Container: ${instance.containerName}\n`;
       output += `  Port: ${instance.port}\n`;
       output += `  Age: ${instance.elapsedTime} seconds\n`;
-      output += `  Host:Port: localhost:${instance.port}\n\n`;
+      output += `  Host:Port: ${instance.host}:${instance.port}\n\n`;
     });
   } else {
     if (!result.mostRecent) {
@@ -305,7 +313,7 @@ export function formatText(result: DiscoveryResult, showAll: boolean = false): s
     output += `  Container: ${result.mostRecent.containerName}\n`;
     output += `  Port: ${result.mostRecent.port}\n`;
     output += `  Age: ${result.mostRecent.elapsedTime} seconds\n`;
-    output += `  Host:Port: localhost:${result.mostRecent.port}\n`;
+    output += `  Host:Port: ${result.mostRecent.host}:${result.mostRecent.port}\n`;
 
     if (result.instances.length > 1) {
       output += `\nOther instances found: ${result.instances.length - 1}\n`;
@@ -317,7 +325,7 @@ export function formatText(result: DiscoveryResult, showAll: boolean = false): s
 
 export function formatPlain(result: DiscoveryResult): string {
   if (result.mostRecent) {
-    return `localhost:${result.mostRecent.port}`;
+    return `${result.mostRecent.host}:${result.mostRecent.port}`;
   }
   return '';
 }

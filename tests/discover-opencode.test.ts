@@ -51,6 +51,7 @@ describe('formatText', () => {
   const mockInstance = {
     containerId: 'abc123',
     containerName: 'test-container',
+    host: 'localhost',
     port: 8080,
     processId: 123,
     elapsedTime: 120,
@@ -101,6 +102,7 @@ describe('formatPlain', () => {
       mostRecent: {
         containerId: 'abc123',
         containerName: 'test-container',
+        host: 'localhost',
         port: 8080,
         processId: 123,
         elapsedTime: 120,
