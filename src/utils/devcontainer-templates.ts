@@ -77,12 +77,12 @@ function getPythonDevContainer(): DevContainerTemplate {
          ]
        }
      },
-     forwardPorts: [5000, 8000],
-     mounts: [
-       "source=${localWorkspaceFolder}/../..,target=/workspaces,type=bind,consistency=cached",
-       "source=${localEnv:HOME}/.config/opencode,target=/home/vscode/.config/opencode,type=bind,consistency=cached",
-       "source=${localEnv:HOME}/.local/share/opencode,target=/home/vscode/.local/share/opencode,type=bind,consistency=cached"
-     ],
+forwardPorts: [5000, 8000],
+       mounts: [
+         "source=${localEnv:HOME}/.config/opencode,target=/home/vscode/.config/opencode,type=bind,consistency=cached",
+         "source=${localEnv:HOME}/.local/share/opencode,target=/home/vscode/.local/share/opencode,type=bind,consistency=cached",
+         "source=${localEnv:HOME}/.local/state/opencode,target=/home/vscode/.local/state/opencode,type=bind,consistency=cached"
+       ],
     containerEnv: {
       "TERM": "xterm-256color",
       "COLORTERM": "truecolor"
@@ -113,18 +113,18 @@ function getNodeJsDevContainer(): DevContainerTemplate {
          ]
        }
      },
-     forwardPorts: [3000, 3001],
-     mounts: [
-       "source=${localWorkspaceFolder}/../..,target=/workspaces,type=bind,consistency=cached",
-       "source=${localEnv:HOME}/.config/opencode,target=/home/node/.config/opencode,type=bind,consistency=cached",
-       "source=${localEnv:HOME}/.local/share/opencode,target=/home/node/.local/share/opencode,type=bind,consistency=cached"
-     ],
+forwardPorts: [3000, 3001],
+       mounts: [
+         "source=${localEnv:HOME}/.config/opencode,target=/home/node/.config/opencode,type=bind,consistency=cached",
+         "source=${localEnv:HOME}/.local/share/opencode,target=/home/node/.local/share/opencode,type=bind,consistency=cached",
+         "source=${localEnv:HOME}/.local/state/opencode,target=/home/node/.local/state/opencode,type=bind,consistency=cached"
+       ],
     containerEnv: {
       "TERM": "xterm-256color",
       "COLORTERM": "truecolor"
     },
     postCreateCommand: "npm install -g opencode-ai",
-    remoteUser: "vscode"
+    remoteUser: "node"  // node container really likes node user
   }, null, 2);
 
   return { devcontainerJson };
@@ -141,19 +141,19 @@ function getGoDevContainer(): DevContainerTemplate {
      },
      customizations: {
        vscode: {
-         extensions: [
-           "golang.Go",
-           "ms-vscode.vscode-json",
-           "ms-vscode.vscode-yaml"
-         ]
-       }
-     },
-     forwardPorts: [8080],
-     mounts: [
-       "source=${localWorkspaceFolder}/../..,target=/workspaces,type=bind,consistency=cached",
-       "source=${localEnv:HOME}/.config/opencode,target=/home/vscode/.config/opencode,type=bind,consistency=cached",
-       "source=${localEnv:HOME}/.local/share/opencode,target=/home/vscode/.local/share/opencode,type=bind,consistency=cached"
-     ],
+          extensions: [
+            "golang.Go",
+            "ms-vscode.vscode-json",
+            "ms-vscode.vscode-yaml"
+          ]
+        }
+},
+       forwardPorts: [8080],
+       mounts: [
+         "source=${localEnv:HOME}/.config/opencode,target=/home/vscode/.config/opencode,type=bind,consistency=cached",
+         "source=${localEnv:HOME}/.local/share/opencode,target=/home/vscode/.local/share/opencode,type=bind,consistency=cached",
+         "source=${localEnv:HOME}/.local/state/opencode,target=/home/vscode/.local/state/opencode,type=bind,consistency=cached"
+       ],
     containerEnv: {
       "TERM": "xterm-256color",
       "COLORTERM": "truecolor"
@@ -176,19 +176,19 @@ function getRustDevContainer(): DevContainerTemplate {
      },
      customizations: {
        vscode: {
-         extensions: [
-           "rust-lang.rust-analyzer",
-           "ms-vscode.vscode-json",
-           "ms-vscode.vscode-yaml"
-         ]
-       }
-     },
-     forwardPorts: [8080],
-     mounts: [
-       "source=${localWorkspaceFolder}/../..,target=/workspaces,type=bind,consistency=cached",
-       "source=${localEnv:HOME}/.config/opencode,target=/home/vscode/.config/opencode,type=bind,consistency=cached",
-       "source=${localEnv:HOME}/.local/share/opencode,target=/home/vscode/.local/share/opencode,type=bind,consistency=cached"
-     ],
+          extensions: [
+"rust-lang.rust-analyzer",
+             "ms-vscode.vscode-json",
+             "ms-vscode.vscode-yaml"
+           ]
+         }
+       },
+       forwardPorts: [8080],
+       mounts: [
+         "source=${localEnv:HOME}/.config/opencode,target=/home/vscode/.config/opencode,type=bind,consistency=cached",
+         "source=${localEnv:HOME}/.local/share/opencode,target=/home/vscode/.local/share/opencode,type=bind,consistency=cached",
+         "source=${localEnv:HOME}/.local/state/opencode,target=/home/vscode/.local/state/opencode,type=bind,consistency=cached"
+       ],
     containerEnv: {
       "TERM": "xterm-256color",
       "COLORTERM": "truecolor"
@@ -214,19 +214,19 @@ function getJavaDevContainer(): DevContainerTemplate {
      },
      customizations: {
        vscode: {
-         extensions: [
-           "vscjava.vscode-java-pack",
-           "ms-vscode.vscode-json",
-           "ms-vscode.vscode-yaml"
-         ]
-       }
-     },
-     forwardPorts: [8080],
-     mounts: [
-       "source=${localWorkspaceFolder}/../..,target=/workspaces,type=bind,consistency=cached",
-       "source=${localEnv:HOME}/.config/opencode,target=/home/vscode/.config/opencode,type=bind,consistency=cached",
-       "source=${localEnv:HOME}/.local/share/opencode,target=/home/vscode/.local/share/opencode,type=bind,consistency=cached"
-     ],
+          extensions: [
+"vscjava.vscode-java-pack",
+             "ms-vscode.vscode-json",
+             "ms-vscode.vscode-yaml"
+           ]
+         }
+       },
+       forwardPorts: [8080],
+       mounts: [
+         "source=${localEnv:HOME}/.config/opencode,target=/home/vscode/.config/opencode,type=bind,consistency=cached",
+         "source=${localEnv:HOME}/.local/share/opencode,target=/home/vscode/.local/share/opencode,type=bind,consistency=cached",
+         "source=${localEnv:HOME}/.local/state/opencode,target=/home/vscode/.local/state/opencode,type=bind,consistency=cached"
+       ],
     containerEnv: {
       "TERM": "xterm-256color",
       "COLORTERM": "truecolor"
@@ -255,12 +255,12 @@ function getEmptyDevContainer(): DevContainerTemplate {
          ]
        }
      },
-     forwardPorts: [],
-     mounts: [
-       "source=${localWorkspaceFolder}/../..,target=/workspaces,type=bind,consistency=cached",
-       "source=${localEnv:HOME}/.config/opencode,target=/home/vscode/.config/opencode,type=bind,consistency=cached",
-       "source=${localEnv:HOME}/.local/share/opencode,target=/home/vscode/.local/share/opencode,type=bind,consistency=cached"
-     ],
+forwardPorts: [],
+       mounts: [
+         "source=${localEnv:HOME}/.config/opencode,target=/home/vscode/.config/opencode,type=bind,consistency=cached",
+         "source=${localEnv:HOME}/.local/share/opencode,target=/home/vscode/.local/share/opencode,type=bind,consistency=cached",
+         "source=${localEnv:HOME}/.local/state/opencode,target=/home/vscode/.local/state/opencode,type=bind,consistency=cached"
+       ],
     containerEnv: {
       "TERM": "xterm-256color",
       "COLORTERM": "truecolor"
