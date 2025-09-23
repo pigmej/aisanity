@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import { execSync } from 'child_process';
-import { loadAisanityConfig, getCurrentBranch } from '../utils/config';
+import { loadAisanityConfig, getContainerName, getCurrentBranch } from '../utils/config';
 
 export const statusCommand = new Command('status')
   .description('Display the status of all containers used for the current workspace')
@@ -15,7 +15,7 @@ export const statusCommand = new Command('status')
       }
 
       const workspaceName = config.workspace;
-      const containerName = config.containerName || `aisanity-${workspaceName}`;
+      const containerName = getContainerName(cwd);
       const branch = getCurrentBranch(cwd);
 
       console.log(`Workspace: ${workspaceName}`);

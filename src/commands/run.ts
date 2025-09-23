@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import * as path from 'path';
 import { spawn } from 'child_process';
-import { loadAisanityConfig, getCurrentBranch } from '../utils/config';
+import { loadAisanityConfig, getContainerName, getCurrentBranch } from '../utils/config';
 import * as fs from 'fs';
 
 export const runCommand = new Command('run')
@@ -21,7 +21,7 @@ export const runCommand = new Command('run')
       }
 
       const workspaceName = config.workspace;
-      const containerName = config.containerName || `aisanity-${workspaceName}`;
+      const containerName = getContainerName(cwd);
 
       // Default to bash shell if no command provided
       const command = commandArgs.length > 0 ? commandArgs : ['bash'];

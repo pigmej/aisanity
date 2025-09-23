@@ -14,13 +14,15 @@ jest.mock('../src/utils/docker-safe-exec', () => ({
 // Mock config
 jest.mock('../src/utils/config', () => ({
   loadAisanityConfig: jest.fn(),
+  getContainerName: jest.fn(),
+  getCurrentBranch: jest.fn(),
 }));
 
 // Import after mocking
 import { elapsedToSeconds, isValidContainerId, discoverOpencodeInstances, discoverOpencodeCommand } from '../src/commands/discover-opencode';
 import { validateHost, validatePort, validateContainerId, validateContainerName, validateWorkspacePath } from '../src/utils/input-validation';
 import { safeDockerExec } from '../src/utils/docker-safe-exec';
-import { loadAisanityConfig } from '../src/utils/config';
+import { loadAisanityConfig, getContainerName, getCurrentBranch } from '../src/utils/config';
 
 // Mock process.cwd
 const mockCwd = jest.spyOn(process, 'cwd');
@@ -213,6 +215,11 @@ describe('verbose functionality', () => {
     workspace: 'test-workspace',
     containerName: 'test-container'
   };
+
+  beforeEach(() => {
+    (getContainerName as jest.Mock).mockReturnValue('test-container');
+    (getCurrentBranch as jest.Mock).mockReturnValue('main');
+  });
 
   const mockInstance = {
     containerId: 'abc123def456',

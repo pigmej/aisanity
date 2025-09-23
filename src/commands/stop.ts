@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import { execSync } from 'child_process';
-import { loadAisanityConfig } from '../utils/config';
+import { loadAisanityConfig, getContainerName } from '../utils/config';
 
 export const stopCommand = new Command('stop')
   .description('Stop all containers used for the current workspace')
@@ -15,7 +15,7 @@ export const stopCommand = new Command('stop')
       }
 
       const workspaceName = config.workspace;
-      const containerName = config.containerName || `aisanity-${workspaceName}`;
+      const containerName = getContainerName(cwd);
 
       console.log(`Stopping containers for workspace: ${workspaceName}`);
 
@@ -45,9 +45,10 @@ export const stopCommand = new Command('stop')
         // No devcontainers found for this workspace, that's okay
       }
 
-      // Also stop any containers with the specific workspace name
+      // Also stop any containers with the specific workspace name pattern
+      // Search for both old format (aisanity-${workspaceName}) and new format (${workspaceName}-)
       try {
-        const output = execSync(`docker ps --filter "name=aisanity-${workspaceName}" --format "{{.Names}}"`, {
+        const output = execSync(`docker ps --filter "name=aisanity-${workspaceName}" --filter "name=${workspaceName}-" --format "{{.Names}}"`, {
           encoding: 'utf8'
         });
 

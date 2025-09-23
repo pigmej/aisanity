@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import * as YAML from 'yaml';
 import chalk from 'chalk';
-import { loadAisanityConfig } from '../utils/config';
+import { loadAisanityConfig, getContainerName as getAisanityContainerName } from '../utils/config';
 import { safeDockerExec } from '../utils/docker-safe-exec';
 
 export interface OpencodeInstance {
@@ -122,7 +122,7 @@ export async function discoverOpencodeInstances(options: CommandOptions): Promis
       return { instances: [], mostRecent: null, error: 'No .aisanity config found. Run "aisanity init" first.' };
     }
 
-    const containerName = config.containerName || `aisanity-${config.workspace}`;
+    const containerName = getAisanityContainerName(cwd);
 
     // Find containers with opencode processes
     if (options.verbose) console.error('Finding opencode instances...');

@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import * as path from 'path';
 import { spawn, execSync } from 'child_process';
-import { loadAisanityConfig } from '../utils/config';
+import { loadAisanityConfig, getContainerName } from '../utils/config';
 
 export const rebuildCommand = new Command('rebuild')
   .description('Rebuild the devcontainer')
@@ -25,7 +25,7 @@ export const rebuildCommand = new Command('rebuild')
       const action = options.clean ? 'Removing' : 'Stopping';
       console.log(`${action} existing container...`);
 
-      const containerName = config.containerName || `aisanity-${workspaceName}`;
+      const containerName = getContainerName(cwd);
 
       try {
         // Try to stop/remove the container using docker
@@ -55,9 +55,10 @@ export const rebuildCommand = new Command('rebuild')
         // No devcontainers found for this workspace, that's okay
       }
 
-      // Also stop/remove any containers with the specific workspace name
+      // Also stop/remove any containers with the specific workspace name pattern
+      // Search for both old format (aisanity-${workspaceName}) and new format (${workspaceName}-)
       try {
-        const output = execSync(`docker ps --filter "name=aisanity-${workspaceName}" --format "{{.Names}}"`, {
+        const output = execSync(`docker ps --filter "name=aisanity-${workspaceName}" --filter "name=${workspaceName}-" --format "{{.Names}}"`, {
           encoding: 'utf8'
         });
 
