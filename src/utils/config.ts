@@ -40,6 +40,20 @@ export function getWorkspaceName(cwd: string): string {
   return `${sanitizedFolder}_${sanitizedBranch}`;
 }
 
+export function getCurrentBranch(cwd: string): string {
+  try {
+    const gitBranch = execSync('git rev-parse --abbrev-ref HEAD', {
+      cwd,
+      encoding: 'utf8',
+      stdio: 'pipe'
+    }).trim();
+    return gitBranch || 'main';
+  } catch (error) {
+    // Git not available or not a git repo, use 'main' as default
+    return 'main';
+  }
+}
+
 export function createAisanityConfig(workspaceName: string): string {
   const config: AisanityConfig = {
     workspace: workspaceName,
@@ -96,6 +110,15 @@ export function getOpencodeConfigPath(cwd: string): string {
 }
 
 export type ProjectType = 'python' | 'nodejs' | 'go' | 'rust' | 'java' | 'unknown';
+
+/**
+ * Generates the expected container name based on the project directory.
+ * Format: aisanity-{projectName}_main
+ */
+export function generateExpectedContainerName(cwd: string): string {
+  const projectName = path.basename(cwd);
+  return `aisanity-${projectName}_main`;
+}
 
 export function detectProjectType(cwd: string): ProjectType {
   // Check for Python indicators

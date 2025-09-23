@@ -1,4 +1,35 @@
 import { ProjectType } from './config';
+import * as fs from 'fs';
+import * as path from 'path';
+
+// Custom error classes for better error handling
+export class FileNotFoundError extends Error {
+  constructor(filePath: string) {
+    super(`File not found: ${filePath}`);
+    this.name = 'FileNotFoundError';
+  }
+}
+
+export class InvalidJsonError extends Error {
+  constructor(filePath: string, originalError?: Error) {
+    super(`Invalid JSON in file: ${filePath}${originalError ? ` - ${originalError.message}` : ''}`);
+    this.name = 'InvalidJsonError';
+  }
+}
+
+export class PermissionError extends Error {
+  constructor(filePath: string, operation: string) {
+    super(`Permission denied for ${operation}: ${filePath}`);
+    this.name = 'PermissionError';
+  }
+}
+
+export class DiskSpaceError extends Error {
+  constructor(filePath: string) {
+    super(`Insufficient disk space for writing: ${filePath}`);
+    this.name = 'DiskSpaceError';
+  }
+}
 
 export interface DevContainerTemplate {
   devcontainerJson: string;
@@ -239,4 +270,81 @@ function getEmptyDevContainer(): DevContainerTemplate {
   }, null, 2);
 
   return { devcontainerJson };
+}
+
+/**
+ * Reads a devcontainer.json file and returns its parsed content.
+ */
+export function readDevContainerJson(filePath: string): any {
+  if (!fs.existsSync(filePath)) {
+    throw new FileNotFoundError(filePath);
+  }
+  let content: string;
+  try {
+    content = fs.readFileSync(filePath, 'utf8');
+  } catch (error: any) {
+    if (error.code === 'EACCES' || error.code === 'EPERM') {
+      throw new PermissionError(filePath, 'reading');
+    }
+    throw error;
+  }
+  try {
+    return JSON.parse(content);
+  } catch (error: any) {
+    throw new InvalidJsonError(filePath, error);
+  }
+}
+
+/**
+ * Creates a branch-specific devcontainer.json file by copying from the base file and adding containerName.
+ * 
+ * NOTE: This function is no longer used by the main aisanity run command, which now uses 
+ * --id-label for container identification. Kept for backward compatibility and testing.
+ */
+export function createBranchSpecificDevContainer(basePath: string, branchPath: string, containerName: string): void {
+  // Input validation
+  if (typeof containerName !== 'string' || containerName.trim() === '') {
+    throw new Error('containerName must be a non-empty string');
+  }
+
+  const baseContent = readDevContainerJson(basePath);
+  const modifiedContent = {
+    ...baseContent,
+    containerName
+  };
+  const jsonString = JSON.stringify(modifiedContent, null, 2);
+  
+  // Determine target path: use branchPath if provided, otherwise basePath
+  const targetPath = branchPath || basePath;
+  const dir = path.dirname(targetPath);
+  
+  try {
+    // Create directory if it doesn't exist (for branch-specific files)
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(targetPath, jsonString, 'utf8');
+  } catch (error: any) {
+    if (error.code === 'EACCES' || error.code === 'EPERM') {
+      throw new PermissionError(targetPath, 'writing');
+    } else if (error.code === 'ENOSPC') {
+      throw new DiskSpaceError(targetPath);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Gets the path to the branch-specific devcontainer file.
+ */
+export function getBranchSpecificDevContainerPath(cwd: string, branch: string): string {
+  const sanitizedBranch = branch.replace(/[^a-zA-Z0-9]/g, '_');
+  return path.join(cwd, '.devcontainer', `devcontainer_${sanitizedBranch}.json`);
+}
+
+/**
+ * Gets the path to the base devcontainer.json file.
+ */
+export function getBaseDevContainerPath(cwd: string): string {
+  return path.join(cwd, '.devcontainer', 'devcontainer.json');
 }

@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import { execSync } from 'child_process';
-import { loadAisanityConfig } from '../utils/config';
+import { loadAisanityConfig, getCurrentBranch } from '../utils/config';
 
 export const statusCommand = new Command('status')
   .description('Display the status of all containers used for the current workspace')
@@ -16,14 +16,16 @@ export const statusCommand = new Command('status')
 
       const workspaceName = config.workspace;
       const containerName = config.containerName || `aisanity-${workspaceName}`;
+      const branch = getCurrentBranch(cwd);
 
       console.log(`Workspace: ${workspaceName}`);
+      console.log(`Branch: ${branch}`);
       console.log(`Container: ${containerName}`);
       console.log('─'.repeat(50));
 
-      // Check main container status
+      // Check main container status using ID labels
       try {
-        const output = execSync(`docker ps -a --filter "name=${containerName}" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"`, {
+        const output = execSync(`docker ps -a --filter "label=aisanity.workspace=${workspaceName}" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"`, {
           encoding: 'utf8'
         });
 
