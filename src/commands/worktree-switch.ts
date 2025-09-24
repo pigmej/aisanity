@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import * as path from 'path';
 import { getMainWorkspacePath, getWorktreeByName, getAllWorktrees, isWorktree } from '../utils/worktree-utils';
+import { checkWorktreeEnabled } from '../utils/config';
 
 export const worktreeSwitchCommand = new Command('switch')
   .description('Switch to a different worktree')
@@ -8,6 +9,9 @@ export const worktreeSwitchCommand = new Command('switch')
   .option('-v, --verbose', 'Enable verbose logging')
   .action(async (worktreeIdentifier: string, options) => {
     const cwd = process.cwd();
+    
+    // Check if worktree functionality is enabled
+    checkWorktreeEnabled(cwd);
     
     try {
       const mainPath = getMainWorkspacePath(cwd);

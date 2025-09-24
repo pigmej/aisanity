@@ -8,6 +8,7 @@ export interface AisanityConfig {
   workspace: string;
   containerName?: string;
   env?: Record<string, string>;
+  worktree?: boolean;
 }
 
 export function getWorkspaceName(cwd: string): string {
@@ -241,4 +242,26 @@ export function isWorktree(cwd: string): boolean {
  */
 export function getWorktreeName(cwd: string): string {
   return getWorktreeNameUtil(cwd);
+}
+
+/**
+ * Check if worktree functionality is enabled in config
+ * If worktree is explicitly set to false, display message and exit
+ */
+export function checkWorktreeEnabled(cwd: string): boolean {
+  const config = loadAisanityConfig(cwd);
+  
+  // If config doesn't exist or worktree is not set, default to enabled (true)
+  if (!config || config.worktree === undefined) {
+    return true;
+  }
+  
+  // If worktree is explicitly set to false, show message and exit
+  if (config.worktree === false) {
+    console.log("Worktree functionality is disabled. To enable worktree functionality, set 'worktree: true' in your .aisanity config, and make sure you understand the recommended workspace layout first.");
+    process.exit(0);
+  }
+  
+  // Otherwise, worktree is enabled
+  return true;
 }
