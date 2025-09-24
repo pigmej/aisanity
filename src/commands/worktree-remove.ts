@@ -14,7 +14,15 @@ export const worktreeRemoveCommand = new Command('remove')
     const cwd = process.cwd();
     
     try {
-      const mainPath = getMainWorkspacePath(cwd);
+      const topLevelPath = getMainWorkspacePath(cwd);
+      
+      // Get git root for git commands
+      const { execSync } = require('child_process');
+      const gitRoot = execSync('git rev-parse --show-toplevel', {
+        cwd,
+        encoding: 'utf8',
+        stdio: 'pipe'
+      }).trim();
       
       // Determine if identifier is a path or name
       let worktreePath: string;
@@ -31,11 +39,11 @@ export const worktreeRemoveCommand = new Command('remove')
       } else {
         // Worktree name provided
         worktreeName = worktreeIdentifier;
-        worktreePath = path.join(mainPath, 'worktrees', worktreeName);
+        worktreePath = path.join(topLevelPath, 'worktrees', worktreeName);
       }
       
       // Get worktree info
-      const worktree = getWorktreeByName(worktreeName, mainPath);
+      const worktree = getWorktreeByName(worktreeName, topLevelPath);
       if (!worktree) {
         console.error(`Worktree '${worktreeName}' not found`);
         console.error('Use "aisanity worktree list" to see available worktrees');
@@ -114,7 +122,7 @@ export const worktreeRemoveCommand = new Command('remove')
       // Remove git worktree
       try {
         const removeResult = spawn('git', ['worktree', 'remove', worktreePath], {
-          cwd: mainPath,
+          cwd: gitRoot,
           stdio: options.verbose ? 'inherit' : 'pipe'
         });
         

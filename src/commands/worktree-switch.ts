@@ -72,15 +72,16 @@ export const worktreeSwitchCommand = new Command('switch')
         console.log(`Target container: ${worktree.containerName}`);
       }
       
-      // Change to worktree directory
-      process.chdir(worktreePath);
-      
-      console.log(`✓ Switched to worktree: ${worktreeName}`);
-      console.log(`  New path: ${worktreePath}`);
+      // Print the worktree path for user to cd manually
+      console.log(`✓ Worktree information: ${worktreeName}`);
+      console.log(`  Path: ${worktreePath}`);
       console.log(`  Branch: ${worktree.branch}`);
       console.log(`  Container: ${worktree.containerName}`);
       console.log('');
-      console.log('You can now use aisanity commands in this worktree:');
+      console.log(`To switch to this worktree, run:`);
+      console.log(`  cd ${worktreePath}`);
+      console.log('');
+      console.log('Then you can use aisanity commands:');
       console.log(`  aisanity run     - Start the development container`);
       console.log(`  aisanity status   - Check container status`);
       console.log(`  aisanity stop    - Stop the container`);

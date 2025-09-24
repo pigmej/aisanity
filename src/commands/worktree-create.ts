@@ -29,17 +29,29 @@ export const worktreeCreateCommand = new Command('create')
         process.exit(1);
       }
       
-      // Get main workspace path
-      const mainPath = getMainWorkspacePath(cwd);
+      // Get top-level workspace path (parent directory structure)
+      const topLevelPath = getMainWorkspacePath(cwd);
+      
+      // Get git root (where .git actually is)
+      const gitRoot = execSync('git rev-parse --show-toplevel', {
+        cwd,
+        encoding: 'utf8',
+        stdio: 'pipe'
+      }).trim();
       
       // Check if worktree already exists
-      if (worktreeExists(branch, mainPath)) {
+      if (worktreeExists(branch, topLevelPath)) {
         console.error(`Worktree '${branch}' already exists`);
         process.exit(1);
       }
       
-      // Verify main workspace has .aisanity config
-      const mainConfig = loadAisanityConfig(mainPath);
+      // Verify main workspace has .aisanity config (could be in top level or git root)
+      let mainConfigPath = topLevelPath;
+      if (!fs.existsSync(path.join(topLevelPath, '.aisanity'))) {
+        mainConfigPath = gitRoot;
+      }
+      
+      const mainConfig = loadAisanityConfig(mainConfigPath);
       if (!mainConfig) {
         console.error('No .aisanity config found in main workspace');
         console.error('Please run "aisanity init" in the main workspace first');
@@ -48,11 +60,13 @@ export const worktreeCreateCommand = new Command('create')
       
       if (options.verbose) {
         console.log(`Creating worktree for branch: ${branch}`);
-        console.log(`Main workspace path: ${mainPath}`);
+        console.log(`Top-level path: ${topLevelPath}`);
+        console.log(`Git root: ${gitRoot}`);
+        console.log(`Config path: ${mainConfigPath}`);
       }
       
       // Create worktrees directory if it doesn't exist
-      const worktreesDir = path.join(mainPath, 'worktrees');
+      const worktreesDir = path.join(topLevelPath, 'worktrees');
       if (!fs.existsSync(worktreesDir)) {
         fs.mkdirSync(worktreesDir, { recursive: true });
         if (options.verbose) {
@@ -66,7 +80,7 @@ export const worktreeCreateCommand = new Command('create')
       let branchExists = false;
       try {
         execSync(`git show-ref --verify --quiet refs/heads/${branch}`, {
-          cwd: mainPath,
+          cwd: gitRoot,
           stdio: 'pipe'
         });
         branchExists = true;
@@ -88,7 +102,7 @@ export const worktreeCreateCommand = new Command('create')
         
         // Use spawn for better security
         const gitResult = spawn('git', gitArgs, {
-          cwd: mainPath,
+          cwd: gitRoot,
           stdio: options.verbose ? 'inherit' : 'pipe'
         });
         
@@ -112,7 +126,7 @@ export const worktreeCreateCommand = new Command('create')
       }
       
       // Copy .aisanity config to worktree
-      copyConfigToWorktree(mainPath, worktreePath);
+      copyConfigToWorktree(mainConfigPath, worktreePath);
       if (options.verbose) {
         console.log(`Copied .aisanity config to worktree`);
       }
@@ -151,15 +165,14 @@ export const worktreeCreateCommand = new Command('create')
         console.log(`  Container: Automatically provisioned`);
       }
       
-      // Switch to worktree if requested (default behavior)
+      // Show path to switch to worktree if requested (default behavior)
       if (options.switch !== false) {
-        console.log(`\nSwitching to worktree: ${worktreePath}`);
-        process.chdir(worktreePath);
-        console.log(`You are now in worktree: ${branch}`);
-        console.log(`Run 'aisanity run' to start the development container`);
+        console.log(`\nTo switch to this worktree, run:`);
+        console.log(`  cd ${worktreePath}`);
+        console.log(`\nThen run 'aisanity run' to start the development container`);
       } else {
         console.log(`\nWorktree created at: ${worktreePath}`);
-        console.log(`Use 'aisanity worktree switch ${branch}' to switch to it`);
+        console.log(`To switch to it, run: cd ${worktreePath}`);
       }
       
     } catch (error) {

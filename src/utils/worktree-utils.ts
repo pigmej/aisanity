@@ -35,25 +35,63 @@ export function isWorktree(cwd: string): boolean {
 }
 
 /**
- * Get the main workspace path from a worktree
+ * Get the top-level workspace path (parent of aisanity/ subdirectory)
+ * Expected structure:
+ *   /path/to/project/           <- Top level (returned)
+ *     .aisanity                 <- Config at top level
+ *     aisanity/                 <- Main repo subdirectory
+ *       .git/
+ *     worktrees/                <- Worktrees at top level
  */
 export function getMainWorkspacePath(cwd: string): string {
   try {
+    // Get the git root directory
+    const gitRoot = execSync('git rev-parse --show-toplevel', {
+      cwd,
+      encoding: 'utf8',
+      stdio: 'pipe'
+    }).trim();
+    
+    // Check if we're in a worktree
     const gitDir = execSync('git rev-parse --git-dir', {
       cwd,
       encoding: 'utf8',
       stdio: 'pipe'
     }).trim();
     
-    // In worktrees, git dir is like: .git/worktrees/<worktree-name>
-    // The main repo is two levels up from the worktrees directory
+    // In worktrees, git dir is like: /main/repo/.git/worktrees/<worktree-name>
     if (gitDir.includes('worktrees')) {
-      const worktreesDir = path.dirname(gitDir);
-      const mainGitDir = path.dirname(worktreesDir);
-      return path.dirname(mainGitDir); // Return the directory containing .git
+      // Extract main repo path from git dir path
+      const mainGitDirPath = gitDir.split('/worktrees/')[0]; // /main/repo/.git
+      const mainRepoPath = path.dirname(mainGitDirPath); // /main/repo
+      
+      // Check if this main repo is in a subdirectory structure (aisanity/aisanity/)
+      const parentDir = path.dirname(mainRepoPath);
+      const parentConfig = path.join(parentDir, '.aisanity');
+      const parentWorktrees = path.join(parentDir, 'worktrees');
+      
+      if (fs.existsSync(parentConfig) || fs.existsSync(parentWorktrees)) {
+        // Main repo is in subdirectory, return parent as top level
+        return parentDir;
+      }
+      
+      // Otherwise, main repo directory is the top level
+      return mainRepoPath;
     }
     
-    return cwd; // Already in main workspace
+    // For main workspace, check if we're in an aisanity/ subdirectory structure
+    // by looking for .aisanity config or worktrees directory in parent directory
+    const parentDir = path.dirname(gitRoot);
+    const parentConfig = path.join(parentDir, '.aisanity');
+    const parentWorktrees = path.join(parentDir, 'worktrees');
+    
+    if (fs.existsSync(parentConfig) || fs.existsSync(parentWorktrees)) {
+      // We're in the aisanity/ subdirectory, return parent as top level
+      return parentDir;
+    }
+    
+    // Otherwise, git root is the top level
+    return gitRoot;
   } catch (error) {
     throw new Error('Failed to determine main workspace path');
   }
@@ -79,24 +117,56 @@ export function generateWorktreeContainerName(workspaceName: string, worktreeNam
  * Get all worktrees for the current repository
  */
 export function getAllWorktrees(cwd: string): WorktreeList {
-  const mainPath = getMainWorkspacePath(cwd);
-  const worktreesDir = path.join(mainPath, 'worktrees');
+  const topLevelPath = getMainWorkspacePath(cwd);
+  const worktreesDir = path.join(topLevelPath, 'worktrees');
   
-  // Get main workspace info
-  const mainConfig = loadAisanityConfig(mainPath);
+  // Find the main git repository path (not worktree path)
+  const gitDir = execSync('git rev-parse --git-dir', {
+    cwd,
+    encoding: 'utf8',
+    stdio: 'pipe'
+  }).trim();
+  
+  let mainGitRepo: string;
+  
+  if (gitDir.includes('worktrees')) {
+    // We're in a worktree - extract main repo path from git dir
+    // gitDir format: /main/repo/.git/worktrees/worktree-name
+    const mainGitDirPath = gitDir.split('/worktrees/')[0]; // /main/repo/.git
+    mainGitRepo = path.dirname(mainGitDirPath); // /main/repo
+  } else {
+    // We're in main repo - use show-toplevel
+    mainGitRepo = execSync('git rev-parse --show-toplevel', {
+      cwd,
+      encoding: 'utf8',
+      stdio: 'pipe'
+    }).trim();
+  }
+  
+  // Get main workspace info - config might be in top level or git root
+  let mainConfigPath = topLevelPath;
+  if (!fs.existsSync(path.join(topLevelPath, '.aisanity'))) {
+    mainConfigPath = mainGitRepo;
+  }
+  
+  const mainConfig = loadAisanityConfig(mainConfigPath);
   if (!mainConfig) {
     throw new Error('No .aisanity config found in main workspace');
   }
   
-  const mainWorkspaceName = getWorkspaceName(mainPath);
-  const mainBranch = getCurrentBranch(mainPath);
+  const mainWorkspaceName = getWorkspaceName(mainConfigPath);
+  const mainBranch = getCurrentBranch(mainGitRepo);
+  
+  // Main workspace is active only if we're in the main repo AND not in a worktree
+  const isInWorktreeDir = isWorktree(cwd);
+  const isInMainRepo = cwd === mainGitRepo || cwd.startsWith(mainGitRepo);
   
   const mainWorktree: WorktreeInfo = {
-    path: mainPath,
+    path: mainGitRepo,
     branch: mainBranch,
     containerName: generateWorktreeContainerName(mainWorkspaceName, mainBranch),
-    isActive: cwd === mainPath,
-    configPath: path.join(mainPath, '.aisanity')
+    isActive: isInMainRepo && !isInWorktreeDir,
+    configPath: path.join(mainConfigPath, '.aisanity')
   };
   
   const worktrees: WorktreeInfo[] = [];
@@ -120,7 +190,7 @@ export function getAllWorktrees(cwd: string): WorktreeList {
             path: worktreePath,
             branch: worktreeBranch,
             containerName: generateWorktreeContainerName(mainWorkspaceName, worktreeName),
-            isActive: cwd === worktreePath,
+            isActive: cwd === worktreePath || cwd.startsWith(worktreePath + path.sep),
             configPath: path.join(worktreePath, '.aisanity')
           };
           
@@ -185,20 +255,33 @@ export function worktreeExists(worktreeName: string, mainPath: string): boolean 
 /**
  * Get worktree info by name
  */
-export function getWorktreeByName(worktreeName: string, mainPath: string): WorktreeInfo | null {
-  const worktreePath = path.join(mainPath, 'worktrees', worktreeName);
+export function getWorktreeByName(worktreeName: string, topLevelPath: string): WorktreeInfo | null {
+  const worktreePath = path.join(topLevelPath, 'worktrees', worktreeName);
   
   if (!fs.existsSync(worktreePath)) {
     return null;
   }
   
   try {
-    const mainConfig = loadAisanityConfig(mainPath);
+    // Get git root to find config
+    const gitRoot = execSync('git rev-parse --show-toplevel', {
+      cwd: worktreePath,
+      encoding: 'utf8',
+      stdio: 'pipe'
+    }).trim();
+    
+    // Config might be in top level or git root
+    let mainConfigPath = topLevelPath;
+    if (!fs.existsSync(path.join(topLevelPath, '.aisanity'))) {
+      mainConfigPath = gitRoot;
+    }
+    
+    const mainConfig = loadAisanityConfig(mainConfigPath);
     if (!mainConfig) {
       return null;
     }
     
-    const mainWorkspaceName = getWorkspaceName(mainPath);
+    const mainWorkspaceName = getWorkspaceName(mainConfigPath);
     const worktreeBranch = getCurrentBranch(worktreePath);
     const worktreeConfig = loadAisanityConfig(worktreePath);
     
