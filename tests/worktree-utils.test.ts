@@ -108,20 +108,56 @@ describe('Worktree Utils', () => {
   });
 
   describe('getMainWorkspacePath', () => {
-    it('should return main workspace path from worktree', () => {
-      mockedExecSync.mockReturnValue('/path/to/.git/worktrees/feature-auth\n');
+    it('should return parent path from worktree', () => {
+      // First call: git rev-parse --show-toplevel
+      // Second call: git rev-parse --git-dir
+      mockedExecSync
+        .mockReturnValueOnce('/path/to\n')  // --show-toplevel
+        .mockReturnValueOnce('/path/to/.git/worktrees/feature-auth\n');  // --git-dir
       
       const result = getMainWorkspacePath('/test/worktree/path');
       
-      expect(result).toBe('/path/to');
+      expect(result).toBe('/path');  // Parent of git root when in worktree
     });
 
-    it('should return current path when not in worktree', () => {
-      mockedExecSync.mockReturnValue('/test/path/.git\n');
+    it('should return parent path when .aisanity exists in parent', () => {
+      mockedExecSync
+        .mockReturnValueOnce('/test/path/.git\n')  // --show-toplevel
+        .mockReturnValueOnce('/test/path/.git\n');  // --git-dir
+      
+      mockedFs.existsSync.mockReturnValueOnce(true);  // parent .aisanity exists
+      
+      const result = getMainWorkspacePath('/test/path/.git');
+      
+      expect(result).toBe('/test/path');  // Parent when .aisanity found
+    });
+
+    it('should return parent path when worktrees directory exists in parent', () => {
+      mockedExecSync
+        .mockReturnValueOnce('/test/path\n')  // --show-toplevel
+        .mockReturnValueOnce('/test/path/.git\n');  // --git-dir
+      
+      mockedFs.existsSync
+        .mockReturnValueOnce(false)  // no .aisanity in parent
+        .mockReturnValueOnce(true);  // but worktrees dir exists
       
       const result = getMainWorkspacePath('/test/path');
       
-      expect(result).toBe('/test/path');
+      expect(result).toBe('/test');  // Parent when worktrees found
+    });
+
+    it('should return git root when no parent structure', () => {
+      mockedExecSync
+        .mockReturnValueOnce('/test/path\n')  // --show-toplevel
+        .mockReturnValueOnce('/test/path/.git\n');  // --git-dir
+      
+      mockedFs.existsSync
+        .mockReturnValueOnce(false)  // no .aisanity in parent
+        .mockReturnValueOnce(false);  // no worktrees dir
+      
+      const result = getMainWorkspacePath('/test/path');
+      
+      expect(result).toBe('/test/path');  // Git root itself
     });
   });
 
@@ -133,7 +169,12 @@ describe('Worktree Utils', () => {
 
     beforeEach(() => {
       // Mock main workspace setup
-      mockedExecSync.mockReturnValue('main\n');
+      mockedExecSync.mockImplementation((cmd: string) => {
+        if (cmd.includes('show-toplevel')) return '/test/path/.git\n';
+        if (cmd.includes('git-dir')) return '/test/path/.git\n';
+        return 'main\n';  // getCurrentBranch
+      });
+      
       mockedFs.existsSync.mockImplementation((path: any) => {
         if (typeof path === 'string') {
           if (path.includes('.aisanity')) return true;
@@ -153,7 +194,7 @@ describe('Worktree Utils', () => {
     it('should return worktree list with main workspace', () => {
       const result = getAllWorktrees('/test/path');
       
-      expect(result.main.path).toBe('/test/path');
+      expect(result.main.path).toBe('/test/path/.git');  // Now returns git root
       expect(result.main.branch).toBe('main');
       expect(result.main.containerName).toBe('test-project-main');
       expect(Array.isArray(result.worktrees)).toBe(true);

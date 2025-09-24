@@ -58,9 +58,18 @@ describe('worktree-create command', () => {
     mockedWorktreeUtils.getAllWorktrees.mockReturnValue({ worktrees: [] });
     mockedConfig.loadAisanityConfig.mockReturnValue({ workspace: 'test-project', env: {} });
     mockedConfig.getCurrentBranch.mockReturnValue('main');
+    
+    // Mock execSync for git commands
+    mockedExecSync.mockImplementation((cmd: string) => {
+      if (cmd.includes('show-toplevel')) return '/main/workspace/git\n';
+      if (cmd.includes('show-ref')) throw new Error('Branch does not exist'); // New branch
+      return '';
+    });
+    
     mockedFs.existsSync.mockImplementation((path: any) => {
-        if (typeof path === 'string' && path.includes('worktrees')) {
-          return false; // worktrees directory doesn't exist, so mkdirSync should be called
+        if (typeof path === 'string') {
+          if (path.includes('worktrees')) return false; // worktrees directory doesn't exist
+          if (path.includes('.aisanity')) return true; // config exists
         }
         return true; // other paths exist
       });
