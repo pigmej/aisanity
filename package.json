@@ -12,7 +12,8 @@
     "dev": "ts-node src/index.ts",
     "lint": "eslint src/**/*.ts",
     "test": "jest",
-    "aisanity": "node dist/index.js"
+    "aisanity": "node dist/index.js",
+    "prepare": "npm run build"
   },
   "keywords": [
     "devcontainer",
