@@ -82,7 +82,7 @@ export function validateContainerNameLength(containerName: string): string {
  * If containerName is explicitly set in config, use that
  * Otherwise, generate as {workspace}-{currentBranch}
  */
-export function getContainerName(cwd: string): string {
+export function getContainerName(cwd: string, verbose: boolean = false): string {
   const config = loadAisanityConfig(cwd);
   if (!config) {
     throw new Error('No .aisanity config found');
@@ -97,15 +97,17 @@ export function getContainerName(cwd: string): string {
   const workspaceName = getWorkspaceName(cwd);
   const currentBranch = getCurrentBranch(cwd);
   const sanitizedBranch = sanitizeBranchName(currentBranch);
-  
+
   const dynamicContainerName = `${workspaceName}-${sanitizedBranch}`;
-  
+
   // Validate container name length
   const validatedContainerName = validateContainerNameLength(dynamicContainerName);
-  
-  // Log the auto-generation for user awareness (using stderr)
-  console.error(`Auto-generated container name: ${validatedContainerName} (workspace: ${workspaceName}, branch: ${currentBranch})`);
-  
+
+  // Log the auto-generation for user awareness (using stderr) only if verbose
+  if (verbose) {
+    console.error(`Auto-generated container name: ${validatedContainerName} (workspace: ${workspaceName}, branch: ${currentBranch})`);
+  }
+
   return validatedContainerName;
 }
 

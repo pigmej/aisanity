@@ -4,7 +4,8 @@ import { loadAisanityConfig, getContainerName } from '../utils/config';
 
 export const stopCommand = new Command('stop')
   .description('Stop all containers used for the current workspace')
-  .action(async () => {
+  .option('-v, --verbose', 'Enable verbose logging')
+  .action(async (options) => {
     try {
       const cwd = process.cwd();
       const config = loadAisanityConfig(cwd);
@@ -15,7 +16,7 @@ export const stopCommand = new Command('stop')
       }
 
       const workspaceName = config.workspace;
-      const containerName = getContainerName(cwd);
+      const containerName = getContainerName(cwd, options.verbose || false);
 
       console.log(`Stopping containers for workspace: ${workspaceName}`);
 

@@ -122,7 +122,7 @@ export async function discoverOpencodeInstances(options: CommandOptions): Promis
       return { instances: [], mostRecent: null, error: 'No .aisanity config found. Run "aisanity init" first.' };
     }
 
-    const containerName = getAisanityContainerName(cwd);
+    const containerName = getAisanityContainerName(cwd, options.verbose);
 
     // Find containers with opencode processes
     if (options.verbose) console.error('Finding opencode instances...');

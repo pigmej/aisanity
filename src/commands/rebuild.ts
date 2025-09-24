@@ -7,6 +7,7 @@ export const rebuildCommand = new Command('rebuild')
   .description('Rebuild the devcontainer')
   .option('--devcontainer-json <path>', 'Path to devcontainer.json file')
   .option('--clean', 'Remove containers instead of just stopping them')
+  .option('-v, --verbose', 'Enable verbose logging')
   .action(async (options) => {
     try {
       const cwd = process.cwd();
@@ -25,7 +26,7 @@ export const rebuildCommand = new Command('rebuild')
       const action = options.clean ? 'Removing' : 'Stopping';
       console.log(`${action} existing container...`);
 
-      const containerName = getContainerName(cwd);
+      const containerName = getContainerName(cwd, options.verbose || false);
 
       try {
         // Try to stop/remove the container using docker

@@ -148,7 +148,7 @@ describe('Config Utils', () => {
       expect(result).toBe('custom-container-name');
     });
 
-    it('should generate dynamic container name when not explicitly set', () => {
+    it('should generate dynamic container name when not explicitly set and not log when verbose is false', () => {
       const mockConfig = { workspace: 'my-project' };
       mockFs.existsSync.mockReturnValue(true);
       mockFs.readFileSync.mockReturnValue(JSON.stringify(mockConfig));
@@ -158,6 +158,22 @@ describe('Config Utils', () => {
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
 
       const result = getContainerName('/test/path');
+      expect(result).toBe('my-project-feature-branch');
+      expect(consoleSpy).not.toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should generate dynamic container name and log when verbose is true', () => {
+      const mockConfig = { workspace: 'my-project' };
+      mockFs.existsSync.mockReturnValue(true);
+      mockFs.readFileSync.mockReturnValue(JSON.stringify(mockConfig));
+      mockExecSync.mockReturnValue('feature-branch');
+
+      // Mock console.error to capture the auto-generation message
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+
+      const result = getContainerName('/test/path', true);
       expect(result).toBe('my-project-feature-branch');
       expect(consoleSpy).toHaveBeenCalledWith(
         'Auto-generated container name: my-project-feature-branch (workspace: my-project, branch: feature-branch)'

@@ -9,6 +9,7 @@ export const runCommand = new Command('run')
   .argument('[command...]', 'Command to run in container (defaults to shell)')
   .option('--devcontainer-json <path>', 'Path to devcontainer.json file')
   .option('--force-recreate', 'Force recreation of branch-specific devcontainer file')
+  .option('-v, --verbose', 'Enable verbose logging')
   .action(async (commandArgs: string[], options) => {
     const cwd = process.cwd();
     
@@ -21,7 +22,7 @@ export const runCommand = new Command('run')
       }
 
       const workspaceName = config.workspace;
-      const containerName = getContainerName(cwd);
+      const containerName = getContainerName(cwd, options.verbose || false);
 
       // Default to bash shell if no command provided
       const command = commandArgs.length > 0 ? commandArgs : ['bash'];

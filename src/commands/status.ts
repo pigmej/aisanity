@@ -4,7 +4,8 @@ import { loadAisanityConfig, getContainerName, getCurrentBranch } from '../utils
 
 export const statusCommand = new Command('status')
   .description('Display the status of all containers used for the current workspace')
-  .action(async () => {
+  .option('-v, --verbose', 'Enable verbose logging')
+  .action(async (options) => {
     try {
       const cwd = process.cwd();
       const config = loadAisanityConfig(cwd);
@@ -15,7 +16,7 @@ export const statusCommand = new Command('status')
       }
 
       const workspaceName = config.workspace;
-      const containerName = getContainerName(cwd);
+      const containerName = getContainerName(cwd, options.verbose || false);
       const branch = getCurrentBranch(cwd);
 
       console.log(`Workspace: ${workspaceName}`);
