@@ -242,7 +242,7 @@ async function displaySingleWorktreeStatus(cwd: string, verbose: boolean): Promi
 async function getContainerStatusWithPorts(containerName: string, verbose: boolean): Promise<{ status: string; ports: string }> {
   try {
     // Get container status and ports in a single call
-    const result = await safeDockerExec(['ps', '-a', '--filter', `name=${containerName}`, '--format', '{{.Names}}\t{{.Status}}\t{{.Ports}}'], {
+    const result = await safeDockerExec(['ps', '-a', '--filter', `label=aisanity.container=${containerName}`, '--format', '{{.Names}}\t{{.Status}}\t{{.Ports}}'], {
       verbose,
       timeout: 5000
     });
@@ -253,22 +253,20 @@ async function getContainerStatusWithPorts(containerName: string, verbose: boole
       return { status: 'Not created', ports: '-' };
     }
     
-    // Find the exact container match
+    // Process the first result (since we're filtering by label, there should be at most one match)
     for (const line of lines) {
       const [name, status, ports] = line.split('\t');
-      if (name === containerName) {
-        // Check if container is running
-        if (status.includes('Up')) {
-          return { 
-            status: 'Running', 
-            ports: ports && ports.trim() ? ports.trim() : '-' 
-          };
-        } else {
-          return { 
-            status: 'Stopped', 
-            ports: '-' 
-          };
-        }
+      // Check if container is running
+      if (status.includes('Up')) {
+        return { 
+          status: 'Running', 
+          ports: ports && ports.trim() ? ports.trim() : '-' 
+        };
+      } else {
+        return { 
+          status: 'Stopped', 
+          ports: '-' 
+        };
       }
     }
     

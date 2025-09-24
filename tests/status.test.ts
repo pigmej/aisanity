@@ -134,11 +134,11 @@ describe('Status Command', () => {
       // Verify Docker calls
       expect(mockedSafeDockerExec).toHaveBeenCalledTimes(2);
       expect(mockedSafeDockerExec).toHaveBeenCalledWith(
-        ['ps', '-a', '--filter', 'name=myapp-main', '--format', '{{.Names}}\t{{.Status}}\t{{.Ports}}'],
+        ['ps', '-a', '--filter', 'label=aisanity.container=myapp-main', '--format', '{{.Names}}\t{{.Status}}\t{{.Ports}}'],
         { verbose: false, timeout: 5000 }
       );
       expect(mockedSafeDockerExec).toHaveBeenCalledWith(
-        ['ps', '-a', '--filter', 'name=myapp-feature-auth', '--format', '{{.Names}}\t{{.Status}}\t{{.Ports}}'],
+        ['ps', '-a', '--filter', 'label=aisanity.container=myapp-feature-auth', '--format', '{{.Names}}\t{{.Status}}\t{{.Ports}}'],
         { verbose: false, timeout: 5000 }
       );
 

@@ -77,7 +77,7 @@ export const worktreeListCommand = new Command('list')
 async function getContainerStatus(containerName: string, verbose: boolean = false): Promise<string> {
   try {
     // Single call to get all containers and their status
-    const result = await safeDockerExec(['ps', '-a', '--filter', `name=${containerName}`, '--format', '{{.Names}}\t{{.Status}}'], {
+    const result = await safeDockerExec(['ps', '-a', '--filter', `label=aisanity.container=${containerName}`, '--format', '{{.Names}}\t{{.Status}}'], {
       verbose,
       timeout: 5000
     });
@@ -88,7 +88,7 @@ async function getContainerStatus(containerName: string, verbose: boolean = fals
       return 'Not created';
     }
     
-    // Find the exact container match (in case multiple containers match the filter)
+    // Look for the container that matches the expected name
     for (const line of lines) {
       const [name, status] = line.split('\t');
       if (name === containerName) {

@@ -65,7 +65,7 @@ it('should list worktrees with main workspace only', async () => {
 
       expect(mockedWorktreeUtils.getAllWorktrees).toHaveBeenCalledWith(process.cwd());
       expect(mockedDockerSafeExec.safeDockerExec).toHaveBeenCalledWith(
-        ['ps', '-a', '--filter', 'name=test-project-main', '--format', '{{.Names}}\t{{.Status}}'],
+        ['ps', '-a', '--filter', 'label=aisanity.container=test-project-main', '--format', '{{.Names}}\t{{.Status}}'],
         { verbose: false, timeout: 5000 }
       );
 
@@ -120,8 +120,8 @@ it('should list worktrees with main workspace only', async () => {
 
       // Mock different container statuses - use a simpler approach
       mockedDockerSafeExec.safeDockerExec.mockImplementation((args: any, options: any) => {
-        const filterArg = args.find((arg: string) => arg.startsWith('name='));
-        const containerName = filterArg ? filterArg.substring(5) : 'unknown';
+        const filterArg = args.find((arg: string) => arg.startsWith('label=aisanity.container='));
+        const containerName = filterArg ? filterArg.substring('label=aisanity.container='.length) : 'unknown';
         
         if (containerName === 'test-project-main') {
           return Promise.resolve('test-project-main\tUp 2 hours\n');
@@ -145,15 +145,15 @@ it('should list worktrees with main workspace only', async () => {
       
       // Check that safeDockerExec was called for each container
       expect(mockedDockerSafeExec.safeDockerExec).toHaveBeenCalledWith(
-        ['ps', '-a', '--filter', 'name=test-project-main', '--format', '{{.Names}}\t{{.Status}}'],
+        ['ps', '-a', '--filter', 'label=aisanity.container=test-project-main', '--format', '{{.Names}}\t{{.Status}}'],
         { verbose: false, timeout: 5000 }
       );
       expect(mockedDockerSafeExec.safeDockerExec).toHaveBeenCalledWith(
-        ['ps', '-a', '--filter', 'name=test-project-feature-auth', '--format', '{{.Names}}\t{{.Status}}'],
+        ['ps', '-a', '--filter', 'label=aisanity.container=test-project-feature-auth', '--format', '{{.Names}}\t{{.Status}}'],
         { verbose: false, timeout: 5000 }
       );
       expect(mockedDockerSafeExec.safeDockerExec).toHaveBeenCalledWith(
-        ['ps', '-a', '--filter', 'name=test-project-feature-ui', '--format', '{{.Names}}\t{{.Status}}'],
+        ['ps', '-a', '--filter', 'label=aisanity.container=test-project-feature-ui', '--format', '{{.Names}}\t{{.Status}}'],
         { verbose: false, timeout: 5000 }
       );
       
@@ -178,7 +178,7 @@ it('should list worktrees with main workspace only', async () => {
       await program.parseAsync(['node', 'test', 'worktree', 'list', '--verbose']);
 
       expect(mockedDockerSafeExec.safeDockerExec).toHaveBeenCalledWith(
-        ['ps', '-a', '--filter', 'name=test-project-main', '--format', '{{.Names}}\t{{.Status}}'],
+        ['ps', '-a', '--filter', 'label=aisanity.container=test-project-main', '--format', '{{.Names}}\t{{.Status}}'],
         { verbose: true, timeout: 5000 }
       );
     });
@@ -251,7 +251,12 @@ it('should list worktrees with main workspace only', async () => {
 
       await program.parseAsync(['node', 'test', 'worktree', 'list']);
 
-      expect(mockConsoleLog).toHaveBeenCalledWith('   Status: Running (Up 2 hours)');
+      // Find the call with the status message
+      const statusCall = mockConsoleLog.mock.calls.find(call => 
+        call[0] && call[0].includes('Status:') && call[0].includes('Running')
+      );
+      expect(statusCall).toBeTruthy();
+      expect(statusCall[0]).toBe('   Status: Running (Up 2 hours)');
     });
   });
 
