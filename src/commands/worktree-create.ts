@@ -11,7 +11,7 @@ import {
   createAisanityDirectory,
   getAllWorktrees 
 } from '../utils/worktree-utils';
-import { loadAisanityConfig, getCurrentBranch } from '../utils/config';
+import { loadAisanityConfig, getCurrentBranch, checkWorktreeEnabled } from '../utils/config';
 
 export const worktreeCreateCommand = new Command('create')
   .description('Create a new worktree with automatic container setup')
@@ -20,6 +20,9 @@ export const worktreeCreateCommand = new Command('create')
   .option('-v, --verbose', 'Enable verbose logging')
   .action(async (branch: string, options) => {
     const cwd = process.cwd();
+    
+    // Check if worktree functionality is enabled
+    checkWorktreeEnabled(cwd);
     
     try {
       // Validate branch name

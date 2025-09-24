@@ -2,12 +2,16 @@ import { Command } from 'commander';
 import * as path from 'path';
 import { getAllWorktrees, isWorktree } from '../utils/worktree-utils';
 import { safeDockerExec } from '../utils/docker-safe-exec';
+import { checkWorktreeEnabled } from '../utils/config';
 
 export const worktreeListCommand = new Command('list')
   .description('List all worktrees and their container status')
   .option('-v, --verbose', 'Enable verbose logging')
   .action(async (options) => {
     const cwd = process.cwd();
+    
+    // Check if worktree functionality is enabled
+    checkWorktreeEnabled(cwd);
     
     try {
       const worktrees = getAllWorktrees(cwd);

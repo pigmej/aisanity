@@ -4,6 +4,7 @@ import * as path from 'path';
 import { spawn } from 'child_process';
 import { getMainWorkspacePath, getWorktreeByName, getAllWorktrees } from '../utils/worktree-utils';
 import { safeDockerExec } from '../utils/docker-safe-exec';
+import { checkWorktreeEnabled } from '../utils/config';
 
 export const worktreeRemoveCommand = new Command('remove')
   .description('Remove a worktree and clean up associated containers')
@@ -12,6 +13,9 @@ export const worktreeRemoveCommand = new Command('remove')
   .option('-v, --verbose', 'Enable verbose logging')
   .action(async (worktreeIdentifier: string, options) => {
     const cwd = process.cwd();
+    
+    // Check if worktree functionality is enabled
+    checkWorktreeEnabled(cwd);
     
     try {
       const topLevelPath = getMainWorkspacePath(cwd);
