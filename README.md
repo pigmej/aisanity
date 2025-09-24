@@ -2,6 +2,18 @@
 
 A devcontainer wrapper for sandboxed development environments with git worktree support for parallel development.
 
+## Tool Compatibility
+
+Aisanity works with all development tools and IDEs. While opencode is the primary tool of interest and automatically integrated into all development environments, you can use any development tool you prefer:
+
+- **VSCode** - Full devcontainer support with automatic configuration
+- **IntelliJ IDEA** - Compatible with devcontainer environments
+- **Vim/Neovim** - Works seamlessly with containerized development
+- **Emacs** - Full integration with devcontainer workflows
+- **Any terminal-based tool** - Access containers via `aisanity run`
+
+All devcontainer templates include automatic opencode installation and configuration, but you're not required to use it.
+
 ## Installation
 
 ```bash
@@ -303,19 +315,75 @@ env:
 
 ## Devcontainer Integration
 
-Aisanity uses devcontainers for seamless IDE integration. Make sure you have a `.devcontainer/devcontainer.json` file in your workspace:
+Aisanity automatically creates devcontainer configurations during `aisanity init` based on your project type. No manual setup is required.
 
+### Automatic Project Detection
+
+When you run `aisanity init`, Aisanity detects your project type and generates an appropriate devcontainer configuration:
+
+- **Python projects** - Python 3.11 with uv, ruff, and opencode integration
+- **Node.js projects** - Node.js 18 with TypeScript and Tailwind support
+- **Go projects** - Go 1.21 with Go extensions and tools
+- **Rust projects** - Rust toolchain with rust-analyzer
+- **Java projects** - Java 17 with Java Development Pack
+- **Unknown projects** - Base Ubuntu environment with Node.js
+
+### Auto-Generated Configuration Examples
+
+#### Python Project Example
 ```json
 {
-  "name": "Development Environment",
-  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  "name": "Python Development",
+  "image": "mcr.microsoft.com/devcontainers/python:3.11",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "lts"
+    },
+    "ghcr.io/gvatsal60/dev-container-features/uv:0": {},
+    "ghcr.io/jsburckhardt/devcontainer-features/ruff:1": {}
+  },
+  "forwardPorts": [5000, 8000],
+  "mounts": [
+    "source=${localEnv:HOME}/.config/opencode,target=/home/vscode/.config/opencode,type=bind,consistency=cached",
+    "source=${localEnv:HOME}/.local/share/opencode,target=/home/vscode/.local/share/opencode,type=bind,consistency=cached",
+    "source=${localEnv:HOME}/.local/state/opencode,target=/home/vscode/.local/state/opencode,type=bind,consistency=cached"
+  ],
+  "postCreateCommand": "npm install -g opencode-ai",
+  "remoteUser": "vscode"
+}
+```
+
+#### Node.js Project Example
+```json
+{
+  "name": "Node.js Development",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:18",
   "features": {
     "ghcr.io/devcontainers/features/node:1": {
       "version": "lts"
     }
-  }
+  },
+  "forwardPorts": [3000, 3001],
+  "mounts": [
+    "source=${localEnv:HOME}/.config/opencode,target=/home/node/.config/opencode,type=bind,consistency=cached",
+    "source=${localEnv:HOME}/.local/share/opencode,target=/home/node/.local/share/opencode,type=bind,consistency=cached",
+    "source=${localEnv:HOME}/.local/state/opencode,target=/home/node/.local/state/opencode,type=bind,consistency=cached"
+  ],
+  "postCreateCommand": "npm install -g opencode-ai",
+  "remoteUser": "node"
 }
 ```
+
+### Cross-Platform Compatibility
+
+Devcontainers provide consistent development environments across all tools and platforms:
+
+- **Tool Agnostic**: Works with any IDE or development tool
+- **Environment Consistency**: Same dependencies and configurations everywhere
+- **Opencode Integration**: Automatic installation and configuration in all templates
+- **Configuration Mounting**: Your local opencode settings are automatically available in containers
+
+All templates include automatic opencode installation and proper directory mounting for seamless integration with your existing opencode configuration.
 
 ## Architecture
 
