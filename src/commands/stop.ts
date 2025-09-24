@@ -1,14 +1,39 @@
 import { Command } from 'commander';
 import { execSync } from 'child_process';
+import * as path from 'path';
+import * as fs from 'fs';
 import { loadAisanityConfig, getContainerName } from '../utils/config';
+import { getAllWorktrees } from '../utils/worktree-utils';
 
 export const stopCommand = new Command('stop')
   .description('Stop all containers used for the current workspace')
+  .option('--worktree <path>', 'Stop containers for specific worktree')
+  .option('--all-worktrees', 'Stop containers for all worktrees')
   .option('-v, --verbose', 'Enable verbose logging')
   .action(async (options) => {
     try {
-      const cwd = process.cwd();
-      const config = loadAisanityConfig(cwd);
+      let cwd = process.cwd();
+      let config;
+      
+      // Handle worktree options
+      if (options.allWorktrees) {
+        // Stop all worktree containers
+        await stopAllWorktreeContainers(options.verbose);
+        console.log('All worktree containers stopped successfully');
+        return;
+      }
+      
+      if (options.worktree) {
+        const worktreePath = path.resolve(options.worktree);
+        if (!fs.existsSync(worktreePath)) {
+          console.error(`Worktree path does not exist: ${worktreePath}`);
+          process.exit(1);
+        }
+        cwd = worktreePath;
+        console.log(`Stopping containers for worktree: ${worktreePath}`);
+      }
+      
+      config = loadAisanityConfig(cwd);
 
       if (!config) {
         console.error('No .aisanity config found. Run "aisanity init" first.');
@@ -72,3 +97,69 @@ export const stopCommand = new Command('stop')
       process.exit(1);
     }
   });
+
+/**
+ * Stop containers for all worktrees
+ */
+async function stopAllWorktreeContainers(verbose: boolean = false): Promise<void> {
+  try {
+    const cwd = process.cwd();
+    const worktrees = getAllWorktrees(cwd);
+    
+    console.log('Stopping containers for all worktrees...');
+    
+    // Stop main workspace container
+    try {
+      execSync(`docker stop ${worktrees.main.containerName}`, { 
+        stdio: verbose ? 'inherit' : 'pipe' 
+      });
+      console.log(`Stopped main workspace container: ${worktrees.main.containerName}`);
+    } catch (error) {
+      if (verbose) {
+        console.log(`Main workspace container not running or already stopped: ${worktrees.main.containerName}`);
+      }
+    }
+    
+    // Stop all worktree containers
+    for (const worktree of worktrees.worktrees) {
+      try {
+        execSync(`docker stop ${worktree.containerName}`, { 
+          stdio: verbose ? 'inherit' : 'pipe' 
+        });
+        console.log(`Stopped worktree container: ${worktree.containerName}`);
+      } catch (error) {
+        if (verbose) {
+          console.log(`Worktree container not running or already stopped: ${worktree.containerName}`);
+        }
+      }
+    }
+    
+    // Also stop any devcontainer-related containers
+    try {
+      const output = execSync(`docker ps --filter "label=aisanity.workspace" --format "{{.Names}}"`, {
+        encoding: 'utf8'
+      });
+      
+      const containers = output.trim().split('\n').filter(name => name.trim() !== '');
+      
+      for (const container of containers) {
+        if (container) {
+          try {
+            execSync(`docker stop ${container}`, { stdio: verbose ? 'inherit' : 'pipe' });
+            console.log(`Stopped aisanity container: ${container}`);
+          } catch (error) {
+            if (verbose) {
+              console.log(`Container not running or already stopped: ${container}`);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      // No aisanity containers found, that's okay
+    }
+    
+  } catch (error) {
+    console.error('Failed to stop all worktree containers:', error);
+    throw error;
+  }
+}

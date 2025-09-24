@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { execSync } from 'child_process';
 import * as YAML from 'yaml';
+import { isWorktree as isWorktreeUtil, getWorktreeName as getWorktreeNameUtil } from './worktree-utils';
 
 export interface AisanityConfig {
   workspace: string;
@@ -80,7 +81,8 @@ export function validateContainerNameLength(containerName: string): string {
 /**
  * Get dynamic container name based on workspace and current branch
  * If containerName is explicitly set in config, use that
- * Otherwise, generate as {workspace}-{currentBranch}
+ * Otherwise, generate as {workspace}-{currentBranch} for main workspace
+ * or {workspace}-{worktree-name} for worktrees
  */
 export function getContainerName(cwd: string, verbose: boolean = false): string {
   const config = loadAisanityConfig(cwd);
@@ -93,20 +95,35 @@ export function getContainerName(cwd: string, verbose: boolean = false): string 
     return config.containerName;
   }
 
+  // Check if we're in a worktree
+  const isWorktreeDir = isWorktree(cwd);
+  
   // Otherwise, generate dynamic container name
   const workspaceName = getWorkspaceName(cwd);
-  const currentBranch = getCurrentBranch(cwd);
-  const sanitizedBranch = sanitizeBranchName(currentBranch);
-
-  const dynamicContainerName = `${workspaceName}-${sanitizedBranch}`;
+  let dynamicContainerName: string;
+  
+  if (isWorktreeDir) {
+    // For worktrees, use worktree name instead of branch
+    const worktreeName = getWorktreeName(cwd);
+    const sanitizedWorktreeName = sanitizeBranchName(worktreeName);
+    dynamicContainerName = `${workspaceName}-${sanitizedWorktreeName}`;
+    
+    if (verbose) {
+      console.error(`Auto-generated container name: ${dynamicContainerName} (workspace: ${workspaceName}, worktree: ${worktreeName})`);
+    }
+  } else {
+    // For main workspace, use branch name
+    const currentBranch = getCurrentBranch(cwd);
+    const sanitizedBranch = sanitizeBranchName(currentBranch);
+    dynamicContainerName = `${workspaceName}-${sanitizedBranch}`;
+    
+    if (verbose) {
+      console.error(`Auto-generated container name: ${dynamicContainerName} (workspace: ${workspaceName}, branch: ${currentBranch})`);
+    }
+  }
 
   // Validate container name length
   const validatedContainerName = validateContainerNameLength(dynamicContainerName);
-
-  // Log the auto-generation for user awareness (using stderr) only if verbose
-  if (verbose) {
-    console.error(`Auto-generated container name: ${validatedContainerName} (workspace: ${workspaceName}, branch: ${currentBranch})`);
-  }
 
   return validatedContainerName;
 }
@@ -210,4 +227,18 @@ export function detectProjectType(cwd: string): ProjectType {
   }
 
   return 'unknown';
+}
+
+/**
+ * Check if current directory is a worktree
+ */
+export function isWorktree(cwd: string): boolean {
+  return isWorktreeUtil(cwd);
+}
+
+/**
+ * Get worktree name from path
+ */
+export function getWorktreeName(cwd: string): string {
+  return getWorktreeNameUtil(cwd);
 }

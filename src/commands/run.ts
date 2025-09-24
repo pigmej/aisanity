@@ -9,9 +9,21 @@ export const runCommand = new Command('run')
   .argument('[command...]', 'Command to run in container (defaults to shell)')
   .option('--devcontainer-json <path>', 'Path to devcontainer.json file')
   .option('--force-recreate', 'Force recreation of branch-specific devcontainer file')
+  .option('--worktree <path>', 'Run command in specific worktree')
   .option('-v, --verbose', 'Enable verbose logging')
   .action(async (commandArgs: string[], options) => {
-    const cwd = process.cwd();
+    let cwd = process.cwd();
+    
+    // Handle worktree option
+    if (options.worktree) {
+      const worktreePath = path.resolve(options.worktree);
+      if (!fs.existsSync(worktreePath)) {
+        console.error(`Worktree path does not exist: ${worktreePath}`);
+        process.exit(1);
+      }
+      cwd = worktreePath;
+      console.log(`Running in worktree: ${worktreePath}`);
+    }
     
     try {
       const config = loadAisanityConfig(cwd);

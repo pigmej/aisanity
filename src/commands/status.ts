@@ -1,13 +1,28 @@
 import { Command } from 'commander';
 import { execSync } from 'child_process';
+import * as path from 'path';
+import * as fs from 'fs';
 import { loadAisanityConfig, getContainerName, getCurrentBranch } from '../utils/config';
 
 export const statusCommand = new Command('status')
   .description('Display the status of all containers used for the current workspace')
+  .option('--worktree <path>', 'Show status for specific worktree')
   .option('-v, --verbose', 'Enable verbose logging')
   .action(async (options) => {
     try {
-      const cwd = process.cwd();
+      let cwd = process.cwd();
+      
+      // Handle worktree option
+      if (options.worktree) {
+        const worktreePath = path.resolve(options.worktree);
+        if (!fs.existsSync(worktreePath)) {
+          console.error(`Worktree path does not exist: ${worktreePath}`);
+          process.exit(1);
+        }
+        cwd = worktreePath;
+        console.log(`Showing status for worktree: ${worktreePath}`);
+      }
+      
       const config = loadAisanityConfig(cwd);
 
       if (!config) {

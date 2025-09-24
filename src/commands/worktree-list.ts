@@ -1,0 +1,104 @@
+import { Command } from 'commander';
+import * as path from 'path';
+import { getAllWorktrees, isWorktree } from '../utils/worktree-utils';
+import { safeDockerExec } from '../utils/docker-safe-exec';
+
+export const worktreeListCommand = new Command('list')
+  .description('List all worktrees and their container status')
+  .option('-v, --verbose', 'Enable verbose logging')
+  .action(async (options) => {
+    const cwd = process.cwd();
+    
+    try {
+      const worktrees = getAllWorktrees(cwd);
+      
+      console.log('Worktrees for this repository:');
+      console.log('');
+      
+      // Display main workspace
+      const main = worktrees.main;
+      const mainStatus = await getContainerStatus(main.containerName, options.verbose);
+      const mainIndicator = main.isActive ? '→' : ' ';
+      const mainActive = main.isActive ? '(active)' : '';
+      
+      console.log(`${mainIndicator} Main Workspace ${mainActive}`);
+      console.log(`   Path: ${main.path}`);
+      console.log(`   Branch: ${main.branch}`);
+      console.log(`   Container: ${main.containerName}`);
+      console.log(`   Status: ${mainStatus}`);
+      console.log(`   Config: ${main.configPath}`);
+      console.log('');
+      
+      // Display additional worktrees
+      if (worktrees.worktrees.length === 0) {
+        console.log('No additional worktrees found.');
+        console.log('Use "aisanity worktree create <branch>" to create a new worktree.');
+      } else {
+        console.log('Additional Worktrees:');
+        console.log('');
+        
+        for (const worktree of worktrees.worktrees) {
+          const worktreeStatus = await getContainerStatus(worktree.containerName, options.verbose);
+          const worktreeIndicator = worktree.isActive ? '→' : ' ';
+          const worktreeActive = worktree.isActive ? '(active)' : '';
+          const worktreeName = worktree.path.split(path.sep).pop() || 'unknown';
+          
+          console.log(`${worktreeIndicator} ${worktreeName} ${worktreeActive}`);
+          console.log(`   Path: ${worktree.path}`);
+          console.log(`   Branch: ${worktree.branch}`);
+          console.log(`   Container: ${worktree.containerName}`);
+          console.log(`   Status: ${worktreeStatus}`);
+          console.log(`   Config: ${worktree.configPath}`);
+          console.log('');
+        }
+      }
+      
+      // Show current context
+      if (isWorktree(cwd)) {
+        const currentWorktreeName = cwd.split(path.sep).pop() || 'unknown';
+        console.log(`Current worktree: ${currentWorktreeName}`);
+      } else {
+        console.log('Current location: Main workspace');
+      }
+      
+    } catch (error) {
+      console.error('Failed to list worktrees:', error);
+      process.exit(1);
+    }
+  });
+
+/**
+ * Get container status for a given container name
+ */
+async function getContainerStatus(containerName: string, verbose: boolean = false): Promise<string> {
+  try {
+    // Single call to get all containers and their status
+    const result = await safeDockerExec(['ps', '-a', '--filter', `name=${containerName}`, '--format', '{{.Names}}\t{{.Status}}'], {
+      verbose,
+      timeout: 5000
+    });
+    
+    const lines = result.trim().split('\n').filter(line => line.trim() !== '');
+    
+    if (lines.length === 0) {
+      return 'Not created';
+    }
+    
+    // Find the exact container match (in case multiple containers match the filter)
+    for (const line of lines) {
+      const [name, status] = line.split('\t');
+      if (name === containerName) {
+        // Check if container is running by looking for "Up" in status
+        if (status.includes('Up')) {
+          return `Running (${status})`;
+        } else {
+          return `Stopped (${status})`;
+        }
+      }
+    }
+    
+    return 'Not created';
+  } catch (error) {
+    return 'Unknown (Docker error)';
+  }
+}
