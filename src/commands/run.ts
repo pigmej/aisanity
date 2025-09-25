@@ -2,6 +2,7 @@ import { Command } from 'commander';
 import * as path from 'path';
 import { spawn } from 'child_process';
 import { loadAisanityConfig, getContainerName, getCurrentBranch } from '../utils/config';
+import { generateContainerLabels, validateContainerLabels } from '../utils/container-utils';
 import * as fs from 'fs';
 
 export const runCommand = new Command('run')
@@ -42,13 +43,16 @@ export const runCommand = new Command('run')
       console.log(`Starting container for workspace: ${workspaceName}`);
       console.log(`Running command: ${command.join(' ')}`);
 
-      // Generate consistent ID labels for container identification
-      const branch = getCurrentBranch(cwd);
-      const idLabels = [
-        `aisanity.workspace=${workspaceName}`,
-        `aisanity.branch=${branch}`,
-        `aisanity.container=${containerName}`
-      ];
+       // Generate consistent ID labels for container identification
+       const branch = getCurrentBranch(cwd);
+       const containerLabels = generateContainerLabels(workspaceName, branch, containerName, cwd);
+       const idLabels = Object.entries(containerLabels).map(([key, value]) => `${key}=${value}`);
+
+       // Validate that all required labels are present
+       if (!validateContainerLabels(containerLabels)) {
+         console.error('Failed to generate required container labels');
+         process.exit(1);
+       }
       
       // Determine which devcontainer.json to use
       let devcontainerPath: string;
@@ -67,18 +71,18 @@ export const runCommand = new Command('run')
       
       console.log(`Starting devcontainer for branch '${branch}' with labels: ${idLabels.join(', ')}`);
 
-      // First, ensure the dev container is up and running
-      console.log('Checking/starting dev container...');
-      const upArgs = ['up', '--workspace-folder', cwd];
+       // First, ensure the dev container is up and running
+       console.log('Checking/starting dev container...');
+       const upArgs = ['up', '--workspace-folder', cwd];
 
-      if (devcontainerPath) {
-        upArgs.push('--config', devcontainerPath);
-      }
-      
-      // Add ID labels for consistent container identification
-      idLabels.forEach(label => {
-        upArgs.push('--id-label', label);
-      });
+       if (devcontainerPath) {
+         upArgs.push('--config', devcontainerPath);
+       }
+
+       // Add ID labels for consistent container identification
+       idLabels.forEach(label => {
+         upArgs.push('--id-label', label);
+       });
 
       const upResult = spawn('devcontainer', upArgs, {
         stdio: 'inherit',
@@ -98,20 +102,20 @@ export const runCommand = new Command('run')
 
       console.log('Dev container is ready');
 
-      // Now execute the command in the running container
-      const execArgs = [
-        'exec',
-        '--workspace-folder', cwd
-      ];
+       // Now execute the command in the running container
+       const execArgs = [
+         'exec',
+         '--workspace-folder', cwd
+       ];
 
-      if (devcontainerPath) {
-        execArgs.push('--config', devcontainerPath);
-      }
-      
-      // Add ID labels for consistent container identification
-      idLabels.forEach(label => {
-        execArgs.push('--id-label', label);
-      });
+       if (devcontainerPath) {
+         execArgs.push('--config', devcontainerPath);
+       }
+
+       // Add ID labels for consistent container identification
+       idLabels.forEach(label => {
+         execArgs.push('--id-label', label);
+       });
 
       execArgs.push(...command);
 
