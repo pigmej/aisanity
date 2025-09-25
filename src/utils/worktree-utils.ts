@@ -18,20 +18,50 @@ export interface WorktreeList {
 }
 
 /**
- * Check if current directory is a worktree
+ * Check if current directory is a worktree by examining .git file for gitdir: reference
  */
 export function isWorktree(cwd: string): boolean {
   try {
-    const gitDir = execSync('git rev-parse --git-dir', {
-      cwd,
-      encoding: 'utf8',
-      stdio: 'pipe'
-    }).trim();
-    
-    // In worktrees, the git dir points to the main repo's git dir
-    return gitDir.includes('worktrees');
+    const gitFilePath = path.join(cwd, '.git');
+    if (!fs.existsSync(gitFilePath)) {
+      return false;
+    }
+
+    const gitFileContent = fs.readFileSync(gitFilePath, 'utf8').trim();
+    return gitFileContent.startsWith('gitdir:');
   } catch (error) {
     return false;
+  }
+}
+
+/**
+ * Get the main repository's .git directory path from worktree .git file
+ */
+export function getMainGitDirPath(cwd: string): string | null {
+  try {
+    const gitFilePath = path.join(cwd, '.git');
+    if (!fs.existsSync(gitFilePath)) {
+      return null;
+    }
+
+    const gitFileContent = fs.readFileSync(gitFilePath, 'utf8').trim();
+    if (!gitFileContent.startsWith('gitdir:')) {
+      return null;
+    }
+
+    const gitdirPath = gitFileContent.substring('gitdir:'.length).trim();
+    // Resolve to absolute path if relative
+    const absoluteGitdirPath = path.isAbsolute(gitdirPath) ? gitdirPath : path.resolve(cwd, gitdirPath);
+
+    // Strip /worktrees/<name> to get main repo .git directory
+    const worktreesIndex = absoluteGitdirPath.indexOf('/worktrees/');
+    if (worktreesIndex === -1) {
+      return null; // Not a worktree
+    }
+
+    return absoluteGitdirPath.substring(0, worktreesIndex);
+  } catch (error) {
+    return null;
   }
 }
 

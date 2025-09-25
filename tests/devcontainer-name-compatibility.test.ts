@@ -14,7 +14,9 @@ jest.mock('../src/utils/container-utils', () => ({
   validateContainerLabels: jest.fn()
 }));
 jest.mock('../src/utils/worktree-utils', () => ({
-  getAllWorktrees: jest.fn()
+  getAllWorktrees: jest.fn(),
+  isWorktree: jest.fn(),
+  getMainGitDirPath: jest.fn()
 }));
 jest.mock('../src/utils/docker-safe-exec');
 jest.mock('fs');

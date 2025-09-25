@@ -1,5 +1,6 @@
 import {
   isWorktree,
+  getMainGitDirPath,
   getMainWorkspacePath,
   getWorktreeName,
   generateWorktreeContainerName,
@@ -81,30 +82,98 @@ describe('Worktree Utils', () => {
     });
   });
 
-  describe('isWorktree', () => {
-    it('should return true when in a worktree', () => {
-      mockedExecSync.mockReturnValue('/path/to/.git/worktrees/feature-auth\n');
-      
-      const result = isWorktree('/test/path');
-      
-      expect(result).toBe(true);
+  describe('getMainGitDirPath', () => {
+    it('should return main git dir path from worktree', () => {
+      mockedFs.existsSync.mockReturnValue(true);
+      mockedFs.readFileSync.mockReturnValue('gitdir: /Users/nj/workspace/aisanity/aisanity/.git/worktrees/fix-git\n');
+
+      const result = getMainGitDirPath('/test/worktree/path');
+
+      expect(result).toBe('/Users/nj/workspace/aisanity/aisanity/.git');
     });
 
-    it('should return false when not in a worktree', () => {
-      mockedExecSync.mockReturnValue('/path/to/.git\n');
-      
+    it('should handle relative gitdir paths', () => {
+      mockedFs.existsSync.mockReturnValue(true);
+      mockedFs.readFileSync.mockReturnValue('gitdir: ../.git/worktrees/feature-auth\n');
+
+      const result = getMainGitDirPath('/test/worktree/path');
+
+      expect(result).toBe('/test/worktree/.git');
+    });
+
+    it('should return null when .git file does not exist', () => {
+      mockedFs.existsSync.mockReturnValue(false);
+
+      const result = getMainGitDirPath('/test/path');
+
+      expect(result).toBe(null);
+    });
+
+    it('should return null when .git file does not contain gitdir:', () => {
+      mockedFs.existsSync.mockReturnValue(true);
+      mockedFs.readFileSync.mockReturnValue('/path/to/.git\n');
+
+      const result = getMainGitDirPath('/test/path');
+
+      expect(result).toBe(null);
+    });
+
+    it('should return null when gitdir path does not contain /worktrees/', () => {
+      mockedFs.existsSync.mockReturnValue(true);
+      mockedFs.readFileSync.mockReturnValue('gitdir: /path/to/.git\n');
+
+      const result = getMainGitDirPath('/test/path');
+
+      expect(result).toBe(null);
+    });
+
+    it('should return null when fs operation fails', () => {
+      mockedFs.existsSync.mockImplementation(() => {
+        throw new Error('File system error');
+      });
+
+      const result = getMainGitDirPath('/test/path');
+
+      expect(result).toBe(null);
+    });
+  });
+
+  describe('isWorktree', () => {
+    it('should return true when .git file contains gitdir:', () => {
+      mockedFs.existsSync.mockReturnValue(true);
+      mockedFs.readFileSync.mockReturnValue('gitdir: /path/to/.git/worktrees/feature-auth\n');
+
       const result = isWorktree('/test/path');
-      
+
+      expect(result).toBe(true);
+      expect(mockedFs.existsSync).toHaveBeenCalledWith('/test/path/.git');
+      expect(mockedFs.readFileSync).toHaveBeenCalledWith('/test/path/.git', 'utf8');
+    });
+
+    it('should return false when .git file does not exist', () => {
+      mockedFs.existsSync.mockReturnValue(false);
+
+      const result = isWorktree('/test/path');
+
       expect(result).toBe(false);
     });
 
-    it('should return false when git command fails', () => {
-      mockedExecSync.mockImplementation(() => {
-        throw new Error('Git not available');
-      });
-      
+    it('should return false when .git file does not contain gitdir:', () => {
+      mockedFs.existsSync.mockReturnValue(true);
+      mockedFs.readFileSync.mockReturnValue('/path/to/.git\n');
+
       const result = isWorktree('/test/path');
-      
+
+      expect(result).toBe(false);
+    });
+
+    it('should return false when fs operation fails', () => {
+      mockedFs.existsSync.mockImplementation(() => {
+        throw new Error('File system error');
+      });
+
+      const result = isWorktree('/test/path');
+
       expect(result).toBe(false);
     });
   });
