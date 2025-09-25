@@ -3,7 +3,7 @@ import { execSync } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
 import { loadAisanityConfig, getContainerName, getCurrentBranch } from '../utils/config';
-import { getAllWorktrees, getWorktreeName, WorktreeInfo, WorktreeList } from '../utils/worktree-utils';
+import { getAllWorktrees, getWorktreeName, WorktreeInfo, WorktreeList, detectOrphanedContainers } from '../utils/worktree-utils';
 import { safeDockerExec } from '../utils/docker-safe-exec';
 
 // Internal interfaces for status display
@@ -31,18 +31,17 @@ export const statusCommand = new Command('status')
     try {
       let cwd = process.cwd();
       
-      // Handle worktree option - maintain existing behavior
-      if (options.worktree) {
-        const worktreePath = path.resolve(options.worktree);
-        if (!fs.existsSync(worktreePath)) {
-          console.error(`Worktree path does not exist: ${worktreePath}`);
-          process.exit(1);
-        }
-        console.log(`Showing status for worktree: ${worktreePath}`);
-        cwd = worktreePath;
-        await displaySingleWorktreeStatus(cwd, options.verbose || false);
-        return;
-      }
+       // Handle worktree option - maintain existing behavior
+       if (options.worktree) {
+         const worktreePath = path.resolve(options.worktree);
+         if (!fs.existsSync(worktreePath)) {
+           throw new Error(`Worktree path does not exist: ${worktreePath}`);
+         }
+         console.log(`Showing status for worktree: ${worktreePath}`);
+         cwd = worktreePath;
+         await displaySingleWorktreeStatus(cwd, options.verbose || false);
+         return;
+       }
       
       // Get all worktrees to determine display format
       const worktrees = getAllWorktrees(cwd);
@@ -99,9 +98,9 @@ export const statusCommand = new Command('status')
           console.log('Unable to determine worktree status due to Docker unavailability');
         }
         return;
-      } else {
-        process.exit(1);
-      }
+       } else {
+         throw error;
+       }
     }
   });
 
@@ -151,11 +150,28 @@ async function displayUnifiedWorktreeStatus(worktrees: WorktreeList, verbose: bo
   // Generate and display table
   const tableOutput = formatWorktreeTable(statusRows);
   console.log(tableOutput);
-  
+
   // Generate and display summary
   const summary = generateWorktreeSummary(worktrees, statusRows);
   console.log(`\nCurrent: ${summary.currentLocation}`);
   console.log(`Total: ${summary.totalWorktrees} worktrees (${summary.runningContainers} running, ${summary.stoppedContainers} stopped)`);
+
+  // Check for orphaned containers
+  try {
+    const { orphaned } = await detectOrphanedContainers(verbose);
+    if (orphaned.length > 0) {
+      console.log(`\n⚠️  Warning: ${orphaned.length} orphaned containers detected`);
+      console.log('These containers may be from manually deleted worktrees.');
+      console.log('Consider running "aisanity stop --all-worktrees" to clean them up.');
+      if (verbose) {
+        orphaned.forEach(container => {
+          console.log(`  - ${container.name} (${container.status})`);
+        });
+      }
+    }
+  } catch (error) {
+    // Ignore errors in orphaned container detection for status display
+  }
 }
 
 /**
@@ -164,10 +180,9 @@ async function displayUnifiedWorktreeStatus(worktrees: WorktreeList, verbose: bo
 async function displaySingleWorktreeStatus(cwd: string, verbose: boolean): Promise<void> {
   const config = loadAisanityConfig(cwd);
 
-  if (!config) {
-    console.error('No .aisanity config found. Run "aisanity init" first.');
-    process.exit(1);
-  }
+   if (!config) {
+     throw new Error('No .aisanity config found. Run "aisanity init" first.');
+   }
 
   const workspaceName = config.workspace;
   const containerName = getContainerName(cwd, verbose);
@@ -178,9 +193,9 @@ async function displaySingleWorktreeStatus(cwd: string, verbose: boolean): Promi
   console.log(`Container: ${containerName}`);
   console.log('─'.repeat(50));
 
-  // Check main container status using ID labels
+  // Check main container status using full workspace path
   try {
-    const output = execSync(`docker ps -a --filter "label=aisanity.workspace=${workspaceName}" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"`, {
+    const output = execSync(`docker ps -a --filter "label=aisanity.workspace=${cwd}" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"`, {
       encoding: 'utf8'
     });
 
@@ -196,23 +211,24 @@ async function displaySingleWorktreeStatus(cwd: string, verbose: boolean): Promi
 
   // Check for devcontainer related to current workspace
   try {
-    const output = execSync(`docker ps -a --filter "label=devcontainer.local_folder=${cwd}" --format "table {{.Names}}\t{{.Status}}\t{{.Image}}"`, {
+    const output = execSync(`docker ps -a --filter "label=aisanity.workspace=${cwd}" --format "table {{.Names}}\t{{.Status}}\t{{.Image}}"`, {
       encoding: 'utf8'
     });
 
     const lines = output.trim().split('\n');
     if (lines.length > 1) {
       console.log('\nDevcontainer:');
-      // Show only the current workspace's devcontainer
-      const containerLine = lines[1]; // Skip header, get first container
-      if (containerLine && containerLine.trim()) {
-        const parts = containerLine.split('\t');
-        if (parts.length >= 3) {
-          console.log(`  Name: ${parts[0]}`);
-          console.log(`  Status: ${parts[1]}`);
-          console.log(`  Image: ${parts[2]}`);
-        } else {
-          console.log(containerLine);
+      // Show all containers for this workspace
+      for (let i = 1; i < lines.length; i++) {
+        const containerLine = lines[i];
+        if (containerLine && containerLine.trim()) {
+          const parts = containerLine.split('\t');
+          if (parts.length >= 3) {
+            console.log(`  Name: ${parts[0]}`);
+            console.log(`  Status: ${parts[1]}`);
+            console.log(`  Image: ${parts[2]}`);
+            console.log(''); // Add spacing between containers
+          }
         }
       }
     } else {
