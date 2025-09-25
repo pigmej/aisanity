@@ -276,10 +276,10 @@ describe('Status Command', () => {
       // Execute command with non-existent worktree path
       await expect(
         statusCommand.parseAsync(['node', 'test', 'status', '--worktree', '/nonexistent/path'])
-      ).rejects.toThrow('process.exit called with code: 1');
+      ).rejects.toThrow('Worktree path does not exist');
 
       // Verify error message
-      expect(mockConsoleError).toHaveBeenCalledWith('Worktree path does not exist: /nonexistent/path');
+      expect(mockConsoleError).toHaveBeenCalledWith('Failed to check status:', expect.any(Error));
     });
   });
 });

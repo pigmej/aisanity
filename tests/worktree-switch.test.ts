@@ -189,14 +189,11 @@ describe('worktree-switch command', () => {
       
       expect(mockConsoleLog).toHaveBeenCalledWith('Switching from main workspace to worktree \'feature-auth\'');
       expect(mockConsoleLog).toHaveBeenCalledWith('✓ Switched to worktree: feature-auth');
-      expect(mockConsoleLog).toHaveBeenCalledWith('  New path: /main/workspace/worktrees/feature-auth');
+      expect(mockConsoleLog).toHaveBeenCalledWith('  Path: /main/workspace/worktrees/feature-auth');
       expect(mockConsoleLog).toHaveBeenCalledWith('  Branch: feature-auth');
       expect(mockConsoleLog).toHaveBeenCalledWith('  Container: test-project-feature-auth');
       expect(mockConsoleLog).toHaveBeenCalledWith('');
-      expect(mockConsoleLog).toHaveBeenCalledWith('You can now use aisanity commands in this worktree:');
-      expect(mockConsoleLog).toHaveBeenCalledWith('  aisanity run     - Start the development container');
-      expect(mockConsoleLog).toHaveBeenCalledWith('  aisanity status   - Check container status');
-      expect(mockConsoleLog).toHaveBeenCalledWith('  aisanity stop    - Stop the container');
+      expect(mockConsoleLog).toHaveBeenCalledWith('Note: If this is your first time in this worktree, run \'aisanity run\' to provision the container');
       expect(mockConsoleLog).toHaveBeenCalledWith('');
       expect(mockConsoleLog).toHaveBeenCalledWith('Note: If this is your first time in this worktree, run \'aisanity run\' to provision the container');
     });

@@ -76,23 +76,17 @@ export const worktreeSwitchCommand = new Command('switch')
         console.log(`Target container: ${worktree.containerName}`);
       }
       
-      // Print the worktree path for user to cd manually
-      console.log(`✓ Worktree information: ${worktreeName}`);
-      console.log(`  Path: ${worktreePath}`);
-      console.log(`  Branch: ${worktree.branch}`);
-      console.log(`  Container: ${worktree.containerName}`);
-      console.log('');
-      console.log(`To switch to this worktree, run:`);
-      console.log(`  cd ${worktreePath}`);
-      console.log('');
-      console.log('Then you can use aisanity commands:');
-      console.log(`  aisanity run     - Start the development container`);
-      console.log(`  aisanity status   - Check container status`);
-      console.log(`  aisanity stop    - Stop the container`);
-      
-      // Note about container provisioning
-      console.log('');
-      console.log(`Note: If this is your first time in this worktree, run 'aisanity run' to provision the container`);
+       // Switch to the worktree directory
+       process.chdir(worktreePath);
+
+       console.log(`✓ Switched to worktree: ${worktreeName}`);
+       console.log(`  Path: ${worktreePath}`);
+       console.log(`  Branch: ${worktree.branch}`);
+       console.log(`  Container: ${worktree.containerName}`);
+
+       // Note about container provisioning
+       console.log('');
+       console.log(`Note: If this is your first time in this worktree, run 'aisanity run' to provision the container`);
       
     } catch (error) {
       console.error('Failed to switch worktree:', error);

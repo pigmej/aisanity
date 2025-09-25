@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import * as fs from 'fs';
 import * as path from 'path';
-import { spawn } from 'child_process';
+import { spawn, execSync } from 'child_process';
 import { getMainWorkspacePath, getWorktreeByName, getAllWorktrees } from '../utils/worktree-utils';
 import { safeDockerExec } from '../utils/docker-safe-exec';
 import { checkWorktreeEnabled } from '../utils/config';
@@ -20,13 +20,12 @@ export const worktreeRemoveCommand = new Command('remove')
     try {
       const topLevelPath = getMainWorkspacePath(cwd);
       
-      // Get git root for git commands
-      const { execSync } = require('child_process');
-      const gitRoot = execSync('git rev-parse --show-toplevel', {
-        cwd,
-        encoding: 'utf8',
-        stdio: 'pipe'
-      }).trim();
+       // Get git root for git commands
+       const gitRoot = execSync('git rev-parse --show-toplevel', {
+         cwd,
+         encoding: 'utf8',
+         stdio: 'pipe'
+       }).trim();
       
       // Determine if identifier is a path or name
       let worktreePath: string;
@@ -46,19 +45,16 @@ export const worktreeRemoveCommand = new Command('remove')
         worktreePath = path.join(topLevelPath, 'worktrees', worktreeName);
       }
       
-      // Get worktree info
-      const worktree = getWorktreeByName(worktreeName, topLevelPath);
-      if (!worktree) {
-        console.error(`Worktree '${worktreeName}' not found`);
-        console.error('Use "aisanity worktree list" to see available worktrees');
-        process.exit(1);
-      }
+       // Get worktree info
+       const worktree = getWorktreeByName(worktreeName, topLevelPath);
+       if (!worktree) {
+         throw new Error(`Worktree '${worktreeName}' not found. Use "aisanity worktree list" to see available worktrees`);
+       }
       
-      // Verify worktree path exists
-      if (!fs.existsSync(worktreePath)) {
-        console.error(`Worktree path does not exist: ${worktreePath}`);
-        process.exit(1);
-      }
+       // Verify worktree path exists
+       if (!fs.existsSync(worktreePath)) {
+         throw new Error(`Worktree path does not exist: ${worktreePath}`);
+       }
       
       // Show worktree details
       console.log(`Worktree to remove:`);
@@ -83,9 +79,9 @@ export const worktreeRemoveCommand = new Command('remove')
         rl.close();
         
         if (answer.toLowerCase() !== 'y' && answer.toLowerCase() !== 'yes') {
-          console.log('Worktree removal cancelled');
-          process.exit(0);
-        }
+           console.log('Worktree removal cancelled');
+           throw new Error('Worktree removal cancelled by user');
+         }
       }
       
       if (options.verbose) {
@@ -169,7 +165,7 @@ export const worktreeRemoveCommand = new Command('remove')
       }
       
     } catch (error) {
-      console.error('Failed to remove worktree:', error);
-      process.exit(1);
-    }
+       console.error('Failed to remove worktree:', error);
+       throw error;
+     }
   });

@@ -2,7 +2,7 @@ import { worktreeCommand } from '../src/commands/worktree';
 import { Command } from 'commander';
 import * as fs from 'fs';
 import * as path from 'path';
-import { spawn } from 'child_process';
+import { spawn, execSync } from 'child_process';
 
 // Mock dependencies
 jest.mock('fs');
@@ -28,6 +28,7 @@ jest.mock('../src/utils/docker-safe-exec', () => ({
 
 const mockedFs = fs as jest.Mocked<typeof fs>;
 const mockedSpawn = spawn as jest.MockedFunction<typeof spawn>;
+const mockedExecSync = execSync as jest.MockedFunction<typeof execSync>;
 const mockedWorktreeUtils = require('../src/utils/worktree-utils');
 const mockedDockerSafeExec = require('../src/utils/docker-safe-exec');
 
@@ -39,7 +40,7 @@ describe('worktree-remove command', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     // Mock process.exit
     mockExit = jest.spyOn(process, 'exit').mockImplementation((code?: number | string | null) => {
       throw new Error(`process.exit called with code: ${code}`);
@@ -48,6 +49,9 @@ describe('worktree-remove command', () => {
     // Mock console.log and console.error
     mockConsoleLog = jest.spyOn(console, 'log').mockImplementation(() => {});
     mockConsoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    // Mock process.cwd
+    jest.spyOn(process, 'cwd').mockReturnValue('/main/workspace');
 
     // Create a new program instance for each test
     program = new Command();
@@ -72,8 +76,22 @@ describe('worktree-remove command', () => {
       },
       worktrees: []
     });
-    mockedFs.existsSync.mockReturnValue(true);
+    mockedFs.existsSync.mockImplementation((path) => {
+      const pathStr = path.toString();
+      if (pathStr === '/main/workspace/.aisanity') return true;
+      if (pathStr === '/main/workspace/worktrees/feature-auth') return true;
+      return false;
+    });
+    mockedFs.readFileSync.mockReturnValue('workspace: test-project\n');
     mockedFs.rmSync.mockImplementation(() => {});
+
+    // Mock execSync for git commands
+    mockedExecSync.mockImplementation((command: string, options?: any) => {
+      if (options?.encoding === 'utf8') {
+        return '/main/workspace\n';
+      }
+      return Buffer.from('/main/workspace\n', 'utf8');
+    });
 
     // Mock spawn to succeed
     mockedSpawn.mockReturnValue({
@@ -96,7 +114,8 @@ describe('worktree-remove command', () => {
   describe('path resolution', () => {
     it('should handle absolute paths', async () => {
       const absolutePath = '/absolute/path/to/feature-auth';
-      
+      mockedFs.existsSync.mockReturnValue(true);
+
       await program.parseAsync(['node', 'test', 'worktree', 'remove', absolutePath]);
 
       expect(mockedWorktreeUtils.getWorktreeByName).toHaveBeenCalledWith('feature-auth', '/main/workspace');
@@ -123,10 +142,9 @@ describe('worktree-remove command', () => {
 
       await expect(async () => {
         await program.parseAsync(['node', 'test', 'worktree', 'remove', 'feature-auth']);
-      }).rejects.toThrow('process.exit called with code: 1');
+      }).rejects.toThrow("Worktree 'feature-auth' not found");
 
-      expect(mockConsoleError).toHaveBeenCalledWith("Worktree 'feature-auth' not found");
-      expect(mockConsoleError).toHaveBeenCalledWith('Use "aisanity worktree list" to see available worktrees');
+      expect(mockConsoleError).toHaveBeenCalledWith('Failed to remove worktree:', expect.any(Error));
     });
 
     it('should reject if worktree path does not exist', async () => {
@@ -134,9 +152,9 @@ describe('worktree-remove command', () => {
 
       await expect(async () => {
         await program.parseAsync(['node', 'test', 'worktree', 'remove', 'feature-auth']);
-      }).rejects.toThrow('process.exit called with code: 1');
+      }).rejects.toThrow('Worktree path does not exist');
 
-      expect(mockConsoleError).toHaveBeenCalledWith('Worktree path does not exist: /main/workspace/worktrees/feature-auth');
+      expect(mockConsoleError).toHaveBeenCalledWith('Failed to remove worktree:', expect.any(Error));
     });
   });
 
@@ -179,7 +197,7 @@ describe('worktree-remove command', () => {
 
       await expect(async () => {
         await program.parseAsync(['node', 'test', 'worktree', 'remove', 'feature-auth']);
-      }).rejects.toThrow('process.exit called with code: 1');
+      }).rejects.toThrow('Worktree removal cancelled by user');
 
       expect(mockConsoleLog).toHaveBeenCalledWith('Worktree removal cancelled');
     });
@@ -305,7 +323,7 @@ describe('worktree-remove command', () => {
 
       await expect(async () => {
         await program.parseAsync(['node', 'test', 'worktree', 'remove', 'feature-auth']);
-      }).rejects.toThrow('process.exit called with code: 1');
+      }).rejects.toThrow('Failed to get main path');
 
       expect(mockConsoleError).toHaveBeenCalledWith('Failed to remove worktree:', expect.any(Error));
     });

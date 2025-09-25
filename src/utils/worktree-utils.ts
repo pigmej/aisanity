@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { execSync } from 'child_process';
 import { AisanityConfig, loadAisanityConfig, getWorkspaceName, sanitizeBranchName, getCurrentBranch } from './config';
+import { discoverContainers, DockerContainer } from './container-utils';
 
 export interface WorktreeInfo {
   path: string;          // Absolute path to worktree directory
@@ -257,11 +258,11 @@ export function worktreeExists(worktreeName: string, mainPath: string): boolean 
  */
 export function getWorktreeByName(worktreeName: string, topLevelPath: string): WorktreeInfo | null {
   const worktreePath = path.join(topLevelPath, 'worktrees', worktreeName);
-  
+
   if (!fs.existsSync(worktreePath)) {
     return null;
   }
-  
+
   try {
     // Get git root to find config
     const gitRoot = execSync('git rev-parse --show-toplevel', {
@@ -269,26 +270,26 @@ export function getWorktreeByName(worktreeName: string, topLevelPath: string): W
       encoding: 'utf8',
       stdio: 'pipe'
     }).trim();
-    
+
     // Config might be in top level or git root
     let mainConfigPath = topLevelPath;
     if (!fs.existsSync(path.join(topLevelPath, '.aisanity'))) {
       mainConfigPath = gitRoot;
     }
-    
+
     const mainConfig = loadAisanityConfig(mainConfigPath);
     if (!mainConfig) {
       return null;
     }
-    
+
     const mainWorkspaceName = getWorkspaceName(mainConfigPath);
     const worktreeBranch = getCurrentBranch(worktreePath);
     const worktreeConfig = loadAisanityConfig(worktreePath);
-    
+
     if (!worktreeConfig) {
       return null;
     }
-    
+
     return {
       path: worktreePath,
       branch: worktreeBranch,
@@ -298,5 +299,76 @@ export function getWorktreeByName(worktreeName: string, topLevelPath: string): W
     };
   } catch (error) {
     return null;
+  }
+}
+
+/**
+ * Detect orphaned containers from manually deleted worktrees
+ */
+export async function detectOrphanedContainers(verbose: boolean = false): Promise<{
+  orphaned: DockerContainer[];
+  worktreePaths: string[];
+}> {
+  try {
+    const discoveryResult = await discoverContainers(verbose);
+    const worktrees = getAllWorktrees(process.cwd());
+    const existingWorktreePaths = new Set([
+      worktrees.main.path,
+      ...worktrees.worktrees.map(wt => wt.path)
+    ]);
+
+    const orphaned = discoveryResult.containers.filter(container => {
+      const workspacePath = container.labels['aisanity.workspace'];
+      return workspacePath && !existingWorktreePaths.has(workspacePath);
+    });
+
+    return {
+      orphaned,
+      worktreePaths: Array.from(existingWorktreePaths)
+    };
+  } catch (error) {
+    if (verbose) {
+      console.warn('Failed to detect orphaned containers:', error);
+    }
+    return {
+      orphaned: [],
+      worktreePaths: []
+    };
+  }
+}
+
+/**
+ * Clean up orphaned containers
+ */
+export async function cleanupOrphanedContainers(verbose: boolean = false): Promise<number> {
+  try {
+    const { orphaned } = await detectOrphanedContainers(verbose);
+
+    if (orphaned.length === 0) {
+      if (verbose) {
+        console.log('No orphaned containers found');
+      }
+      return 0;
+    }
+
+    console.log(`Found ${orphaned.length} orphaned containers:`);
+    orphaned.forEach(container => {
+      console.log(`  ${container.name} (${container.id})`);
+    });
+
+    // Stop and remove orphaned containers
+    const containerIds = orphaned.map(c => c.id);
+
+    // Import here to avoid circular dependency
+    const { stopContainers, removeContainers } = await import('./container-utils');
+
+    await stopContainers(containerIds, verbose);
+    await removeContainers(containerIds, verbose);
+
+    console.log(`Cleaned up ${orphaned.length} orphaned containers`);
+    return orphaned.length;
+  } catch (error) {
+    console.error('Failed to cleanup orphaned containers:', error);
+    return 0;
   }
 }

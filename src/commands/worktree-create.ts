@@ -3,15 +3,16 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { execSync } from 'child_process';
 import { spawn } from 'child_process';
-import { 
-  getMainWorkspacePath, 
-  validateBranchName, 
-  worktreeExists, 
-  copyConfigToWorktree, 
+import {
+  getMainWorkspacePath,
+  validateBranchName,
+  worktreeExists,
+  copyConfigToWorktree,
   createAisanityDirectory,
-  getAllWorktrees 
+  getAllWorktrees
 } from '../utils/worktree-utils';
 import { loadAisanityConfig, getCurrentBranch, checkWorktreeEnabled } from '../utils/config';
+import { generateContainerLabels, validateContainerLabels } from '../utils/container-utils';
 
 export const worktreeCreateCommand = new Command('create')
   .description('Create a new worktree with automatic container setup')
@@ -25,12 +26,10 @@ export const worktreeCreateCommand = new Command('create')
     checkWorktreeEnabled(cwd);
     
     try {
-      // Validate branch name
-      if (!validateBranchName(branch)) {
-        console.error(`Invalid branch name: ${branch}`);
-        console.error('Branch names should contain only letters, numbers, hyphens, underscores, dots, and slashes');
-        process.exit(1);
-      }
+       // Validate branch name
+       if (!validateBranchName(branch)) {
+         throw new Error(`Invalid branch name: ${branch}. Branch names should contain only letters, numbers, hyphens, underscores, dots, and slashes`);
+       }
       
       // Get top-level workspace path (parent directory structure)
       const topLevelPath = getMainWorkspacePath(cwd);
@@ -42,11 +41,10 @@ export const worktreeCreateCommand = new Command('create')
         stdio: 'pipe'
       }).trim();
       
-      // Check if worktree already exists
-      if (worktreeExists(branch, topLevelPath)) {
-        console.error(`Worktree '${branch}' already exists`);
-        process.exit(1);
-      }
+       // Check if worktree already exists
+       if (worktreeExists(branch, topLevelPath)) {
+         throw new Error(`Worktree '${branch}' already exists`);
+       }
       
       // Verify main workspace has .aisanity config (could be in top level or git root)
       let mainConfigPath = topLevelPath;
@@ -54,12 +52,10 @@ export const worktreeCreateCommand = new Command('create')
         mainConfigPath = gitRoot;
       }
       
-      const mainConfig = loadAisanityConfig(mainConfigPath);
-      if (!mainConfig) {
-        console.error('No .aisanity config found in main workspace');
-        console.error('Please run "aisanity init" in the main workspace first');
-        process.exit(1);
-      }
+       const mainConfig = loadAisanityConfig(mainConfigPath);
+       if (!mainConfig) {
+         throw new Error('No .aisanity config found in main workspace. Please run "aisanity init" in the main workspace first');
+       }
       
       if (options.verbose) {
         console.log(`Creating worktree for branch: ${branch}`);
@@ -123,10 +119,10 @@ export const worktreeCreateCommand = new Command('create')
         if (options.verbose) {
           console.log(`Created git worktree: ${worktreePath} ${branchExists ? '(existing branch)' : '(new branch)'}`);
         }
-      } catch (error) {
-        console.error(`Failed to create git worktree: ${error}`);
-        process.exit(1);
-      }
+       } catch (error) {
+         console.error(`Failed to create git worktree: ${error}`);
+         throw error;
+       }
       
       // Copy .aisanity config to worktree
       copyConfigToWorktree(mainConfigPath, worktreePath);
@@ -178,10 +174,10 @@ export const worktreeCreateCommand = new Command('create')
         console.log(`To switch to it, run: cd ${worktreePath}`);
       }
       
-    } catch (error) {
-      console.error('Failed to create worktree:', error);
-      process.exit(1);
-    }
+     } catch (error) {
+       console.error('Failed to create worktree:', error);
+       throw error;
+     }
   });
 
 /**
@@ -195,13 +191,16 @@ async function provisionContainer(worktreePath: string, verbose: boolean = false
 
   const workspaceName = config.workspace;
   const branch = getCurrentBranch(worktreePath);
-  
+  const containerName = `${workspaceName}-${branch}`;
+
   // Generate consistent ID labels for container identification
-  const idLabels = [
-    `aisanity.workspace=${workspaceName}`,
-    `aisanity.branch=${branch}`,
-    `aisanity.container=${workspaceName}-${branch}`
-  ];
+  const containerLabels = generateContainerLabels(workspaceName, branch, containerName, worktreePath);
+  const idLabels = Object.entries(containerLabels).map(([key, value]) => `${key}=${value}`);
+
+  // Validate that all required labels are present
+  if (!validateContainerLabels(containerLabels)) {
+    throw new Error('Failed to generate required container labels');
+  }
   
   // Determine devcontainer.json path
   const devcontainerPath = path.join(worktreePath, '.devcontainer', 'devcontainer.json');
