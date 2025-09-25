@@ -26,11 +26,18 @@ jest.mock('../src/utils/docker-safe-exec', () => ({
   safeDockerExec: jest.fn(),
 }));
 
+jest.mock('../src/utils/container-utils', () => ({
+  discoverByLabels: jest.fn(),
+  stopContainers: jest.fn(),
+  removeContainers: jest.fn(),
+}));
+
 const mockedFs = fs as jest.Mocked<typeof fs>;
 const mockedSpawn = spawn as jest.MockedFunction<typeof spawn>;
 const mockedExecSync = execSync as jest.MockedFunction<typeof execSync>;
 const mockedWorktreeUtils = require('../src/utils/worktree-utils');
 const mockedDockerSafeExec = require('../src/utils/docker-safe-exec');
+const mockedContainerUtils = require('../src/utils/container-utils');
 
 describe('worktree-remove command', () => {
   let program: Command;
@@ -103,6 +110,24 @@ describe('worktree-remove command', () => {
 
     // Mock docker operations to succeed
     mockedDockerSafeExec.safeDockerExec.mockResolvedValue('');
+    
+    // Mock container utilities
+    mockedContainerUtils.discoverByLabels.mockResolvedValue([
+      {
+        id: 'abc123',
+        name: 'crazy_chatterjee',
+        image: 'test-image',
+        status: 'running',
+        labels: {
+          'aisanity.workspace': '/main/workspace/worktrees/feature-auth',
+          'aisanity.branch': 'feature-auth',
+          'aisanity.container': 'test-project-feature-auth'
+        },
+        ports: ''
+      }
+    ]);
+    mockedContainerUtils.stopContainers.mockResolvedValue();
+    mockedContainerUtils.removeContainers.mockResolvedValue();
   });
 
   afterEach(() => {
@@ -211,17 +236,12 @@ describe('worktree-remove command', () => {
   });
 
   describe('successful removal', () => {
-    it('should stop and remove container', async () => {
+    it('should discover and remove containers by labels', async () => {
       await program.parseAsync(['node', 'test', 'worktree', 'remove', 'feature-auth', '--force']);
 
-      expect(mockedDockerSafeExec.safeDockerExec).toHaveBeenCalledWith(
-        ['stop', 'test-project-feature-auth'],
-        { verbose: undefined, timeout: 30000 }
-      );
-      expect(mockedDockerSafeExec.safeDockerExec).toHaveBeenCalledWith(
-        ['rm', 'test-project-feature-auth'],
-        { verbose: undefined, timeout: 30000 }
-      );
+      expect(mockedContainerUtils.discoverByLabels).toHaveBeenCalledWith(undefined);
+      expect(mockedContainerUtils.stopContainers).toHaveBeenCalledWith(['abc123'], undefined);
+      expect(mockedContainerUtils.removeContainers).toHaveBeenCalledWith(['abc123'], undefined);
     });
 
     it('should remove git worktree using spawn', async () => {
@@ -260,16 +280,33 @@ describe('worktree-remove command', () => {
 
       expect(mockConsoleLog).toHaveBeenCalledWith('Removing worktree: feature-auth');
     });
+
+    it('should handle case where no containers are found', async () => {
+      mockedContainerUtils.discoverByLabels.mockResolvedValue([]);
+
+      await program.parseAsync(['node', 'test', 'worktree', 'remove', 'feature-auth', '--force', '--verbose']);
+
+      expect(mockConsoleLog).toHaveBeenCalledWith('No containers found for workspace: /main/workspace/worktrees/feature-auth');
+      expect(mockedContainerUtils.stopContainers).not.toHaveBeenCalled();
+      expect(mockedContainerUtils.removeContainers).not.toHaveBeenCalled();
+    });
   });
 
   describe('error handling', () => {
-    it('should handle container stop failure gracefully', async () => {
-      mockedDockerSafeExec.safeDockerExec.mockImplementation((args: any) => {
-        if (args[0] === 'stop') {
-          throw new Error('Container not running');
-        }
-        return Promise.resolve('');
+    it('should handle container discovery failure gracefully', async () => {
+      mockedContainerUtils.discoverByLabels.mockRejectedValue(new Error('Discovery failed'));
+
+      await program.parseAsync(['node', 'test', 'worktree', 'remove', 'feature-auth', '--force']);
+
+      // Should continue with removal
+      expect(mockedSpawn).toHaveBeenCalledWith('git', ['worktree', 'remove', '/main/workspace/worktrees/feature-auth'], {
+        cwd: '/main/workspace',
+        stdio: 'inherit'
       });
+    });
+
+    it('should handle container stop failure gracefully', async () => {
+      mockedContainerUtils.stopContainers.mockRejectedValue(new Error('Stop failed'));
 
       await program.parseAsync(['node', 'test', 'worktree', 'remove', 'feature-auth', '--force']);
 
@@ -281,12 +318,7 @@ describe('worktree-remove command', () => {
     });
 
     it('should handle container remove failure gracefully', async () => {
-      mockedDockerSafeExec.safeDockerExec.mockImplementation((args: any) => {
-        if (args[0] === 'rm') {
-          throw new Error('Container does not exist');
-        }
-        return Promise.resolve('');
-      });
+      mockedContainerUtils.removeContainers.mockRejectedValue(new Error('Remove failed'));
 
       await program.parseAsync(['node', 'test', 'worktree', 'remove', 'feature-auth', '--force']);
 

@@ -5,6 +5,7 @@ import { spawn, execSync } from 'child_process';
 import { getMainWorkspacePath, getWorktreeByName, getAllWorktrees } from '../utils/worktree-utils';
 import { safeDockerExec } from '../utils/docker-safe-exec';
 import { checkWorktreeEnabled } from '../utils/config';
+import { discoverByLabels, stopContainers, removeContainers } from '../utils/container-utils';
 
 export const worktreeRemoveCommand = new Command('remove')
   .description('Remove a worktree and clean up associated containers')
@@ -88,34 +89,49 @@ export const worktreeRemoveCommand = new Command('remove')
         console.log(`Removing worktree: ${worktreeName}`);
       }
       
-      // Stop and remove container if it exists
+      // Stop and remove containers using label-based discovery
       try {
-        await safeDockerExec(['stop', worktree.containerName], {
-          verbose: options.verbose,
-          timeout: 30000
+        // Discover containers by workspace path and branch labels
+        const containers = await discoverByLabels(options.verbose);
+        
+        // Filter containers that match the worktree being removed
+        const matchingContainers = containers.filter(container => {
+          const workspaceLabel = container.labels['aisanity.workspace'];
+          const branchLabel = container.labels['aisanity.branch'];
+          return workspaceLabel === worktree.path && branchLabel === worktree.branch;
         });
-        if (options.verbose) {
-          console.log(`Stopped container: ${worktree.containerName}`);
+
+        if (matchingContainers.length > 0) {
+          if (options.verbose) {
+            console.log(`Found ${matchingContainers.length} container(s) for workspace:`);
+            matchingContainers.forEach(container => {
+              console.log(`  - '${container.name}' (ID: ${container.id})`);
+            });
+          }
+
+          // Stop containers by their actual IDs
+          const containerIds = matchingContainers.map(c => c.id);
+          await stopContainers(containerIds, options.verbose);
+          
+          // Remove containers by their actual IDs
+          await removeContainers(containerIds, options.verbose);
+          
+          if (options.verbose) {
+            matchingContainers.forEach(container => {
+              const expectedName = container.labels['aisanity.container'] || 'unknown';
+              console.log(`Cleaned up container: ${container.name} (${expectedName})`);
+            });
+          }
+        } else {
+          if (options.verbose) {
+            console.log(`No containers found for workspace: ${worktree.path}`);
+          }
         }
       } catch (error) {
-        // Container might not be running, that's okay
+        // Container discovery or cleanup failed, but continue with worktree removal
         if (options.verbose) {
-          console.log(`Container not running or does not exist: ${worktree.containerName}`);
-        }
-      }
-      
-      try {
-        await safeDockerExec(['rm', worktree.containerName], {
-          verbose: options.verbose,
-          timeout: 30000
-        });
-        if (options.verbose) {
-          console.log(`Removed container: ${worktree.containerName}`);
-        }
-      } catch (error) {
-        // Container might not exist, that's okay
-        if (options.verbose) {
-          console.log(`Container does not exist: ${worktree.containerName}`);
+          console.warn(`Container cleanup encountered issues: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          console.log('Continuing with worktree directory cleanup...');
         }
       }
       
