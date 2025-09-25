@@ -3,6 +3,7 @@ import * as path from 'path';
 import { spawn } from 'child_process';
 import { loadAisanityConfig, getContainerName, getCurrentBranch } from '../utils/config';
 import { generateContainerLabels, validateContainerLabels } from '../utils/container-utils';
+import { isWorktree, getMainGitDirPath } from '../utils/worktree-utils';
 import * as fs from 'fs';
 
 export const runCommand = new Command('run')
@@ -107,20 +108,36 @@ export const runCommand = new Command('run')
         devcontainerPath = defaultPath;
       }
       
-      console.log(`Starting devcontainer for branch '${branch}' with labels: ${idLabels.join(', ')}`);
+       console.log(`Starting devcontainer for branch '${branch}' with labels: ${idLabels.join(', ')}`);
 
-       // First, ensure the dev container is up and running
-       console.log('Checking/starting dev container...');
-       const upArgs = ['up', '--workspace-folder', cwd];
+        // Check if we're in a git worktree and add mount for main repo .git directory
+        const additionalMounts: string[] = [];
+        if (isWorktree(cwd)) {
+          const mainGitDir = getMainGitDirPath(cwd);
+          if (mainGitDir) {
+            const mountSpec = `type=bind,source=${mainGitDir},target=${mainGitDir}`;
+            additionalMounts.push(mountSpec);
+            console.log(`Detected git worktree, mounting main repo .git directory: ${mainGitDir}`);
+          }
+        }
+
+        // First, ensure the dev container is up and running
+        console.log('Checking/starting dev container...');
+        const upArgs = ['up', '--workspace-folder', cwd];
 
        if (devcontainerPath) {
          upArgs.push('--config', devcontainerPath);
        }
 
-       // Add ID labels for consistent container identification
-       idLabels.forEach(label => {
-         upArgs.push('--id-label', label);
-       });
+        // Add ID labels for consistent container identification
+        idLabels.forEach(label => {
+          upArgs.push('--id-label', label);
+        });
+
+        // Add mounts for git worktree support
+        additionalMounts.forEach(mount => {
+          upArgs.push('--mount', mount);
+        });
 
       const upResult = spawn('devcontainer', upArgs, {
         stdio: 'inherit',
