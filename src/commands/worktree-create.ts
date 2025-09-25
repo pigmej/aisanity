@@ -9,7 +9,9 @@ import {
   worktreeExists,
   copyConfigToWorktree,
   createAisanityDirectory,
-  getAllWorktrees
+  getAllWorktrees,
+  shouldCopyDevContainer,
+  copyDevContainerToWorktree
 } from '../utils/worktree-utils';
 import { loadAisanityConfig, getCurrentBranch, checkWorktreeEnabled } from '../utils/config';
 import { generateContainerLabels, validateContainerLabels } from '../utils/container-utils';
@@ -124,17 +126,29 @@ export const worktreeCreateCommand = new Command('create')
          throw error;
        }
       
-      // Copy .aisanity config to worktree
-      copyConfigToWorktree(mainConfigPath, worktreePath);
-      if (options.verbose) {
-        console.log(`Copied .aisanity config to worktree`);
-      }
-      
-      // Create aisanity directory structure
-      createAisanityDirectory(worktreePath);
-      if (options.verbose) {
-        console.log(`Created aisanity directory structure`);
-      }
+       // Copy .aisanity config to worktree
+       copyConfigToWorktree(mainConfigPath, worktreePath);
+       if (options.verbose) {
+         console.log(`Copied .aisanity config to worktree`);
+       }
+
+       // Copy .devcontainer if it exists locally but is not tracked in git
+       if (shouldCopyDevContainer(gitRoot)) {
+         try {
+           copyDevContainerToWorktree(gitRoot, worktreePath);
+           if (options.verbose) {
+             console.log(`Copied .devcontainer directory to worktree (not tracked in git)`);
+           }
+         } catch (error) {
+           console.warn(`Warning: Failed to copy .devcontainer to worktree: ${error}`);
+         }
+       }
+
+       // Create aisanity directory structure
+       createAisanityDirectory(worktreePath);
+       if (options.verbose) {
+         console.log(`Created aisanity directory structure`);
+       }
       
       // Automatically provision container for the worktree
       if (options.verbose) {

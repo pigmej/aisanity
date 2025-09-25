@@ -16,6 +16,8 @@ jest.mock('../src/utils/worktree-utils', () => ({
   getAllWorktrees: jest.fn(),
   isWorktree: jest.fn(),
   getWorktreeName: jest.fn(),
+  shouldCopyDevContainer: jest.fn(),
+  copyDevContainerToWorktree: jest.fn(),
 }));
 
 jest.mock('../src/utils/config', () => ({

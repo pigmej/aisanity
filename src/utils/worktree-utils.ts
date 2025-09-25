@@ -338,6 +338,48 @@ export async function detectOrphanedContainers(verbose: boolean = false): Promis
 }
 
 /**
+ * Check if .devcontainer should be copied to worktree
+ * Returns true if .devcontainer exists locally but is not tracked in git
+ */
+export function shouldCopyDevContainer(workspacePath: string): boolean {
+  const devcontainerPath = path.join(workspacePath, '.devcontainer');
+  if (!fs.existsSync(devcontainerPath)) {
+    return false;
+  }
+
+  try {
+    // Check if tracked in git
+    execSync('git ls-files --error-unmatch .devcontainer', {
+      cwd: workspacePath,
+      stdio: 'pipe'
+    });
+    // If succeeds, it's tracked, don't copy
+    return false;
+  } catch (error) {
+    // If fails, not tracked, should copy
+    return true;
+  }
+}
+
+/**
+ * Copy .devcontainer directory from source workspace to worktree
+ */
+export function copyDevContainerToWorktree(sourcePath: string, worktreePath: string): void {
+  const sourceDevcontainer = path.join(sourcePath, '.devcontainer');
+  const destDevcontainer = path.join(worktreePath, '.devcontainer');
+
+  if (!fs.existsSync(sourceDevcontainer)) {
+    throw new Error('Source .devcontainer directory does not exist');
+  }
+
+  if (fs.existsSync(destDevcontainer)) {
+    throw new Error('Destination .devcontainer directory already exists');
+  }
+
+  fs.cpSync(sourceDevcontainer, destDevcontainer, { recursive: true });
+}
+
+/**
  * Clean up orphaned containers
  */
 export async function cleanupOrphanedContainers(verbose: boolean = false): Promise<number> {

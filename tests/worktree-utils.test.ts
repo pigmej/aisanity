@@ -1,10 +1,12 @@
-import { 
-  isWorktree, 
-  getMainWorkspacePath, 
-  getWorktreeName, 
+import {
+  isWorktree,
+  getMainWorkspacePath,
+  getWorktreeName,
   generateWorktreeContainerName,
   validateBranchName,
-  getAllWorktrees
+  getAllWorktrees,
+  shouldCopyDevContainer,
+  copyDevContainerToWorktree
 } from '../src/utils/worktree-utils';
 import { getCurrentBranch } from '../src/utils/config';
 import * as fs from 'fs';
@@ -211,10 +213,75 @@ describe('Worktree Utils', () => {
         }
         return false;
       });
-      
+
       const result = getAllWorktrees('/test/path');
-      
+
       expect(result.worktrees).toHaveLength(0);
+    });
+  });
+
+  describe('shouldCopyDevContainer', () => {
+    it('should return false if .devcontainer does not exist', () => {
+      mockedFs.existsSync.mockReturnValue(false);
+
+      const result = shouldCopyDevContainer('/test/workspace');
+
+      expect(result).toBe(false);
+      expect(mockedFs.existsSync).toHaveBeenCalledWith('/test/workspace/.devcontainer');
+    });
+
+    it('should return false if .devcontainer is tracked in git', () => {
+      mockedFs.existsSync.mockReturnValue(true);
+      mockedExecSync.mockReturnValue(Buffer.from('.devcontainer'));
+
+      const result = shouldCopyDevContainer('/test/workspace');
+
+      expect(result).toBe(false);
+      expect(mockedExecSync).toHaveBeenCalledWith('git ls-files --error-unmatch .devcontainer', {
+        cwd: '/test/workspace',
+        stdio: 'pipe'
+      });
+    });
+
+    it('should return true if .devcontainer exists but is not tracked in git', () => {
+      mockedFs.existsSync.mockReturnValue(true);
+      mockedExecSync.mockImplementation(() => {
+        throw new Error('not tracked');
+      });
+
+      const result = shouldCopyDevContainer('/test/workspace');
+
+      expect(result).toBe(true);
+    });
+  });
+
+  describe('copyDevContainerToWorktree', () => {
+    it('should throw error if source .devcontainer does not exist', () => {
+      mockedFs.existsSync.mockImplementation((path: any) => {
+        if (typeof path === 'string' && path.includes('source')) return false;
+        return true;
+      });
+
+      expect(() => copyDevContainerToWorktree('/source', '/worktree')).toThrow('Source .devcontainer directory does not exist');
+    });
+
+    it('should throw error if destination .devcontainer already exists', () => {
+      mockedFs.existsSync.mockReturnValue(true);
+
+      expect(() => copyDevContainerToWorktree('/source', '/worktree')).toThrow('Destination .devcontainer directory already exists');
+    });
+
+    it('should copy .devcontainer directory successfully', () => {
+      mockedFs.existsSync.mockImplementation((path: any) => {
+        if (typeof path === 'string' && path.includes('worktree')) return false;
+        return true;
+      });
+      const mockCpSync = jest.spyOn(fs, 'cpSync').mockImplementation(() => {});
+
+      copyDevContainerToWorktree('/source', '/worktree');
+
+      expect(mockCpSync).toHaveBeenCalledWith('/source/.devcontainer', '/worktree/.devcontainer', { recursive: true });
+      mockCpSync.mockRestore();
     });
   });
 });
