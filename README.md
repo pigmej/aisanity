@@ -412,4 +412,20 @@ Why would you want to set `containerName`? By default, each branch gets a comple
 
 ### Worktrees
 
-There is no need to use worktrees. Aisanity works perfectly with just "normal" branching, but this limits your ability to run multiple sessions at the same time.
+You don't need to use worktrees. Aisanity works perfectly with standard branching workflows, but this approach limits your ability to run multiple development sessions simultaneously.
+
+### Rebuild the Container
+
+To rebuild the container, run the following command:
+
+```bash
+aisanity rebuild
+```
+
+If you want to rebuild the container from scratch, pass the `--clean` flag to the command:
+
+```bash
+aisanity rebuild --clean
+```
+
+You might want to rebuild the container if something goes wrong inside the container and you need to start fresh.
