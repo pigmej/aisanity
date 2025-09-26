@@ -9,7 +9,7 @@ Aisanity works with all development tools and IDEs. While opencode is the primar
 - **VSCode** - Full devcontainer support with automatic configuration
 - **IntelliJ IDEA** - Compatible with devcontainer environments
 - **Vim/Neovim** - Works seamlessly with containerized development
-- **Emacs** - Full integration with devcontainer workflows
+- **Emacs** - Full integration with devcontainer workflows via TRAMP (just use /docker)
 - **Any terminal-based tool** - Access containers via `aisanity run`
 
 All devcontainer templates include automatic opencode installation and configuration, but you're not required to use it.
@@ -37,6 +37,8 @@ This creates:
 ### Git Worktree Commands
 
 Aisanity provides comprehensive git worktree support for parallel development workflows.
+
+Worktree support is *disabled* by default, to enable you need to modify the .aisanity setting. Set `worktree: true` and you're good to go.
 
 #### Create a New Worktree
 
@@ -172,7 +174,7 @@ cd /path/to/project
 # Create worktree for authentication feature
 aisanity worktree create feature-auth
 
-# Create worktree for UI improvements  
+# Create worktree for UI improvements
 aisanity worktree create feature-ui
 
 # List all worktrees to see status
@@ -391,3 +393,23 @@ All templates include automatic opencode installation and proper directory mount
 - **Mounting**: Current directory → `/workspace` in container
 - **Configuration**: Local tool configurations mounted to containers
 - **Container Management**: Uses devcontainers CLI for lifecycle management
+
+
+
+
+## FAQ
+
+### Container Names
+
+In the .aisanity file, there are two options for naming containers:
+
+1. **Default Naming**: `{workspace}_{branch_name}` (sanitized)
+2. **Custom Naming**: You can specify a custom name using the `containerName` property in the .aisanity file.
+
+What's a workspace? It's literally the directory where you run the command. It can also be set to anything you want. Sharing that name with other workspaces will *reuse* the containers BUT also destroy them if you delete the workspace.
+
+Why would you want to set `containerName`? By default, each branch gets a completely isolated environment to fully isolate the environments. Setting the `containerName` to something static will remove that functionality.
+
+### Worktrees
+
+There is no need to use worktrees. Aisanity works perfectly with just "normal" branching, but this limits your ability to run multiple sessions at the same time.

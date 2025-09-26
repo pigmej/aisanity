@@ -133,7 +133,8 @@ export function createAisanityConfig(workspaceName: string): string {
   const config: AisanityConfig = {
     workspace: workspaceName,
     // Don't set containerName by default - let it be dynamically generated
-    env: {}
+    env: {},
+    worktree: false,
   };
 
   return YAML.stringify(config);
