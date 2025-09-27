@@ -1,4 +1,6 @@
-# Aisanity
+<div align="center">
+  <img src="logo.png" alt="Aisanity Logo" width="256">
+</div>
 
 A devcontainer wrapper for sandboxed development environments with git worktree support for parallel development.
 
