@@ -3,9 +3,9 @@ import * as path from 'path';
 import { getMainWorkspacePath, getWorktreeByName, getAllWorktrees, isWorktree } from '../utils/worktree-utils';
 import { checkWorktreeEnabled } from '../utils/config';
 
-export const worktreeSwitchCommand = new Command('switch')
-  .description('Switch to a different worktree')
-  .argument('<path>', 'Worktree path or name to switch to')
+export const worktreeCheckCommand = new Command('check')
+  .description('Check worktree status and display information')
+  .argument('<path>', 'Worktree path or name to check')
   .option('-v, --verbose', 'Enable verbose logging')
   .action(async (worktreeIdentifier: string, options) => {
     const cwd = process.cwd();
@@ -67,29 +67,30 @@ export const worktreeSwitchCommand = new Command('switch')
         `worktree '${path.basename(cwd)}'` : 
         'main workspace';
       
-      console.log(`Switching from ${currentLocation} to worktree '${worktreeName}'`);
-      
+      console.log(`Checking worktree '${worktreeName}' from ${currentLocation}`);
+       
       if (options.verbose) {
         console.log(`Current path: ${cwd}`);
         console.log(`Target path: ${worktreePath}`);
         console.log(`Target branch: ${worktree.branch}`);
         console.log(`Target container: ${worktree.containerName}`);
       }
-      
-       // Switch to the worktree directory
-       process.chdir(worktreePath);
+       
+      // Preserve existing functionality: change directory in Node.js process
+      // Note: This only affects the Node.js process, not the user's shell
+      process.chdir(worktreePath);
+       
+      console.log(`✓ Worktree exists: ${worktreeName}`);
+      console.log(`  Path: ${worktreePath}`);
+      console.log(`  Branch: ${worktree.branch}`);
+      console.log(`  Container: ${worktree.containerName}`);
 
-       console.log(`✓ Switched to worktree: ${worktreeName}`);
-       console.log(`  Path: ${worktreePath}`);
-       console.log(`  Branch: ${worktree.branch}`);
-       console.log(`  Container: ${worktree.containerName}`);
-
-       // Note about container provisioning
-       console.log('');
-       console.log(`Note: If this is your first time in this worktree, run 'aisanity run' to provision the container`);
+      // Note about container provisioning
+      console.log('');
+      console.log(`Note: If this is your first time in this worktree, run 'aisanity run' to provision the container`);
       
     } catch (error) {
-      console.error('Failed to switch worktree:', error);
+      console.error('Failed to check worktree:', error);
       process.exit(1);
     }
   });

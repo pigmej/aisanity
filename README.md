@@ -99,12 +99,12 @@ Additional Worktrees:
 Current worktree: feature-auth
 ```
 
-#### Switch to a Worktree
+#### Check a Worktree
 
-Switch to a different worktree:
+Check worktree status and display information:
 
 ```bash
-aisanity worktree switch feature-ui
+aisanity worktree check feature-ui
 ```
 
 #### Remove a Worktree
@@ -180,15 +180,15 @@ aisanity worktree create feature-ui
 # List all worktrees to see status
 aisanity worktree list
 
-# Switch to authentication worktree
-aisanity worktree switch feature-auth
+# Check authentication worktree status
+aisanity worktree check feature-auth
 
 # Work on authentication feature
 aisanity run
 # Inside container: work on auth code...
 
-# Switch to UI worktree
-aisanity worktree switch feature-ui
+# Check UI worktree status
+aisanity worktree check feature-ui
 
 # Work on UI improvements
 aisanity run
@@ -206,8 +206,8 @@ aisanity worktree create feature-new-api
 # Urgent hotfix needed - create hotfix worktree
 aisanity worktree create hotfix-security-patch
 
-# Switch to hotfix
-aisanity worktree switch hotfix-security-patch
+# Check hotfix worktree status
+aisanity worktree check hotfix-security-patch
 
 # Fix the issue
 aisanity run
@@ -217,8 +217,8 @@ aisanity run
 git commit -m "Fix security vulnerability"
 git push origin hotfix-security-patch
 
-# Switch back to feature work
-aisanity worktree switch feature-new-api
+# Check feature worktree status
+aisanity worktree check feature-new-api
 ```
 
 ### Code Review Workflow
@@ -227,8 +227,8 @@ aisanity worktree switch feature-new-api
 # Create worktree for reviewer
 aisanity worktree create review-pr-123
 
-# Switch to review worktree
-aisanity worktree switch review-pr-123
+# Check review worktree status
+aisanity worktree check review-pr-123
 
 # Pull the PR branch
 git fetch origin pull/123/head:pr-123
