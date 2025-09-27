@@ -58,7 +58,7 @@ aisanity worktree create feature-bugfix --verbose
 This will:
 - Create a git worktree in `worktrees/<branch-name>/`
 - Copy `.aisanity` configuration from main workspace
-- Automatically provision a development container
+- Copy `.devcontainer` configuration from main workspace (even if not in .git)
 - Switch to the new worktree (by default)
 
 #### List All Worktrees
@@ -267,25 +267,28 @@ aisanity worktree create feature-branch
 # Each worktree gets its own isolated container
 ```
 
-### Directory Structure Changes
+### Recommended Directory Structure Changes
 
 When you start using worktrees, your project structure will look like:
 
 ```
-project/
-├── .aisanity                    # Main workspace config
-├── .devcontainer/
-│   └── devcontainer.json
-├── aisanity/                    # Main workspace .git directory
-│   └── .git/
-├── worktrees/                   # Worktree directory
+a_project/
+├── a_project/                 # Main workspace .git directory
+│   ├── .git/
+│   ├── .aisanity              # Main workspace config
+│   └── .devcontainer/         # Main workspace devcontainer
+│       └── devcontainer.json
+├── worktrees/                 # Worktree directory
 │   ├── feature-auth/
 │   │   ├── .aisanity          # Worktree-specific config
-│   │   └── aisanity/          # Linked to main .git
+│   │   ├── .devcontainer/     # Worktree-specific devcontainer
+│   │   │   └── devcontainer.json
+│   │   └── a_project/         # Linked to main .git
 │   └── feature-ui/
 │       ├── .aisanity          # Worktree-specific config
-│       └── aisanity/          # Linked to main .git
-└── your-source-code/
+│       ├── .devcontainer/     # Worktree-specific devcontainer
+│       │   └── devcontainer.json
+│       └── a_project/         # Linked to main .git
 ```
 
 ## Configuration
