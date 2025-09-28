@@ -2,7 +2,7 @@
   <img src="logo.png" alt="Aisanity Logo" width="256">
 </div>
 
-A devcontainer wrapper for sandboxed development environments with git worktree support for parallel development.
+Aisanity is a secure, hassle-free tool for running AI agents in isolated environments, protecting your host OS from risks while enabling seamless development workflows. It provides sandboxed containers with automatic AI integration, git worktree support for parallel development, and compatibility with any IDE or terminal tool.
 
 ## Tool Compatibility
 
@@ -320,9 +320,16 @@ env:
 - Devcontainers CLI (`npm install -g @devcontainers/cli`)
 - Node.js (for the CLI tool itself)
 
+
+## Opencode integration
+
+By default, Aisanity uses OpenCode as the preferred AI coding agent. It mounts OpenCode-specific paths to share session logs, state, configuration, and other data. Additionally, OpenCode is installed by default in all containers. There's nothing magical about this integration - it's simply automated setup. If you don't want to use OpenCode, you can modify the generated template (which you'll likely need to customize anyway).
+
 ## Devcontainer Integration
 
 Aisanity automatically creates devcontainer configurations during `aisanity init` based on your project type. No manual setup is required.
+
+If you have already .devcontainer based setup then most likely you want to add opencode specific paths in the mounts (or other AI coding agent).
 
 ### Automatic Project Detection
 
