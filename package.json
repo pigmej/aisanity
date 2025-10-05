@@ -14,11 +14,10 @@
     "test": "jest",
     "aisanity": "node dist/index.js",
     "prepare": "npm run build",
-    "package": "pkg . --targets node24-macos-arm64,node24-linux-x64,node24-linux-arm64,node24-win-x64 --out-path dist/executables",
+    "package": "pkg . --targets node24-macos-arm64,node24-linux-x64,node24-linux-arm64 --out-path dist/executables",
     "package:macos": "pkg . --target node24-macos-arm64 --output dist/executables/aisanity-macos-arm64",
     "package:linux": "pkg . --target node24-linux-x64 --output dist/executables/aisanity-linux-x64",
-    "package:linux-arm64": "pkg . --target node24-linux-arm64 --output dist/executables/aisanity-linux-arm64",
-    "package:windows": "pkg . --target node24-win-x64 --output dist/executables/aisanity-win-x64.exe"
+    "package:linux-arm64": "pkg . --target node24-linux-arm64 --output dist/executables/aisanity-linux-arm64"
   },
   "keywords": [
     "devcontainer",
@@ -52,7 +51,7 @@
       "examples/**/*",
       "templates/**/*"
     ],
-    "targets": ["node24-macos-arm64", "node24-linux-x64", "node24-linux-arm64", "node24-win-x64"],
+    "targets": ["node24-macos-arm64", "node24-linux-x64", "node24-linux-arm64"],
     "outputPath": "dist/executables"
   }
 }
