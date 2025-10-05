@@ -5,6 +5,7 @@ jest.mock('fs');
 jest.mock('path');
 jest.spyOn(console, 'log').mockImplementation(() => {});
 jest.spyOn(console, 'error').mockImplementation(() => {});
+jest.spyOn(console, 'warn').mockImplementation(() => {});
 jest.spyOn(process, 'exit').mockImplementation((() => {}) as any);
 
 // Import the function to test
@@ -206,22 +207,86 @@ describe('stats command', () => {
     });
   });
 
-  describe('progress indication', () => {
-    it('should show progress every 10 files', async () => {
-      const mockFiles = Array.from({ length: 25 }, (_, i) => `file${i}.json`);
+  describe('new features', () => {
+    it('should filter by model name', async () => {
+      const mockFiles = ['test1.json', 'test2.json'];
+      const mockJsonData1 = {
+        id: 'test-id-1',
+        role: 'assistant',
+        tokens: { input: '100', output: '50', reasoning: '0' },
+        cost: '0.001',
+        modelID: 'claude-3-opus',
+        time: { created: new Date().toISOString() }
+      };
+      const mockJsonData2 = {
+        id: 'test-id-2',
+        role: 'assistant',
+        tokens: { input: '200', output: '100', reasoning: '0' },
+        cost: '0.002',
+        modelID: 'claude-3-sonnet',
+        time: { created: new Date().toISOString() }
+      };
+
+      mockFs.existsSync = jest.fn(() => true);
+      mockFs.readdirSync = jest.fn(() => mockFiles.map(f => ({ name: f, isFile: () => true, isDirectory: () => false })));
+      mockFs.statSync = jest.fn(() => ({ size: 1000 }));
+      mockFs.readFileSync = jest.fn()
+        .mockReturnValueOnce(JSON.stringify(mockJsonData1))
+        .mockReturnValueOnce(JSON.stringify(mockJsonData2));
+
+      await generateStats({ days: '30', model: 'opus' });
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Filtered by model: opus'));
+    });
+
+    it('should sort by different fields', async () => {
+      const mockFiles = ['test1.json', 'test2.json'];
       const mockJsonData = {
         id: 'test-id',
         role: 'assistant',
-        tokens: {
-          input: '100',
-          output: '50',
-          reasoning: '0'
-        },
+        tokens: { input: '100', output: '50', reasoning: '0' },
         cost: '0.001',
         modelID: 'test-model',
-        time: {
-          created: new Date().toISOString()
-        }
+        time: { created: new Date().toISOString() }
+      };
+
+      mockFs.existsSync = jest.fn(() => true);
+      mockFs.readdirSync = jest.fn(() => mockFiles.map(f => ({ name: f, isFile: () => true, isDirectory: () => false })));
+      mockFs.statSync = jest.fn(() => ({ size: 1000 }));
+      mockFs.readFileSync = jest.fn(() => JSON.stringify(mockJsonData));
+
+      await generateStats({ days: '30', sort: 'cost' });
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Sorted by: cost'));
+    });
+
+    it('should handle missing HOME environment variable', async () => {
+      const originalHome = process.env.HOME;
+      delete process.env.HOME;
+
+      await generateStats({ days: '30' });
+      expect(console.error).toHaveBeenCalledWith('Error: HOME environment variable not set');
+      expect(process.exit).toHaveBeenCalledWith(1);
+
+      process.env.HOME = originalHome;
+    });
+
+    it('should handle directory read errors gracefully', async () => {
+      mockFs.existsSync = jest.fn(() => true);
+      mockFs.readdirSync = jest.fn(() => { throw new Error('Permission denied'); });
+
+      await generateStats({ days: '30' });
+      expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('Warning: Cannot read directory'));
+      expect(console.log).toHaveBeenCalledWith('No OpenCode message files found');
+    });
+
+    it('should handle zero cost in model breakdown', async () => {
+      const mockFiles = ['test1.json'];
+      const mockJsonData = {
+        id: 'test-id',
+        role: 'assistant',
+        tokens: { input: '100', output: '50', reasoning: '0' },
+        cost: '0',
+        modelID: 'test-model',
+        time: { created: new Date().toISOString() }
       };
 
       mockFs.existsSync = jest.fn(() => true);
@@ -230,10 +295,9 @@ describe('stats command', () => {
       mockFs.readFileSync = jest.fn(() => JSON.stringify(mockJsonData));
 
       await generateStats({ days: '30' });
-      // Should show progress at files 10, 20, and 25
-      expect(console.log).toHaveBeenCalledWith('Processed 10 of 25 files');
-      expect(console.log).toHaveBeenCalledWith('Processed 20 of 25 files');
-      expect(console.log).toHaveBeenCalledWith('Processed 25 of 25 files');
+      // Should not crash with division by zero
+      expect(process.exit).not.toHaveBeenCalled();
     });
   });
+
 });
