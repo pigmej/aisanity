@@ -1,0 +1,73 @@
+name: Package Executables
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  test:
+    uses: ./.github/workflows/ci.yml
+    
+  package:
+    needs: test
+    strategy:
+      matrix:
+        platform: [macos-latest, ubuntu-latest, windows-latest]
+        include:
+          - platform: macos-latest
+            target: node24-macos-arm64
+            output: aisanity-macos-arm64
+          - platform: ubuntu-latest
+            target: node24-linux-x64
+            output: aisanity-linux-x64
+          - platform: ubuntu-latest
+            target: node24-linux-arm64
+            output: aisanity-linux-arm64
+          - platform: windows-latest
+            target: node24-win-x64
+            output: aisanity-win-x64.exe
+    
+    runs-on: ${{ matrix.platform }}
+    
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm'
+      
+      - run: npm ci
+      - run: npm run build
+      - run: pkg . --target ${{ matrix.target }} --output dist/executables/${{ matrix.output }}
+      
+      - name: Generate checksum
+        run: |
+          cd dist/executables
+          if [ "${{ matrix.platform }}" = "windows-latest" ]; then
+            certutil -hashfile ${{ matrix.output }} SHA256 > ${{ matrix.output }}.sha256
+          else
+            shasum -a 256 ${{ matrix.output }} > ${{ matrix.output }}.sha256
+          fi
+      
+      - uses: actions/upload-artifact@v4
+        with:
+          name: executable-${{ matrix.platform }}
+          path: |
+            dist/executables/${{ matrix.output }}
+            dist/executables/${{ matrix.output }}.sha256
+
+  release:
+    needs: package
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      
+      - name: Create release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: artifacts/**/*

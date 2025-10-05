@@ -13,7 +13,12 @@
     "lint": "eslint src/**/*.ts",
     "test": "jest",
     "aisanity": "node dist/index.js",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "package": "pkg . --targets node24-macos-arm64,node24-linux-x64,node24-linux-arm64,node24-win-x64 --out-path dist/executables",
+    "package:macos": "pkg . --target node24-macos-arm64 --output dist/executables/aisanity-macos-arm64",
+    "package:linux": "pkg . --target node24-linux-x64 --output dist/executables/aisanity-linux-x64",
+    "package:linux-arm64": "pkg . --target node24-linux-arm64 --output dist/executables/aisanity-linux-arm64",
+    "package:windows": "pkg . --target node24-win-x64 --output dist/executables/aisanity-win-x64.exe"
   },
   "keywords": [
     "devcontainer",
@@ -31,11 +36,23 @@
     "jest": "^29.5.0",
     "ts-jest": "^29.1.0",
     "typescript": "^5.0.0",
-    "ts-node": "^10.9.0"
+    "ts-node": "^10.9.0",
+    "@yao-pkg/pkg": "6.7.0"
   },
   "dependencies": {
     "commander": "^11.0.0",
     "yaml": "^2.3.0",
     "chalk": "^5.3.0"
+  },
+  "pkg": {
+    "scripts": "dist/**/*.js",
+    "assets": [
+      "src/**/*.yaml",
+      "src/**/*.yml",
+      "examples/**/*",
+      "templates/**/*"
+    ],
+    "targets": ["node24-macos-arm64", "node24-linux-x64", "node24-linux-arm64", "node24-win-x64"],
+    "outputPath": "dist/executables"
   }
 }
