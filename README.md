@@ -18,42 +18,6 @@ All devcontainer templates include automatic opencode installation and configura
 
 ## Installation
 
-### Option 1: Standalone Executable (Recommended)
-
-Download the platform-specific executable from the [GitHub Releases](https://github.com/your-username/aisanity/releases) page:
-
-#### macOS (Apple Silicon)
-```bash
-# Download aisanity-macos-arm64
-chmod +x aisanity-macos-arm64
-./aisanity-macos-arm64 --help
-```
-
-#### Linux (x64)
-```bash
-# Download aisanity-linux-x64
-chmod +x aisanity-linux-x64
-./aisanity-linux-x64 --help
-```
-
-#### Windows (x64)
-```bash
-# Download aisanity-win-x64.exe
-.\aisanity-win-x64.exe --help
-```
-
-**Optional**: Verify checksum for security:
-```bash
-# macOS/Linux
-shasum -a 256 aisanity-macos-arm64
-# Compare with the .sha256 file in releases
-
-# Windows
-certutil -hashfile aisanity-win-x64.exe SHA256
-```
-
-### Option 2: NPM Package
-
 ```bash
 npm install -g .
 ```
