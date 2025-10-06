@@ -1,8 +1,7 @@
 import { Command } from 'commander';
 import * as fs from 'fs';
 import * as path from 'path';
-import { execSync } from 'child_process';
-import { spawn } from 'child_process';
+import { safeExecSyncSync as execSync, safeSpawn } from '../utils/runtime-utils';
 import {
   getMainWorkspacePath,
   validateBranchName,
@@ -102,14 +101,14 @@ export const worktreeCreateCommand = new Command('create')
         }
         
         // Use spawn for better security
-        const gitResult = spawn('git', gitArgs, {
+        const gitResult = safeSpawn('git', gitArgs, {
           cwd: gitRoot,
           stdio: options.verbose ? 'inherit' : 'pipe'
         });
         
         await new Promise<void>((resolve, reject) => {
           gitResult.on('error', reject);
-          gitResult.on('exit', (code) => {
+          gitResult.on('exit', (code: number) => {
             if (code === 0) {
               resolve();
             } else {

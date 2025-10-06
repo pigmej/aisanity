@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import * as path from 'path';
-import { spawn, execSync } from 'child_process';
+import { safeSpawn, safeExecSyncSync as execSync } from '../utils/runtime-utils';
 import { loadAisanityConfig, getContainerName } from '../utils/config';
 
 export const rebuildCommand = new Command('rebuild')
@@ -84,14 +84,14 @@ export const rebuildCommand = new Command('rebuild')
         buildArgs.push('--config', path.resolve(options.devcontainerJson));
       }
 
-      const buildResult = spawn('devcontainer', buildArgs, {
+      const buildResult = safeSpawn('devcontainer', buildArgs, {
         stdio: 'inherit',
         cwd
       });
 
       await new Promise<void>((resolve, reject) => {
         buildResult.on('error', reject);
-        buildResult.on('exit', (code) => {
+        buildResult.on('exit', (code: number) => {
           if (code === 0) {
             resolve();
           } else {
@@ -108,14 +108,14 @@ export const rebuildCommand = new Command('rebuild')
         upArgs.push('--config', path.resolve(options.devcontainerJson));
       }
 
-      const upResult = spawn('devcontainer', upArgs, {
+      const upResult = safeSpawn('devcontainer', upArgs, {
         stdio: 'inherit',
         cwd
       });
 
       await new Promise<void>((resolve, reject) => {
         upResult.on('error', reject);
-        upResult.on('exit', (code) => {
+        upResult.on('exit', (code: number) => {
           if (code === 0) {
             resolve();
           } else {

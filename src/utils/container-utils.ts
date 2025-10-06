@@ -1,4 +1,4 @@
-import { execSync } from 'child_process';
+import { safeExecSyncSync as execSync } from './runtime-utils';
 import * as path from 'path';
 import { safeDockerExec } from './docker-safe-exec';
 import { getAllWorktrees } from './worktree-utils';

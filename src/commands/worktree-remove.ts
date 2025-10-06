@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import * as fs from 'fs';
 import * as path from 'path';
-import { spawn, execSync } from 'child_process';
+import { safeSpawn, safeExecSyncSync as execSync } from '../utils/runtime-utils';
 import { getMainWorkspacePath, getWorktreeByName, getAllWorktrees } from '../utils/worktree-utils';
 import { safeDockerExec } from '../utils/docker-safe-exec';
 import { checkWorktreeEnabled } from '../utils/config';
@@ -137,14 +137,14 @@ export const worktreeRemoveCommand = new Command('remove')
       
       // Remove git worktree
       try {
-        const removeResult = spawn('git', ['worktree', 'remove', worktreePath], {
+        const removeResult = safeSpawn('git', ['worktree', 'remove', worktreePath], {
           cwd: gitRoot,
           stdio: options.verbose ? 'inherit' : 'pipe'
         });
         
         await new Promise<void>((resolve, reject) => {
           removeResult.on('error', reject);
-          removeResult.on('exit', (code) => {
+          removeResult.on('exit', (code: number) => {
             if (code === 0) {
               resolve();
             } else {
