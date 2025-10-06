@@ -178,7 +178,7 @@ export async function discoverOpencodeInstances(options: CommandOptions): Promis
 
     // Process each container
      for (const containerId of containersWithOpencode) {
-       const containerName = await getContainerName(containerId, options.verbose);
+        const containerName = await getContainerName(cwd, options.verbose);
 
        // Apply filter if specified
        if (options.filter && !containerName.includes(options.filter)) {

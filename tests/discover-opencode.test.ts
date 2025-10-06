@@ -1,34 +1,16 @@
-// Mock chalk to avoid ES module issues
-jest.mock('chalk', () => ({
-  green: jest.fn((str) => str),
-  blue: jest.fn((str) => str),
-  yellow: jest.fn((str) => str),
-  red: jest.fn((str) => str),
-}));
+import { expect, test, describe, spyOn, beforeEach, afterEach } from 'bun:test';
 
-// Mock safeDockerExec
-jest.mock('../src/utils/docker-safe-exec', () => ({
-  safeDockerExec: jest.fn(),
-}));
-
-// Mock config
-jest.mock('../src/utils/config', () => ({
-  loadAisanityConfig: jest.fn(),
-  getContainerName: jest.fn(),
-  getCurrentBranch: jest.fn(),
-}));
-
-// Import after mocking
+// Import modules
 import { elapsedToSeconds, isValidContainerId, discoverOpencodeInstances, discoverOpencodeCommand } from '../src/commands/discover-opencode';
 import { validateHost, validatePort, validateContainerId, validateContainerName, validateWorkspacePath } from '../src/utils/input-validation';
 import { safeDockerExec } from '../src/utils/docker-safe-exec';
 import { loadAisanityConfig, getContainerName, getCurrentBranch } from '../src/utils/config';
 
-// Mock process.cwd
-const mockCwd = jest.spyOn(process, 'cwd');
-
 // Import after mocking
 import { formatText, formatPlain } from '../src/commands/discover-opencode';
+
+// Mock process.cwd
+let mockCwd: any;
 
 describe('elapsedToSeconds', () => {
   test('converts HH:MM:SS format correctly', () => {
@@ -216,26 +198,18 @@ describe('verbose functionality', () => {
     containerName: 'test-container'
   };
 
-  beforeEach(() => {
-    (getContainerName as jest.Mock).mockReturnValue('test-container');
-    (getCurrentBranch as jest.Mock).mockReturnValue('main');
-  });
-
-  const mockInstance = {
-    containerId: 'abc123def456',
-    containerName: 'test-container',
-    host: 'localhost',
-    port: 8080,
-    processId: 123,
-    elapsedTime: 120,
-    isValidApi: true
-  };
+  let mockSafeDockerExec: any;
+  let mockLoadAisanityConfig: any;
+  let mockGetContainerName: any;
+  let mockGetCurrentBranch: any;
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    mockCwd.mockReturnValue('/test/workspace');
-    (loadAisanityConfig as jest.Mock).mockReturnValue(mockConfig);
-    (safeDockerExec as jest.Mock).mockImplementation((args: string[], options: any) => {
+    mockCwd = spyOn(process, 'cwd').mockReturnValue('/test/workspace');
+    
+    // Mock safeDockerExec using module approach
+    const dockerSafeExecModule = require('../src/utils/docker-safe-exec');
+    mockSafeDockerExec = spyOn(dockerSafeExecModule, 'safeDockerExec');
+    mockSafeDockerExec.mockImplementation((args: string[], options: any) => {
       if (args.includes('ps') && args.includes('-q')) {
         return Promise.resolve('abc123def456\n');
       }
@@ -256,10 +230,19 @@ describe('verbose functionality', () => {
       }
       return Promise.resolve('');
     });
+
+    // Mock config functions by mocking the entire module
+    const configModule = require('../src/utils/config');
+    mockLoadAisanityConfig = spyOn(configModule, 'loadAisanityConfig').mockReturnValue(mockConfig);
+    mockGetContainerName = spyOn(configModule, 'getContainerName').mockImplementation((cwd: string, verbose?: boolean) => 'test-container');
+    mockGetCurrentBranch = spyOn(configModule, 'getCurrentBranch').mockReturnValue('main');
   });
 
   afterEach(() => {
-    mockCwd.mockRestore();
+    mockCwd?.mockRestore();
+    mockSafeDockerExec?.mockRestore();
+    mockLoadAisanityConfig?.mockRestore();
+    mockGetContainerName?.mockRestore();
   });
 
   describe('CLI flag parsing', () => {
@@ -269,7 +252,7 @@ describe('verbose functionality', () => {
     });
 
     test('verbose flag defaults to false', async () => {
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+      const consoleSpy = spyOn(console, 'log').mockImplementation(() => {});
       const result = await discoverOpencodeInstances({ all: false, format: 'text' as const, verbose: false });
       expect(result.mostRecent).toBeTruthy();
       consoleSpy.mockRestore();
@@ -281,7 +264,7 @@ describe('verbose functionality', () => {
       const options = { all: false, format: 'text' as const, verbose: true };
       await discoverOpencodeInstances(options);
 
-      expect(safeDockerExec).toHaveBeenCalledWith(
+      expect(mockSafeDockerExec).toHaveBeenCalledWith(
         expect.any(Array),
         expect.objectContaining({ verbose: true })
       );
@@ -291,7 +274,7 @@ describe('verbose functionality', () => {
       const options = { all: false, format: 'text' as const, verbose: false };
       await discoverOpencodeInstances(options);
 
-      expect(safeDockerExec).toHaveBeenCalledWith(
+      expect(mockSafeDockerExec).toHaveBeenCalledWith(
         expect.any(Array),
         expect.objectContaining({ verbose: false })
       );
@@ -300,7 +283,7 @@ describe('verbose functionality', () => {
 
   describe('conditional logging', () => {
     test('logs progress messages when verbose is true', async () => {
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      const consoleSpy = spyOn(console, 'error').mockImplementation(() => {});
       const options = { all: false, format: 'text' as const, verbose: true };
       await discoverOpencodeInstances(options);
 
@@ -310,7 +293,7 @@ describe('verbose functionality', () => {
     });
 
     test('does not log progress messages when verbose is false', async () => {
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      const consoleSpy = spyOn(console, 'error').mockImplementation(() => {});
       const options = { all: false, format: 'text' as const, verbose: false };
       await discoverOpencodeInstances(options);
 
@@ -322,11 +305,22 @@ describe('verbose functionality', () => {
 });
 
 describe('safeDockerExec verbose behavior', () => {
+  let mockSafeDockerExec: any;
+
+  beforeEach(() => {
+    const dockerSafeExecModule = require('../src/utils/docker-safe-exec');
+    mockSafeDockerExec = spyOn(dockerSafeExecModule, 'safeDockerExec');
+  });
+
+  afterEach(() => {
+    mockSafeDockerExec?.mockRestore();
+  });
+
   test('logs JSON to stderr when verbose is true', async () => {
-    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+    const consoleErrorSpy = spyOn(console, 'error').mockImplementation(() => {});
 
     // Mock the implementation to test logging
-    (safeDockerExec as jest.Mock).mockImplementationOnce(async (args: string[], options: any) => {
+    mockSafeDockerExec.mockImplementationOnce(async (args: string[], options: any) => {
       if (options.verbose) {
         const logEntry = {
           timestamp: new Date().toISOString(),
@@ -352,9 +346,9 @@ describe('safeDockerExec verbose behavior', () => {
   });
 
   test('does not log JSON when verbose is false', async () => {
-    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+    const consoleErrorSpy = spyOn(console, 'error').mockImplementation(() => {});
 
-    (safeDockerExec as jest.Mock).mockImplementationOnce(async (args: string[], options: any) => {
+    mockSafeDockerExec.mockImplementationOnce(async (args: string[], options: any) => {
       if (options.verbose) {
         const logEntry = {
           timestamp: new Date().toISOString(),
@@ -381,11 +375,19 @@ describe('integration tests', () => {
     containerName: 'test-container'
   };
 
+  let mockSafeDockerExec: any;
+  let mockLoadAisanityConfig: any;
+  let mockGetContainerName: any;
+
   beforeEach(() => {
-    jest.clearAllMocks();
-    mockCwd.mockReturnValue('/test/workspace');
-    (loadAisanityConfig as jest.Mock).mockReturnValue(mockConfig);
-    (safeDockerExec as jest.Mock).mockImplementation((args: string[], options: any) => {
+    mockCwd = spyOn(process, 'cwd').mockReturnValue('/test/workspace');
+    
+    // Mock modules using require approach
+    const dockerSafeExecModule = require('../src/utils/docker-safe-exec');
+    const configModule = require('../src/utils/config');
+    
+    mockSafeDockerExec = spyOn(dockerSafeExecModule, 'safeDockerExec');
+    mockSafeDockerExec.mockImplementation((args: string[], options: any) => {
       if (args.includes('ps') && args.includes('-q')) {
         return Promise.resolve('abc123def456\n');
       }
@@ -406,15 +408,21 @@ describe('integration tests', () => {
       }
       return Promise.resolve('');
     });
+
+    mockLoadAisanityConfig = spyOn(configModule, 'loadAisanityConfig').mockReturnValue(mockConfig);
+    mockGetContainerName = spyOn(configModule, 'getContainerName').mockImplementation((cwd: string, verbose?: boolean) => 'test-container');
   });
 
   afterEach(() => {
-    mockCwd.mockRestore();
+    mockCwd?.mockRestore();
+    mockSafeDockerExec?.mockRestore();
+    mockLoadAisanityConfig?.mockRestore();
+    mockGetContainerName?.mockRestore();
   });
 
   test('end-to-end execution without verbose flag produces clean output', async () => {
-    const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
-    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+    const consoleLogSpy = spyOn(console, 'log').mockImplementation(() => {});
+    const consoleErrorSpy = spyOn(console, 'error').mockImplementation(() => {});
 
     // Simulate command execution
     const result = await discoverOpencodeInstances({ all: false, format: 'text' as const, verbose: false });
@@ -433,8 +441,8 @@ describe('integration tests', () => {
   });
 
   test('end-to-end execution with verbose flag includes debug output', async () => {
-    const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
-    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+    const consoleLogSpy = spyOn(console, 'log').mockImplementation(() => {});
+    const consoleErrorSpy = spyOn(console, 'error').mockImplementation(() => {});
 
     // Simulate command execution
     const result = await discoverOpencodeInstances({ all: false, format: 'text' as const, verbose: true });
