@@ -1,5 +1,5 @@
-// Mock chalk to avoid ES module issues
-jest.mock('chalk', () => ({
+// Mock picocolors to avoid ES module issues
+jest.mock('picocolors', () => ({
   green: jest.fn((str) => str),
   blue: jest.fn((str) => str),
   yellow: jest.fn((str) => str),
