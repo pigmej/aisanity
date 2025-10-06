@@ -10,6 +10,9 @@ describe('worktree-check command utilities', () => {
   let mockConsoleError: any;
   let mockChdir: any;
   let mockFs: any;
+  let mockStatSync: any;
+  let mockReadFileSync: any;
+  let mockCwd: any;
   let mockSafeSpawn: any;
   let mockSafeExecSyncSync: any;
   let mockGetMainWorkspacePath: any;
@@ -32,8 +35,8 @@ describe('worktree-check command utilities', () => {
 
     // Mock fs
     mockFs = spyOn(fs, 'existsSync').mockReturnValue(true);
-    spyOn(fs, 'statSync').mockReturnValue({ isDirectory: () => true } as any);
-    spyOn(fs, 'readFileSync').mockReturnValue('workspace: test-project\ncontainerName: test-container' as any);
+    mockStatSync = spyOn(fs, 'statSync').mockReturnValue({ isDirectory: () => true } as any);
+    mockReadFileSync = spyOn(fs, 'readFileSync').mockReturnValue('workspace: test-project\ncontainerName: test-container' as any);
 
     // Mock worktree utils
     const worktreeUtilsModule = require('../src/utils/worktree-utils');
@@ -76,7 +79,7 @@ describe('worktree-check command utilities', () => {
     mockSafeExecSyncSync = spyOn(runtimeUtilsModule, 'safeExecSyncSync').mockReturnValue('git worktree list');
 
     // Mock process.cwd
-    spyOn(process, 'cwd').mockReturnValue('/current/dir');
+    mockCwd = spyOn(process, 'cwd').mockReturnValue('/current/dir');
   });
 
   afterEach(() => {
@@ -85,6 +88,9 @@ describe('worktree-check command utilities', () => {
     mockConsoleError?.mockRestore?.();
     mockChdir?.mockRestore?.();
     mockFs?.mockRestore?.();
+    mockStatSync?.mockRestore?.();
+    mockReadFileSync?.mockRestore?.();
+    mockCwd?.mockRestore?.();
     mockSafeSpawn?.mockRestore?.();
     mockSafeExecSyncSync?.mockRestore?.();
     mockGetMainWorkspacePath?.mockRestore?.();

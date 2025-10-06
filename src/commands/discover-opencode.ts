@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import * as YAML from 'yaml';
-import chalk from 'chalk';
+import pc from 'picocolors';
 import { loadAisanityConfig, getContainerName as getAisanityContainerName } from '../utils/config';
 import { safeDockerExec } from '../utils/docker-safe-exec';
 
@@ -289,19 +289,19 @@ export async function discoverOpencodeInstances(options: CommandOptions): Promis
 // Output formatting functions
 export function formatText(result: DiscoveryResult, showAll: boolean = false): string {
   if (result.error) {
-    return chalk.red(`Error: ${result.error}`);
+    return pc.red(`Error: ${result.error}`);
   }
 
   if (result.instances.length === 0) {
-    return chalk.yellow('No opencode instances found');
+      return pc.yellow('No opencode instances found');
   }
 
   let output = '';
 
   if (showAll) {
-    output += chalk.green(`Found ${result.instances.length} opencode instance(s):\n\n`);
+    output += pc.green(`Found ${result.instances.length} opencode instance(s):\n\n`);
     result.instances.forEach((instance, index) => {
-      output += chalk.blue(`Instance ${index + 1}:\n`);
+      output += pc.blue(`Instance ${index + 1}:\n`);
       output += `  Container: ${instance.containerName}\n`;
       output += `  Port: ${instance.port}\n`;
       output += `  Age: ${instance.elapsedTime} seconds\n`;
@@ -309,10 +309,10 @@ export function formatText(result: DiscoveryResult, showAll: boolean = false): s
     });
   } else {
     if (!result.mostRecent) {
-      return chalk.yellow('No opencode instances found');
+    return pc.yellow('No opencode instances found');
     }
 
-    output += chalk.green('Most recent opencode instance:\n');
+    output += pc.green('Most recent opencode instance:\n');
     output += `  Container: ${result.mostRecent.containerName}\n`;
     output += `  Port: ${result.mostRecent.port}\n`;
     output += `  Age: ${result.mostRecent.elapsedTime} seconds\n`;
@@ -359,7 +359,7 @@ export const discoverOpencodeCommand = new Command('discover-opencode')
        }
      } catch (error) {
        const errorMessage = error instanceof Error ? error.message : String(error);
-       console.error(chalk.red('Error discovering opencode instances:'), errorMessage);
+        console.error(pc.red('Error discovering opencode instances:'), errorMessage);
        process.exit(1);
      }
    });

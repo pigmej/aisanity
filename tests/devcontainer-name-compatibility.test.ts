@@ -8,6 +8,8 @@ describe('Devcontainer Name Parameter Compatibility - Issue #150', () => {
   let mockConsoleError: any;
   let mockSafeSpawn: any;
   let mockFs: any;
+  let mockStatSync: any;
+  let mockCwd: any;
   let mockDiscoverContainers: any;
   let mockDiscoverByLabels: any;
   let mockDiscoverByDevcontainerMetadata: any;
@@ -29,7 +31,7 @@ describe('Devcontainer Name Parameter Compatibility - Issue #150', () => {
 
     // Mock fs.existsSync
     mockFs = spyOn(fs, 'existsSync').mockReturnValue(true);
-    spyOn(fs, 'statSync').mockReturnValue({ isDirectory: () => true } as any);
+    mockStatSync = spyOn(fs, 'statSync').mockReturnValue({ isDirectory: () => true } as any);
 
     // Mock safeSpawn to succeed - we'll test the utilities directly
     const runtimeUtilsModule = require('../src/utils/runtime-utils');
@@ -53,7 +55,7 @@ describe('Devcontainer Name Parameter Compatibility - Issue #150', () => {
     mockGetMainGitDirPath = spyOn(worktreeUtilsModule, 'getMainGitDirPath').mockReturnValue('/main/workspace/.git');
 
     // Mock process.cwd
-    spyOn(process, 'cwd').mockReturnValue('/main/workspace');
+    mockCwd = spyOn(process, 'cwd').mockReturnValue('/main/workspace');
   });
 
   afterEach(() => {
@@ -61,6 +63,8 @@ describe('Devcontainer Name Parameter Compatibility - Issue #150', () => {
     mockConsoleError?.mockRestore?.();
     mockSafeSpawn?.mockRestore?.();
     mockFs?.mockRestore?.();
+    mockStatSync?.mockRestore?.();
+    mockCwd?.mockRestore?.();
     mockDiscoverContainers?.mockRestore?.();
     mockDiscoverByLabels?.mockRestore?.();
     mockDiscoverByDevcontainerMetadata?.mockRestore?.();

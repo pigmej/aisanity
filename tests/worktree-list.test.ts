@@ -10,6 +10,7 @@ describe('worktree-list command utilities', () => {
   let mockGetAllWorktrees: any;
   let mockIsWorktree: any;
   let mockSafeDockerExec: any;
+  let mockCwd: any;
 
   beforeEach(() => {
     // Mock process.exit
@@ -40,7 +41,7 @@ describe('worktree-list command utilities', () => {
     mockSafeDockerExec = spyOn(dockerSafeExecModule, 'safeDockerExec').mockResolvedValue('');
 
     // Mock process.cwd
-    spyOn(process, 'cwd').mockReturnValue('/main/workspace');
+    mockCwd = spyOn(process, 'cwd').mockReturnValue('/main/workspace');
   });
 
   afterEach(() => {
@@ -50,6 +51,7 @@ describe('worktree-list command utilities', () => {
     mockGetAllWorktrees?.mockRestore?.();
     mockIsWorktree?.mockRestore?.();
     mockSafeDockerExec?.mockRestore?.();
+    mockCwd?.mockRestore?.();
   });
 
   test('should have worktree list subcommand', () => {

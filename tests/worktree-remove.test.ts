@@ -12,6 +12,10 @@ const mockReadline = {
 
 describe('worktree-remove command utilities', () => {
   let mockFs: any;
+  let mockStatSync: any;
+  let mockReaddirSync: any;
+  let mockRmSync: any;
+  let mockCwd: any;
   let mockSafeSpawn: any;
   let mockSafeExecSyncSync: any;
   let mockExit: any;
@@ -21,9 +25,9 @@ describe('worktree-remove command utilities', () => {
   beforeEach(() => {
     // Mock fs
     mockFs = spyOn(fs, 'existsSync').mockReturnValue(true);
-    spyOn(fs, 'statSync').mockReturnValue({ isDirectory: () => true } as any);
-    spyOn(fs, 'readdirSync').mockReturnValue(['feature-branch'] as any);
-    spyOn(fs, 'rmSync').mockImplementation(() => {});
+    mockStatSync = spyOn(fs, 'statSync').mockReturnValue({ isDirectory: () => true } as any);
+    mockReaddirSync = spyOn(fs, 'readdirSync').mockReturnValue(['feature-branch'] as any);
+    mockRmSync = spyOn(fs, 'rmSync').mockImplementation(() => {});
 
     // Mock runtime-utils
     const runtimeUtilsModule = require('../src/utils/runtime-utils');
@@ -49,11 +53,15 @@ describe('worktree-remove command utilities', () => {
     mockConsoleError = spyOn(console, 'error').mockImplementation(() => {});
 
     // Mock process.cwd
-    spyOn(process, 'cwd').mockReturnValue('/main/workspace');
+    mockCwd = spyOn(process, 'cwd').mockReturnValue('/main/workspace');
   });
 
   afterEach(() => {
     mockFs?.mockRestore?.();
+    mockStatSync?.mockRestore?.();
+    mockReaddirSync?.mockRestore?.();
+    mockRmSync?.mockRestore?.();
+    mockCwd?.mockRestore?.();
     mockSafeSpawn?.mockRestore?.();
     mockSafeExecSyncSync?.mockRestore?.();
     mockExit?.mockRestore?.();

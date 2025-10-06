@@ -83,7 +83,6 @@ certutil -hashfile aisanity-win-x64.exe SHA256
 ### Development Setup
 
 For developers contributing to Aisanity:
-
 ```bash
 # Clone repository
 git clone <repository-url>

@@ -12,6 +12,8 @@ describe('Status Command Utilities', () => {
   let mockGetAllWorktrees: any;
   let mockSafeDockerExec: any;
   let mockFs: any;
+  let mockReadFileSync: any;
+  let mockCwd: any;
   let mockSafeExecSyncSync: any;
 
   beforeEach(() => {
@@ -49,14 +51,14 @@ describe('Status Command Utilities', () => {
 
     // Mock fs
     mockFs = spyOn(fs, 'existsSync').mockReturnValue(true);
-    spyOn(fs, 'readFileSync').mockReturnValue('workspace: test-project\ncontainerName: test-container' as any);
+    mockReadFileSync = spyOn(fs, 'readFileSync').mockReturnValue('workspace: test-project\ncontainerName: test-container' as any);
 
     // Mock runtime-utils
     const runtimeUtilsModule = require('../src/utils/runtime-utils');
     mockSafeExecSyncSync = spyOn(runtimeUtilsModule, 'safeExecSyncSync').mockReturnValue('' as any);
 
     // Mock process.cwd
-    spyOn(process, 'cwd').mockReturnValue('/main/workspace');
+    mockCwd = spyOn(process, 'cwd').mockReturnValue('/main/workspace');
   });
 
   afterEach(() => {
@@ -66,6 +68,8 @@ describe('Status Command Utilities', () => {
     mockGetAllWorktrees?.mockRestore?.();
     mockSafeDockerExec?.mockRestore?.();
     mockFs?.mockRestore?.();
+    mockReadFileSync?.mockRestore?.();
+    mockCwd?.mockRestore?.();
     mockSafeExecSyncSync?.mockRestore?.();
   });
 
