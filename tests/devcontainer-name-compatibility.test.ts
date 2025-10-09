@@ -1,12 +1,10 @@
 import { expect, test, describe, spyOn, beforeEach, afterEach } from 'bun:test';
 import { discoverContainers } from '../src/utils/container-utils';
-import { safeSpawn } from '../src/utils/runtime-utils';
 import * as fs from 'fs';
 
 describe('Devcontainer Name Parameter Compatibility - Issue #150', () => {
   let mockExit: any;
   let mockConsoleError: any;
-  let mockSafeSpawn: any;
   let mockFs: any;
   let mockStatSync: any;
   let mockCwd: any;
@@ -21,7 +19,7 @@ describe('Devcontainer Name Parameter Compatibility - Issue #150', () => {
 
   beforeEach(() => {
     // Mock process.exit - don't throw, just mock it and prevent actual exit
-    mockExit = spyOn(process, 'exit').mockImplementation((code?: string | number | null) => {
+    mockExit = spyOn(process, 'exit').mockImplementation(() => {
       // Don't actually exit, just log for debugging
       return undefined as never;
     });
@@ -32,10 +30,6 @@ describe('Devcontainer Name Parameter Compatibility - Issue #150', () => {
     // Mock fs.existsSync
     mockFs = spyOn(fs, 'existsSync').mockReturnValue(true);
     mockStatSync = spyOn(fs, 'statSync').mockReturnValue({ isDirectory: () => true } as any);
-
-    // Mock safeSpawn to succeed - we'll test the utilities directly
-    const runtimeUtilsModule = require('../src/utils/runtime-utils');
-    mockSafeSpawn = spyOn(runtimeUtilsModule, 'safeSpawn').mockReturnValue({} as any);
 
     // Mock container utils
     const containerUtilsModule = require('../src/utils/container-utils');
@@ -61,7 +55,6 @@ describe('Devcontainer Name Parameter Compatibility - Issue #150', () => {
   afterEach(() => {
     mockExit?.mockRestore?.();
     mockConsoleError?.mockRestore?.();
-    mockSafeSpawn?.mockRestore?.();
     mockFs?.mockRestore?.();
     mockStatSync?.mockRestore?.();
     mockCwd?.mockRestore?.();
@@ -141,17 +134,6 @@ describe('Devcontainer Name Parameter Compatibility - Issue #150', () => {
     expect(mockDiscoverByDevcontainerMetadata).toHaveBeenCalled();
   });
 
-  test('should handle spawn for docker-compose commands', () => {
-    const command = 'docker-compose';
-    const args = ['up', '-d'];
-    const options = { cwd: '/main/workspace' };
-
-    const childProcess = safeSpawn(command, args, options);
-    
-    expect(mockSafeSpawn).toHaveBeenCalledWith(command, args, options);
-    expect(childProcess).toBeDefined();
-  });
-
   test('should handle missing devcontainer directory', () => {
     mockFs.mockReturnValue(false);
     
@@ -201,19 +183,6 @@ describe('Devcontainer Name Parameter Compatibility - Issue #150', () => {
       expect(name.length).toBeGreaterThan(0);
       expect(name.match(/^[a-zA-Z0-9_-]+$/)).toBeTruthy();
     });
-  });
-
-  test('should handle error conditions gracefully', async () => {
-    // Mock safeSpawn to fail
-    mockSafeSpawn.mockImplementation(() => {
-      throw new Error('Spawn failed');
-    });
-
-    try {
-      safeSpawn('docker-compose', ['up'], { cwd: '/main/workspace' });
-    } catch (error: any) {
-      expect(error.message).toBe('Spawn failed');
-    }
   });
 
   test('should handle process exit without throwing', () => {

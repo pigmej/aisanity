@@ -1,7 +1,7 @@
 {
   "name": "aisanity",
   "version": "0.1.0",
-  "description": "Devcontainer wrapper for sandboxed development environments",
+  "description": "Devcontainer wrapper for sandboxed development environments (Bun runtime required)",
   "main": "src/index.ts",
   "bin": {
     "aisanity": "src/index.ts"
@@ -23,7 +23,8 @@
     "sandbox",
     "development",
     "container",
-    "workspace"
+    "workspace",
+    "bun"
   ],
   "author": "",
   "license": "MIT",
@@ -41,5 +42,6 @@
   },
   "engines": {
     "bun": ">=1.0.0"
-  }
+  },
+  "runtime": "bun"
 }

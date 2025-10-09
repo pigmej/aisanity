@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { safeExecSyncSync as safeExecSync } from './runtime-utils';
+import { execSync } from 'child_process';
 import * as YAML from 'yaml';
 import { isWorktree as isWorktreeUtil, getWorktreeName as getWorktreeNameUtil } from './worktree-utils';
 
@@ -39,10 +39,9 @@ export function getWorkspaceName(cwd: string): string {
 
 export function getCurrentBranch(cwd: string): string {
   try {
-    const gitBranch = safeExecSync('git rev-parse --abbrev-ref HEAD', {
+    const gitBranch = execSync('git rev-parse --abbrev-ref HEAD', {
       cwd,
-      encoding: 'utf8',
-      stdio: 'pipe'
+      encoding: 'utf8'
     }).trim();
     return gitBranch || 'main';
   } catch (error) {

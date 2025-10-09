@@ -1,6 +1,5 @@
 import { expect, test, describe, spyOn, beforeEach, afterEach } from 'bun:test';
 import * as fs from 'fs';
-import { safeSpawn, safeExecSyncSync } from '../src/utils/runtime-utils';
 
 // Mock dependencies
 const mockReadline = {
@@ -16,8 +15,6 @@ describe('worktree-remove command utilities', () => {
   let mockReaddirSync: any;
   let mockRmSync: any;
   let mockCwd: any;
-  let mockSafeSpawn: any;
-  let mockSafeExecSyncSync: any;
   let mockExit: any;
   let mockConsoleLog: any;
   let mockConsoleError: any;
@@ -28,18 +25,6 @@ describe('worktree-remove command utilities', () => {
     mockStatSync = spyOn(fs, 'statSync').mockReturnValue({ isDirectory: () => true } as any);
     mockReaddirSync = spyOn(fs, 'readdirSync').mockReturnValue(['feature-branch'] as any);
     mockRmSync = spyOn(fs, 'rmSync').mockImplementation(() => {});
-
-    // Mock runtime-utils
-    const runtimeUtilsModule = require('../src/utils/runtime-utils');
-    mockSafeSpawn = spyOn(runtimeUtilsModule, 'safeSpawn').mockReturnValue({
-      on: (event: string, callback: (code: number) => void) => {
-        if (event === 'close') callback(0);
-      },
-      stdout: { on: () => {} },
-      stderr: { on: () => {} }
-    } as any);
-    
-    mockSafeExecSyncSync = spyOn(runtimeUtilsModule, 'safeExecSyncSync').mockReturnValue('' as any);
 
     // Mock readline
     const readlineModule = require('readline');
@@ -62,8 +47,6 @@ describe('worktree-remove command utilities', () => {
     mockReaddirSync?.mockRestore?.();
     mockRmSync?.mockRestore?.();
     mockCwd?.mockRestore?.();
-    mockSafeSpawn?.mockRestore?.();
-    mockSafeExecSyncSync?.mockRestore?.();
     mockExit?.mockRestore?.();
     mockConsoleLog?.mockRestore?.();
     mockConsoleError?.mockRestore?.();
@@ -99,31 +82,6 @@ describe('worktree-remove command utilities', () => {
     expect(typeof mockFs.mockImplementation).toBe('function');
   });
 
-  test('should execute git worktree remove command', () => {
-    const branchName = 'feature-branch';
-    
-    // Simulate git command execution
-    safeExecSyncSync(`git worktree remove ${branchName}`, { stdio: 'pipe' });
-    
-    expect(mockSafeExecSyncSync).toHaveBeenCalledWith(
-      `git worktree remove ${branchName}`,
-      expect.objectContaining({ stdio: 'pipe' })
-    );
-  });
-
-  test('should handle git command errors gracefully', () => {
-    // Mock git error
-    mockSafeExecSyncSync.mockImplementation(() => {
-      throw new Error('Git error');
-    });
-
-    try {
-      safeExecSyncSync('git worktree remove feature-branch', { stdio: 'pipe' });
-    } catch (error: any) {
-      expect(error.message).toBe('Git error');
-    }
-  });
-
   test('should handle directory removal errors', () => {
     // Mock fs error
     mockFs.mockImplementation(() => {
@@ -135,18 +93,6 @@ describe('worktree-remove command utilities', () => {
     } catch (error: any) {
       expect(error.message).toBe('Permission denied');
     }
-  });
-
-  test('should spawn child process for git operations', () => {
-    const gitProcess = safeSpawn('git', ['worktree', 'list'], {
-      stdio: 'pipe',
-      cwd: '/main/workspace'
-    });
-
-    expect(mockSafeSpawn).toHaveBeenCalledWith('git', ['worktree', 'list'], {
-      stdio: 'pipe',
-      cwd: '/main/workspace'
-    });
   });
 
   test('should handle process exit for error conditions', () => {

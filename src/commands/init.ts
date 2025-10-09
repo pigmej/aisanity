@@ -2,7 +2,6 @@ import { Command } from 'commander';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { safeExecSyncSync as execSync } from '../utils/runtime-utils';
 import { getWorkspaceName, createAisanityConfig, setupOpencodeConfig, detectProjectType } from '../utils/config';
 import { getDevContainerTemplate } from '../utils/devcontainer-templates';
 

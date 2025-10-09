@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import * as fs from 'fs';
 import * as path from 'path';
-import { safeExecSyncSync as execSync, safeSpawn } from '../utils/runtime-utils';
+import { execSync } from 'child_process';
 import {
   getMainWorkspacePath,
   validateBranchName,
@@ -101,21 +101,15 @@ export const worktreeCreateCommand = new Command('create')
         }
         
         // Use spawn for better security
-        const gitResult = safeSpawn('git', gitArgs, {
+        const gitResult = Bun.spawn(['git', ...gitArgs], {
           cwd: gitRoot,
-          stdio: options.verbose ? 'inherit' : 'pipe'
+          stdio: options.verbose ? ['inherit', 'inherit', 'inherit'] : ['pipe', 'pipe', 'pipe']
         });
         
-        await new Promise<void>((resolve, reject) => {
-          gitResult.on('error', reject);
-          gitResult.on('exit', (code: number) => {
-            if (code === 0) {
-              resolve();
-            } else {
-              reject(new Error(`git worktree add failed with code ${code}`));
-            }
-          });
-        });
+        const gitExitCode = await gitResult.exited;
+        if (gitExitCode !== 0) {
+          throw new Error(`git worktree add failed with code ${gitExitCode}`);
+        }
         
         if (options.verbose) {
           console.log(`Created git worktree: ${worktreePath} ${branchExists ? '(existing branch)' : '(new branch)'}`);

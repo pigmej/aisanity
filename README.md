@@ -18,28 +18,26 @@ All devcontainer templates include automatic opencode installation and configura
 
 ## Installation
 
-### Option 1: Bun Runtime (Recommended for Performance)
+### Prerequisites
 
-Install Bun for optimal performance (4x faster startup, 100x faster tests):
+**Bun Runtime Required**: Aisanity requires Bun (>=1.0.0) runtime. Installation is quick and simple:
 
 ```bash
-# Install Bun runtime
+# Install Bun runtime (takes <30 seconds)
 curl -fsSL https://bun.sh/install | bash
 
-# Install Aisanity with Bun
+# Verify installation
+bun --version
+```
+
+### Option 1: Install with Bun (Recommended)
+
+```bash
+# Install Aisanity globally
 bun install -g aisanity
 ```
 
-### Option 2: Node.js Runtime (Compatible)
-
-Traditional Node.js installation with full backward compatibility:
-
-```bash
-# Install with npm (Node.js)
-npm install -g aisanity
-```
-
-### Option 3: Standalone Executable
+### Option 2: Standalone Executable
 
 Download the platform-specific executable from the [GitHub Releases](https://github.com/your-username/aisanity/releases) page:
 
@@ -63,22 +61,16 @@ chmod +x aisanity-linux-x64
 .\aisanity-win-x64.exe --help
 ```
 
-**Optional**: Verify checksum for security:
-```bash
-# macOS/Linux
-shasum -a 256 aisanity-macos-arm64
-# Compare with the .sha256 file in releases
+**Note**: Standalone executables bundle the Bun runtime, so no separate Bun installation is needed.
 
-# Windows
-certutil -hashfile aisanity-win-x64.exe SHA256
-```
+### Why Bun?
 
-### Performance Comparison
-
-| Runtime | Startup Time | Test Execution | Memory Usage |
-|---------|-------------|---------------|--------------|
-| Bun     | ~70ms       | ~50ms         | 25-40% less  |
-| Node.js | ~300ms      | ~5s           | Baseline     |
+Aisanity requires Bun for optimal performance and modern development experience:
+- **4x faster** startup times (~70ms vs ~300ms)
+- **100x faster** test execution (~50ms vs ~5s)
+- **Native TypeScript** execution without compilation
+- **Modern APIs** for shell commands and process spawning
+- **25-40% less** memory usage
 
 ### Development Setup
 
@@ -397,8 +389,7 @@ env:
 
 - Docker
 - Devcontainers CLI (`npm install -g @devcontainers/cli`)
-- **Bun >= 1.0.0** (recommended for optimal performance)
-- **Node.js >= 22.x** (supported for backward compatibility)
+- **Bun >= 1.0.0** (required)
 
 
 ## Opencode integration

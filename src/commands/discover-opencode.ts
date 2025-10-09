@@ -1,8 +1,8 @@
 import { Command } from 'commander';
 import * as YAML from 'yaml';
 import pc from 'picocolors';
+import { $ } from 'bun';
 import { loadAisanityConfig, getContainerName as getAisanityContainerName } from '../utils/config';
-import { safeDockerExec } from '../utils/docker-safe-exec';
 
 export interface OpencodeInstance {
   containerId: string;
@@ -30,10 +30,7 @@ interface CommandOptions {
 // Function to check if port serves opencode API
 async function isOpencodeApi(containerId: string, host: string, port: number, verbose: boolean = false): Promise<boolean> {
   try {
-    const result = await safeDockerExec(['exec', containerId, 'curl', '-s', `http://${host}:${port}/config`], {
-      timeout: 5000,
-      verbose
-    });
+    const result = await $`docker exec ${containerId} curl -s http://${host}:${port}/config`.text();
 
     // Parse and validate the response content
     try {
@@ -100,10 +97,7 @@ export function elapsedToSeconds(time: string): number {
 // Function to get container name
 async function getContainerName(containerId: string, verbose: boolean = false): Promise<string> {
   try {
-    const output = await safeDockerExec(['inspect', containerId, '--format', '{{.Name}}'], {
-      timeout: 5000,
-      verbose
-    });
+    const output = await $`docker inspect ${containerId} --format {{.Name}}`.text();
     return output.trim().replace(/^\//, '');
   } catch (error) {
     return containerId;
@@ -129,18 +123,18 @@ export async function discoverOpencodeInstances(options: CommandOptions): Promis
 
     const containerIdsSet = new Set<string>();
 
-    // Get main container
+     // Get main container
      try {
-       const mainOutput = await safeDockerExec(['ps', '-q', '--filter', `name=${containerName}`], { timeout: 10000, verbose: options.verbose });
-       mainOutput.trim().split('\n').filter(id => id.length > 0).forEach(id => containerIdsSet.add(id));
+       const mainOutput = await $`docker ps -q --filter name=${containerName}`.text();
+       mainOutput.trim().split('\n').filter((id: string) => id.length > 0).forEach((id: string) => containerIdsSet.add(id));
      } catch (error) {
        // No main container
      }
 
      // Get devcontainer
      try {
-       const devOutput = await safeDockerExec(['ps', '-q', '--filter', `label=devcontainer.local_folder=${cwd}`], { timeout: 10000, verbose: options.verbose });
-       devOutput.trim().split('\n').filter(id => id.length > 0).forEach(id => containerIdsSet.add(id));
+       const devOutput = await $`docker ps -q --filter label=devcontainer.local_folder=${cwd}`.text();
+       devOutput.trim().split('\n').filter((id: string) => id.length > 0).forEach((id: string) => containerIdsSet.add(id));
      } catch (error) {
        // No devcontainer
      }
@@ -154,14 +148,11 @@ export async function discoverOpencodeInstances(options: CommandOptions): Promis
     // Filter containers that have opencode processes
     const containersWithOpencode: string[] = [];
 
-    for (const containerId of containerIds) {
+     for (const containerId of containerIds) {
        try {
-         const output = await safeDockerExec(['exec', containerId, 'ps', 'aux'], {
-           timeout: 5000,
-           verbose: options.verbose
-         });
+         const output = await $`docker exec ${containerId} ps aux`.text();
          // Check if opencode is running (excluding tui- and grep)
-         const hasOpencode = output.split('\n').some(line =>
+         const hasOpencode = output.split('\n').some((line: string) =>
            line.includes('opencode') && !line.includes('tui-') && !line.includes('grep')
          );
          if (hasOpencode) {
@@ -187,14 +178,11 @@ export async function discoverOpencodeInstances(options: CommandOptions): Promis
 
        try {
          // Get opencode processes
-         const processesOutput = await safeDockerExec(['exec', containerId, 'ps', '-eo', 'pid,etime,cmd'], {
-           timeout: 5000,
-           verbose: options.verbose
-         });
+         const processesOutput = await $`docker exec ${containerId} ps -eo pid,etime,cmd`.text();
          const processes = processesOutput
            .split('\n')
-           .filter(line => line.includes('opencode') && !line.includes('tui-') && !line.includes('grep'))
-           .map(line => {
+           .filter((line: string) => line.includes('opencode') && !line.includes('tui-') && !line.includes('grep'))
+           .map((line: string) => {
              const match = line.trim().match(/^\s*(\d+)\s+([^ ]+)\s+(.+)$/);
              if (match) {
                return {
@@ -205,19 +193,16 @@ export async function discoverOpencodeInstances(options: CommandOptions): Promis
              }
              return null;
            })
-           .filter((process): process is NonNullable<typeof process> => process !== null);
+           .filter((process: any): process is NonNullable<typeof process> => process !== null);
 
          if (processes.length === 0) continue;
 
          // Get listening ports with hosts
-         const portsOutput = await safeDockerExec(['exec', containerId, 'netstat', '-tlnp'], {
-           timeout: 5000,
-           verbose: options.verbose
-         });
+         const portsOutput = await $`docker exec ${containerId} netstat -tlnp`.text();
          const listeningAddresses = portsOutput
            .split('\n')
-           .filter(line => line.includes('LISTEN'))
-           .map(line => {
+           .filter((line: string) => line.includes('LISTEN'))
+           .map((line: string) => {
              // Match patterns like "127.0.0.1:3000", "0.0.0.0:3000", "192.168.1.100:3000"
              const match = line.match(/(\d+\.\d+\.\d+\.\d+|localhost|0\.0\.0\.0):(\d+)/);
              if (match) {

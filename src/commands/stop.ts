@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { safeExecSyncSync as execSync } from '../utils/runtime-utils';
+import { execSync } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
 import { loadAisanityConfig, getContainerName } from '../utils/config';

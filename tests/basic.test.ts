@@ -1,32 +1,24 @@
 // Basic test to verify Bun test runner works
-import { getRuntimeInfo } from '../src/utils/runtime-utils';
-
-// Test will be available at runtime with Bun
-console.log('Running basic test with Bun test runner');
+import { test, expect } from 'bun:test';
 
 // Simple test without complex mocking
-test('Runtime detection works', () => {
-  const runtime = getRuntimeInfo();
-  console.log('Detected runtime:', runtime);
-  
-  // Basic assertions
-  if (typeof runtime === 'object' && runtime !== null) {
-    console.log('✓ Runtime info is an object');
-  }
-  
-  if (typeof runtime.runtime === 'string') {
-    console.log('✓ Runtime name is a string:', runtime.runtime);
-  }
-  
-  if (typeof runtime.version === 'string') {
-    console.log('✓ Runtime version is a string:', runtime.version);
-  }
+test('Bun test runner works', () => {
+  expect(typeof Bun).toBe('object');
+  expect(Bun.version).toBeDefined();
+  console.log('✓ Running on Bun version:', Bun.version);
 });
 
-test('Docker-safe-exec can be imported', () => {
-  const { safeDockerExec, isBunRuntime } = require('../src/utils/docker-safe-exec');
+test('Container utils module can be imported', () => {
+  const containerModule = require('../src/utils/container-utils');
   
-  console.log('✓ safeDockerExec function imported');
-  console.log('✓ isBunRuntime function imported');
-  console.log('Current runtime detected as Bun:', isBunRuntime());
+  expect(containerModule.discoverContainers).toBeDefined();
+  expect(typeof containerModule.discoverContainers).toBe('function');
+  console.log('✓ discoverContainers function imported');
+});
+
+test('Basic assertions work', () => {
+  expect(1 + 1).toBe(2);
+  expect('test').toBe('test');
+  expect([1, 2, 3]).toHaveLength(3);
+  console.log('✓ Basic assertions pass');
 });

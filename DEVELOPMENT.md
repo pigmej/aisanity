@@ -8,8 +8,7 @@ This document contains guidelines for setting up and using the Aisanity developm
 
 ### Prerequisites
 
-- **Bun >= 1.0.0** (recommended for optimal performance)
-- **Node.js >= 22.x** (for compatibility testing)
+- **Bun >= 1.0.0** (required)
 - **Docker** (for container operations)
 - **Devcontainers CLI** (`npm install -g @devcontainers/cli`)
 
@@ -55,20 +54,7 @@ bun run package
 bun run lint
 ```
 
-### Dual Runtime Testing
 
-Test compatibility with both runtimes:
-
-```bash
-# Test with Bun (primary)
-bun test
-
-# Test with Node.js (compatibility)
-npm test
-
-# Runtime-specific tests
-bun test tests/runtime-compatibility.test.ts
-```
 
 ## Aisanity Usage
 
@@ -79,25 +65,42 @@ bun test tests/runtime-compatibility.test.ts
 
 ## Architecture Overview
 
-### Runtime Layer
-- **Runtime Detection**: Automatic detection of Bun vs Node.js
-- **API Selection**: Optimal API selection based on available runtime
-- **Fallback Support**: Graceful degradation to Node.js when needed
-
 ### Process Management
-- **Docker Integration**: Enhanced with Bun.spawn and AbortController
-- **Shell Commands**: Cross-platform execution with Bun.$ fallback
-- **Error Handling**: Runtime context in error messages
+- **Docker Integration**: Using Bun's native spawn and $ APIs
+- **Shell Commands**: Direct Bun shell execution
+- **Error Handling**: Simplified error handling
 
 ### Testing Framework
 - **Bun Test Runner**: Native TypeScript support, faster execution
-- **Dual Runtime Testing**: CI/CD matrix testing on both runtimes
 - **Performance Benchmarks**: Automated performance validation
 
 ## Best Practices
 
+### Using Bun APIs
+
+Always use Bun's native APIs for shell commands and process spawning:
+
+```typescript
+// Shell execution
+import { $ } from 'bun';
+const output = await $`git status`.text();
+
+// Process spawning
+const proc = Bun.spawn(['command', 'arg'], { stdout: 'pipe' });
+```
+
+### Error Handling
+
+```typescript
+try {
+  const result = await $`command`.text();
+} catch (error) {
+  console.error('Command failed:', error.message);
+}
+```
+
 ### Development Workflow
-- Use Bun for primary development (4x faster startup)
+- Use Bun for all development (4x faster startup)
 - Test on both runtimes before submitting PRs
 - Use `bun run dev` for hot reload during development
 - Run `bun test` frequently for fast feedback
