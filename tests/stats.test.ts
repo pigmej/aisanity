@@ -1,58 +1,51 @@
-import { expect, test, describe, beforeEach, spyOn } from 'bun:test';
+import { expect, test, describe, beforeEach, afterEach, spyOn } from 'bun:test';
 import * as fs from 'fs';
 
 // Import the function to test
 import { generateStats } from '../src/commands/stats';
 
-// Create mock for fs since Bun doesn't have fs module mocking like Jest
-const mockFs = {
-  existsSync: () => true,
-  readdirSync: () => [],
-  statSync: () => ({ size: 1000 }),
-  readFileSync: () => '{}',
-  promises: {
-    readdir: () => Promise.resolve([]),
-    readFile: () => Promise.resolve('{}'),
-    stat: () => Promise.resolve({ size: 1000 })
-  }
-};
+// Helper function to mock empty directory
+function mockEmptyDirectory() {
+  const mockExistsSync = spyOn(fs, 'existsSync').mockReturnValue(true);
+  const mockReaddirSync = spyOn(fs, 'readdirSync').mockReturnValue([]);
+  return { mockExistsSync, mockReaddirSync };
+}
 
-const mockPath = {
-  join: (...args: string[]) => args.join('/'),
-  resolve: (...args: string[]) => args.join('/')
-};
-
-// Mock original methods to preserve global state
-let originalConsoleLog: any;
-let originalConsoleError: any;
-let originalConsoleWarn: any;
-let originalProcessExit: any;
+// Helper function to mock missing directory
+function mockMissingDirectory() {
+  const mockExistsSync = spyOn(fs, 'existsSync').mockImplementation((path: fs.PathLike) => {
+    if (path.toString().includes('.local/share/opencode/storage/message')) {
+      return false;
+    }
+    return true;
+  });
+  return mockExistsSync;
+}
 
 describe('stats command', () => {
   beforeEach(() => {
-    // Store original methods
-    originalConsoleLog = console.log;
-    originalConsoleError = console.error;
-    originalConsoleWarn = console.warn;
-    originalProcessExit = process.exit;
-
     // Mock methods using spyOn
     spyOn(console, 'log').mockImplementation(() => {});
     spyOn(console, 'error').mockImplementation(() => {});
     spyOn(console, 'warn').mockImplementation(() => {});
-    spyOn(process, 'exit').mockImplementation((code) => {
-      throw new Error(`process.exit called with code ${code}`);
-    });
+  });
+
+  afterEach(() => {
+    // Restore all mocks to prevent test interference
+    if (typeof jest !== 'undefined') {
+      jest.restoreAllMocks();
+    }
   });
 
   describe('input validation', () => {
     test('should validate days parameter is a positive number', async () => {
-      // Mock Bun.file to simulate file system
-      const originalBunFile = Bun.file;
-      (Bun as any).file = () => ({
-        exists: async () => true,
-        text: async () => '[]'
+      // Mock process.exit for this test
+      const mockProcessExit = spyOn(process, 'exit').mockImplementation((code) => {
+        throw new Error(`process.exit called with code ${code}`);
       });
+      
+      // Mock directory exists but is empty (to bypass file system checks)
+      const { mockExistsSync, mockReaddirSync } = mockEmptyDirectory();
 
       try {
         await generateStats({ days: 'invalid' });
@@ -60,17 +53,21 @@ describe('stats command', () => {
         expect(error.message).toContain('process.exit called with code 1');
       }
       expect(console.error).toHaveBeenCalledWith('Error: --days must be a positive number');
-      (process.exit as any).mockRestore();
-      (Bun as any).file = originalBunFile;
+      
+      // Clean up mocks
+      mockExistsSync.mockRestore();
+      mockReaddirSync.mockRestore();
+      mockProcessExit.mockRestore();
     });
 
     test('should validate days parameter is not negative', async () => {
-      // Mock Bun.file to simulate file system
-      const originalBunFile = Bun.file;
-      (Bun as any).file = () => ({
-        exists: async () => true,
-        text: async () => '[]'
+      // Mock process.exit for this test
+      const mockProcessExit = spyOn(process, 'exit').mockImplementation((code) => {
+        throw new Error(`process.exit called with code ${code}`);
       });
+      
+      // Mock directory exists but is empty (to bypass file system checks)
+      const { mockExistsSync, mockReaddirSync } = mockEmptyDirectory();
 
       try {
         await generateStats({ days: '-5' });
@@ -78,44 +75,53 @@ describe('stats command', () => {
         expect(error.message).toContain('process.exit called with code 1');
       }
       expect(console.error).toHaveBeenCalledWith('Error: --days must be a positive number');
-      (process.exit as any).mockRestore();
-      (Bun as any).file = originalBunFile;
+      
+      // Clean up mocks
+      mockExistsSync.mockRestore();
+      mockReaddirSync.mockRestore();
+      mockProcessExit.mockRestore();
     });
 
-    test('should accept valid days parameter', async () => {
-      // Mock Bun.file to simulate file system
-      const originalBunFile = Bun.file;
-      (Bun as any).file = () => ({
-        exists: async () => true,
-        text: async () => '[]'
+    test('should accept valid days parameter with no files', async () => {
+      // Mock process.exit for this test
+      const mockProcessExit = spyOn(process, 'exit').mockImplementation((code) => {
+        throw new Error(`process.exit called with code ${code}`);
       });
+      
+      // Mock directory exists but is empty
+      const { mockExistsSync, mockReaddirSync } = mockEmptyDirectory();
 
       try {
         await generateStats({ days: '30' });
       } catch (error) {
         // If there's an unexpected process.exit error, fail the test
         if (error.message?.includes('process.exit called with code')) {
-          expect(true).toBe(false); // Force test failure if process.exit was called unexpectedly
+          throw new Error(`Unexpected process.exit: ${error.message}`);
         } else {
           throw error;
         }
       }
-      expect(process.exit).not.toHaveBeenCalled();
-      (Bun as any).file = originalBunFile;
+      
+      // Should complete without calling process.exit
+      expect(mockProcessExit).not.toHaveBeenCalled();
+      expect(console.log).toHaveBeenCalledWith('No OpenCode message files found');
+      
+      // Clean up mocks
+      mockExistsSync.mockRestore();
+      mockReaddirSync.mockRestore();
+      mockProcessExit.mockRestore();
     });
   });
 
   describe('file processing', () => {
     test('should handle missing OpenCode storage directory', async () => {
-      // Mock fs.existsSync to simulate non-existent directory
-      const mockExistsSync = spyOn(fs, 'existsSync').mockImplementation((path: fs.PathLike) => {
-        // Return false for the OpenCode storage path
-        if (path.toString().includes('.local/share/opencode/storage/message')) {
-          return false;
-        }
-        // For other paths, return true by default
-        return true;
+      // Mock process.exit for this test
+      const mockProcessExit = spyOn(process, 'exit').mockImplementation((code) => {
+        throw new Error(`process.exit called with code ${code}`);
       });
+      
+      // Mock fs.existsSync to simulate non-existent directory
+      const mockExistsSync = mockMissingDirectory();
 
       try {
         await generateStats({ days: '30' });
@@ -126,35 +132,32 @@ describe('stats command', () => {
       
       // Clean up the mock
       mockExistsSync.mockRestore();
+      mockProcessExit.mockRestore();
     });
 
     test('should handle empty message directory', async () => {
-      // Mock fs.existsSync to return false for OpenCode storage
-      const mockExistsSync = spyOn(fs, 'existsSync').mockImplementation((path: fs.PathLike) => {
-        // Return false for the OpenCode storage path to simulate missing directory
-        if (path.toString().includes('.local/share/opencode/storage/message')) {
-          return false;
-        }
-        return true;
+      // Mock process.exit for this test
+      const mockProcessExit = spyOn(process, 'exit').mockImplementation((code) => {
+        throw new Error(`process.exit called with code ${code}`);
       });
-
-      // Mock Bun.file to simulate empty directory
-      const originalBunFile = Bun.file;
-      (Bun as any).file = () => ({
-        exists: async () => true,
-        text: async () => '[]'
-      });
+      
+      // Mock directory exists but is empty
+      const { mockExistsSync, mockReaddirSync } = mockEmptyDirectory();
 
       try {
         await generateStats({ days: '30' });
         expect(console.log).toHaveBeenCalledWith('No OpenCode message files found');
       } catch (error) {
-        // Expect process.exit to be called when directory is missing
-        expect(error.message).toContain('process.exit called with code 1');
+        // If there's an unexpected process.exit error, fail the test
+        if (error.message?.includes('process.exit called with code')) {
+          throw new Error(`Unexpected process.exit: ${error.message}`);
+        }
+        throw error;
       } finally {
         // Clean up mocks
         mockExistsSync.mockRestore();
-        (Bun as any).file = originalBunFile;
+        mockReaddirSync.mockRestore();
+        mockProcessExit.mockRestore();
       }
     });
   });
