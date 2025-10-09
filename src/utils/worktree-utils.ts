@@ -79,15 +79,13 @@ export function getMainWorkspacePath(cwd: string): string {
     // Get the git root directory
     const gitRoot = execSync('git rev-parse --show-toplevel', {
       cwd,
-      encoding: 'utf8',
-      stdio: 'pipe'
+      encoding: 'utf8'
     }).trim();
     
     // Check if we're in a worktree
     const gitDir = execSync('git rev-parse --git-dir', {
       cwd,
-      encoding: 'utf8',
-      stdio: 'pipe'
+      encoding: 'utf8'
     }).trim();
     
     // In worktrees, git dir is like: /main/repo/.git/worktrees/<worktree-name>
@@ -154,8 +152,7 @@ export function getAllWorktrees(cwd: string): WorktreeList {
   // Find the main git repository path (not worktree path)
   const gitDir = execSync('git rev-parse --git-dir', {
     cwd,
-    encoding: 'utf8',
-    stdio: 'pipe'
+    encoding: 'utf8'
   }).trim();
   
   let mainGitRepo: string;
@@ -169,8 +166,7 @@ export function getAllWorktrees(cwd: string): WorktreeList {
     // We're in main repo - use show-toplevel
     mainGitRepo = execSync('git rev-parse --show-toplevel', {
       cwd,
-      encoding: 'utf8',
-      stdio: 'pipe'
+      encoding: 'utf8'
     }).trim();
   }
   
@@ -297,8 +293,7 @@ export function getWorktreeByName(worktreeName: string, topLevelPath: string): W
     // Get git root to find config
     const gitRoot = execSync('git rev-parse --show-toplevel', {
       cwd: worktreePath,
-      encoding: 'utf8',
-      stdio: 'pipe'
+      encoding: 'utf8'
     }).trim();
 
     // Config might be in top level or git root

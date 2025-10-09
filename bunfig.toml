@@ -1,0 +1,6 @@
+[test]
+coverage = true
+preload = "./tests/setup.ts"
+
+[install]
+cache = true

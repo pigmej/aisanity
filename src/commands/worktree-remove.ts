@@ -1,9 +1,8 @@
 import { Command } from 'commander';
 import * as fs from 'fs';
 import * as path from 'path';
-import { spawn, execSync } from 'child_process';
+import { execSync } from 'child_process';
 import { getMainWorkspacePath, getWorktreeByName, getAllWorktrees } from '../utils/worktree-utils';
-import { safeDockerExec } from '../utils/docker-safe-exec';
 import { checkWorktreeEnabled } from '../utils/config';
 import { discoverByLabels, stopContainers, removeContainers } from '../utils/container-utils';
 
@@ -137,21 +136,15 @@ export const worktreeRemoveCommand = new Command('remove')
       
       // Remove git worktree
       try {
-        const removeResult = spawn('git', ['worktree', 'remove', worktreePath], {
+        const removeResult = Bun.spawn(['git', 'worktree', 'remove', worktreePath], {
           cwd: gitRoot,
-          stdio: options.verbose ? 'inherit' : 'pipe'
+          stdio: options.verbose ? ['inherit', 'inherit', 'inherit'] : ['pipe', 'pipe', 'pipe']
         });
         
-        await new Promise<void>((resolve, reject) => {
-          removeResult.on('error', reject);
-          removeResult.on('exit', (code) => {
-            if (code === 0) {
-              resolve();
-            } else {
-              reject(new Error(`git worktree remove failed with code ${code}`));
-            }
-          });
-        });
+        const removeExitCode = await removeResult.exited;
+        if (removeExitCode !== 0) {
+          throw new Error(`git worktree remove failed with code ${removeExitCode}`);
+        }
         
         if (options.verbose) {
           console.log(`Removed git worktree: ${worktreePath}`);

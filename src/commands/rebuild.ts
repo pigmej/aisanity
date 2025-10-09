@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import * as path from 'path';
-import { spawn, execSync } from 'child_process';
+import { execSync } from 'child_process';
 import { loadAisanityConfig, getContainerName } from '../utils/config';
 
 export const rebuildCommand = new Command('rebuild')
@@ -84,21 +84,15 @@ export const rebuildCommand = new Command('rebuild')
         buildArgs.push('--config', path.resolve(options.devcontainerJson));
       }
 
-      const buildResult = spawn('devcontainer', buildArgs, {
-        stdio: 'inherit',
+      const buildResult = Bun.spawn(['devcontainer', ...buildArgs], {
+        stdio: ['inherit', 'inherit', 'inherit'],
         cwd
       });
 
-      await new Promise<void>((resolve, reject) => {
-        buildResult.on('error', reject);
-        buildResult.on('exit', (code) => {
-          if (code === 0) {
-            resolve();
-          } else {
-            reject(new Error(`devcontainer build failed with code ${code}`));
-          }
-        });
-      });
+      const buildExitCode = await buildResult.exited;
+      if (buildExitCode !== 0) {
+        throw new Error(`devcontainer build failed with code ${buildExitCode}`);
+      }
 
       // Start the container
       console.log('Starting dev container...');
@@ -108,21 +102,15 @@ export const rebuildCommand = new Command('rebuild')
         upArgs.push('--config', path.resolve(options.devcontainerJson));
       }
 
-      const upResult = spawn('devcontainer', upArgs, {
-        stdio: 'inherit',
+      const upResult = Bun.spawn(['devcontainer', ...upArgs], {
+        stdio: ['inherit', 'inherit', 'inherit'],
         cwd
       });
 
-      await new Promise<void>((resolve, reject) => {
-        upResult.on('error', reject);
-        upResult.on('exit', (code) => {
-          if (code === 0) {
-            resolve();
-          } else {
-            reject(new Error(`devcontainer up failed with code ${code}`));
-          }
-        });
-      });
+      const upExitCode = await upResult.exited;
+      if (upExitCode !== 0) {
+        throw new Error(`devcontainer up failed with code ${upExitCode}`);
+      }
 
       console.log('Dev container rebuilt and started successfully');
 

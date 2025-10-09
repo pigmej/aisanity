@@ -1,3 +1,4 @@
+import { expect, test, describe, beforeEach, afterEach, it } from 'bun:test';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
@@ -8,9 +9,7 @@ import {
   getBranchSpecificDevContainerPath,
   getBaseDevContainerPath,
   FileNotFoundError,
-  InvalidJsonError,
-  PermissionError,
-  DiskSpaceError
+  InvalidJsonError
 } from '../src/utils/devcontainer-templates';
 import { ProjectType } from '../src/utils/config';
 
@@ -65,12 +64,10 @@ describe('Devcontainer Templates', () => {
   });
 
   describe('readDevContainerJson', () => {
-    const tempDir = path.join(os.tmpdir(), 'devcontainer-test');
+    let tempDir: string;
 
     beforeEach(() => {
-      if (fs.existsSync(tempDir)) {
-        fs.rmSync(tempDir, { recursive: true, force: true });
-      }
+      tempDir = path.join(os.tmpdir(), `devcontainer-test-${Date.now()}-${Math.random()}`);
       fs.mkdirSync(tempDir, { recursive: true });
     });
 
@@ -107,12 +104,10 @@ describe('Devcontainer Templates', () => {
   });
 
   describe('createBranchSpecificDevContainer', () => {
-    const tempDir = path.join(os.tmpdir(), 'devcontainer-create-test');
+    let tempDir: string;
 
     beforeEach(() => {
-      if (fs.existsSync(tempDir)) {
-        fs.rmSync(tempDir, { recursive: true, force: true });
-      }
+      tempDir = path.join(os.tmpdir(), `devcontainer-create-test-${Date.now()}-${Math.random()}`);
       fs.mkdirSync(tempDir, { recursive: true });
     });
 

@@ -1,4 +1,11 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
+
+// Verify Bun runtime
+if (typeof Bun === 'undefined') {
+  console.error('Error: This application requires Bun runtime.');
+  console.error('Install Bun from: https://bun.sh');
+  process.exit(1);
+}
 
 import { Command } from 'commander';
 import { initCommand } from './commands/init';

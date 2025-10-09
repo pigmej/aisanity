@@ -1,10 +1,10 @@
 import { Command } from 'commander';
 import { execSync } from 'child_process';
+import { $ } from 'bun';
 import * as path from 'path';
 import * as fs from 'fs';
 import { loadAisanityConfig, getContainerName, getCurrentBranch } from '../utils/config';
 import { getAllWorktrees, getWorktreeName, WorktreeInfo, WorktreeList, detectOrphanedContainers } from '../utils/worktree-utils';
-import { safeDockerExec } from '../utils/docker-safe-exec';
 
 // Internal interfaces for status display
 interface WorktreeStatusRow {
@@ -258,12 +258,9 @@ async function displaySingleWorktreeStatus(cwd: string, verbose: boolean): Promi
 async function getContainerStatusWithPorts(containerName: string, verbose: boolean): Promise<{ status: string; ports: string }> {
   try {
     // Get container status and ports in a single call
-    const result = await safeDockerExec(['ps', '-a', '--filter', `label=aisanity.container=${containerName}`, '--format', '{{.Names}}\t{{.Status}}\t{{.Ports}}'], {
-      verbose,
-      timeout: 5000
-    });
+    const result = await $`docker ps -a --filter label=aisanity.container=${containerName} --format {{.Names}}\t{{.Status}}\t{{.Ports}}`.text();
     
-    const lines = result.trim().split('\n').filter(line => line.trim() !== '');
+    const lines = result.trim().split('\n').filter((line: string) => line.trim() !== '');
     
     if (lines.length === 0) {
       return { status: 'Not created', ports: '-' };

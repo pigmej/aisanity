@@ -1,6 +1,5 @@
-import { execSync } from 'child_process';
+import { $ } from 'bun';
 import * as path from 'path';
-import { safeDockerExec } from './docker-safe-exec';
 import { getAllWorktrees } from './worktree-utils';
 import { readFileSync } from 'fs';
 
@@ -113,11 +112,7 @@ export async function discoverContainers(verbose: boolean = false): Promise<Cont
  */
 export async function discoverByLabels(verbose: boolean = false): Promise<DockerContainer[]> {
   try {
-    const result = await safeDockerExec([
-      'ps', '-a',
-      '--filter', 'label=aisanity.workspace',
-      '--format', '{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}\t{{.Labels}}'
-    ], { verbose, timeout: 10000 });
+    const result = await $`docker ps -a --filter label=aisanity.workspace --format {{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}\t{{.Labels}}`.text();
 
     return parseDockerOutput(result);
   } catch (error) {
@@ -135,11 +130,7 @@ export async function discoverByLabels(verbose: boolean = false): Promise<Docker
  */
 export async function discoverByDevcontainerMetadata(verbose: boolean = false): Promise<DockerContainer[]> {
   try {
-    const result = await safeDockerExec([
-      'ps', '-a',
-      '--filter', 'label=devcontainer.local_folder',
-      '--format', '{{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}\t{{.Labels}}'
-    ], { verbose, timeout: 10000 });
+    const result = await $`docker ps -a --filter label=devcontainer.local_folder --format {{.ID}}\t{{.Names}}\t{{.Image}}\t{{.Status}}\t{{.Ports}}\t{{.Labels}}`.text();
 
     return parseDockerOutput(result);
   } catch (error) {
@@ -194,7 +185,7 @@ export function parseDockerOutput(output: string): DockerContainer[] {
 export async function stopContainers(containerIds: string[], verbose: boolean = false): Promise<void> {
   for (const id of containerIds) {
     try {
-      await safeDockerExec(['stop', id], { verbose, timeout: 30000 });
+      await $`docker stop ${id}`.text();
       if (verbose) {
         console.log(`Stopped container: ${id}`);
       }
@@ -210,7 +201,7 @@ export async function stopContainers(containerIds: string[], verbose: boolean = 
 export async function removeContainers(containerIds: string[], verbose: boolean = false): Promise<void> {
   for (const id of containerIds) {
     try {
-      await safeDockerExec(['rm', id], { verbose, timeout: 30000 });
+      await $`docker rm ${id}`.text();
       if (verbose) {
         console.log(`Removed container: ${id}`);
       }

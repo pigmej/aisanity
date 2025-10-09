@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import * as path from 'path';
+import { $ } from 'bun';
 import { getAllWorktrees, isWorktree } from '../utils/worktree-utils';
-import { safeDockerExec } from '../utils/docker-safe-exec';
 import { checkWorktreeEnabled } from '../utils/config';
 
 export const worktreeListCommand = new Command('list')
@@ -77,12 +77,9 @@ export const worktreeListCommand = new Command('list')
 async function getContainerStatus(containerName: string, verbose: boolean = false): Promise<string> {
   try {
     // Single call to get all containers and their status
-    const result = await safeDockerExec(['ps', '-a', '--filter', `label=aisanity.container=${containerName}`, '--format', '{{.Names}}\t{{.Status}}'], {
-      verbose,
-      timeout: 5000
-    });
+    const result = await $`docker ps -a --filter label=aisanity.container=${containerName} --format {{.Names}}\t{{.Status}}`.text();
     
-    const lines = result.trim().split('\n').filter(line => line.trim() !== '');
+    const lines = result.trim().split('\n').filter((line: string) => line.trim() !== '');
     
     if (lines.length === 0) {
       return 'Not created';

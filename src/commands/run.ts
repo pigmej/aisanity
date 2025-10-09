@@ -1,6 +1,6 @@
 import { Command } from 'commander';
 import * as path from 'path';
-import { spawn } from 'child_process';
+import { $ } from 'bun';
 import { loadAisanityConfig, getContainerName, getCurrentBranch } from '../utils/config';
 import { generateContainerLabels, validateContainerLabels } from '../utils/container-utils';
 import { isWorktree, getMainGitDirPath } from '../utils/worktree-utils';
@@ -51,11 +51,7 @@ export const runCommand = new Command('run')
        
        try {
          // Try to find existing container for this workspace and branch
-         const { execSync } = require('child_process');
-         const existingResult = execSync(
-           `docker ps -a --filter "label=aisanity.workspace=${cwd}" --filter "label=aisanity.branch=${branch}" --format "{{.Labels}}"`, 
-           { encoding: 'utf8', timeout: 5000 }
-         );
+         const existingResult = await $`docker ps -a --filter label=aisanity.workspace=${cwd} --filter label=aisanity.branch=${branch} --format {{.Labels}}`.text();
          
          if (existingResult.trim()) {
            // Parse existing container labels to reuse them
@@ -139,21 +135,15 @@ export const runCommand = new Command('run')
           upArgs.push('--mount', mount);
         });
 
-      const upResult = spawn('devcontainer', upArgs, {
-        stdio: 'inherit',
+      const upResult = Bun.spawn(['devcontainer', ...upArgs], {
+        stdio: ['inherit', 'inherit', 'inherit'],
         cwd
       });
 
-      await new Promise<void>((resolve, reject) => {
-        upResult.on('error', reject);
-        upResult.on('exit', (code) => {
-          if (code === 0) {
-            resolve();
-          } else {
-            reject(new Error(`devcontainer up failed with code ${code}`));
-          }
-        });
-      });
+      const upExitCode = await upResult.exited;
+      if (upExitCode !== 0) {
+        throw new Error(`devcontainer up failed with code ${upExitCode}`);
+      }
 
       console.log('Dev container is ready');
 
@@ -175,20 +165,14 @@ export const runCommand = new Command('run')
       execArgs.push(...command);
 
       // Spawn devcontainer exec process
-      const child = spawn('devcontainer', execArgs, {
-        stdio: 'inherit',
+      const child = Bun.spawn(['devcontainer', ...execArgs], {
+        stdio: ['inherit', 'inherit', 'inherit'],
         cwd
       });
 
-      // Handle process events
-      child.on('error', (error) => {
-        console.error('Failed to execute command in devcontainer:', error.message);
-        process.exit(1);
-      });
-
-      child.on('exit', (code) => {
-        process.exit(code || 0);
-      });
+      // Wait for process to exit
+      const exitCode = await child.exited;
+      process.exit(exitCode || 0);
 
     } catch (error) {
       console.error('Failed to run container:', error);
