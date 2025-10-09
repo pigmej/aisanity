@@ -39,26 +39,76 @@ bun install -g aisanity
 
 ### Option 2: Standalone Executable
 
-Download the platform-specific executable from the [GitHub Releases](https://github.com/your-username/aisanity/releases) page:
+Download the platform-specific executable from the [GitHub Releases](https://github.com/pigmej/aisanity/releases) page:
+
+#### macOS (Intel)
+```bash
+# Download and verify
+curl -L -o aisanity-darwin-x64 https://github.com/pigmej/aisanity/releases/latest/download/aisanity-darwin-x64
+curl -L -o aisanity-darwin-x64.sha256 https://github.com/pigmej/aisanity/releases/latest/download/aisanity-darwin-x64.sha256
+
+# Verify checksum
+sha256sum -c aisanity-darwin-x64.sha256
+
+# Make executable and run
+chmod +x aisanity-darwin-x64
+./aisanity-darwin-x64 --help
+```
 
 #### macOS (Apple Silicon)
 ```bash
-# Download aisanity-macos-arm64
-chmod +x aisanity-macos-arm64
-./aisanity-macos-arm64 --help
+# Download and verify
+curl -L -o aisanity-darwin-arm64 https://github.com/pigmej/aisanity/releases/latest/download/aisanity-darwin-arm64
+curl -L -o aisanity-darwin-arm64.sha256 https://github.com/pigmej/aisanity/releases/latest/download/aisanity-darwin-arm64.sha256
+
+# Verify checksum
+sha256sum -c aisanity-darwin-arm64.sha256
+
+# Make executable and run
+chmod +x aisanity-darwin-arm64
+./aisanity-darwin-arm64 --help
 ```
 
 #### Linux (x64)
 ```bash
-# Download aisanity-linux-x64
+# Download and verify
+curl -L -o aisanity-linux-x64 https://github.com/pigmej/aisanity/releases/latest/download/aisanity-linux-x64
+curl -L -o aisanity-linux-x64.sha256 https://github.com/pigmej/aisanity/releases/latest/download/aisanity-linux-x64.sha256
+
+# Verify checksum
+sha256sum -c aisanity-linux-x64.sha256
+
+# Make executable and run
 chmod +x aisanity-linux-x64
 ./aisanity-linux-x64 --help
 ```
 
-#### Windows (x64)
+#### Linux (ARM64)
 ```bash
-# Download aisanity-win-x64.exe
-.\aisanity-win-x64.exe --help
+# Download and verify
+curl -L -o aisanity-linux-arm64 https://github.com/pigmej/aisanity/releases/latest/download/aisanity-linux-arm64
+curl -L -o aisanity-linux-arm64.sha256 https://github.com/pigmej/aisanity/releases/latest/download/aisanity-linux-arm64.sha256
+
+# Verify checksum
+sha256sum -c aisanity-linux-arm64.sha256
+
+# Make executable and run
+chmod +x aisanity-linux-arm64
+./aisanity-linux-arm64 --help
+```
+
+#### Checksum Verification
+
+All releases include SHA256 checksum files for security verification. Always verify the checksum before running the binary:
+
+```bash
+# The checksum file contains the expected hash
+cat aisanity-linux-x64.sha256
+# Output: a1b2c3d4e5f6...  aisanity-linux-x64
+
+# Verify the downloaded file matches the checksum
+sha256sum -c aisanity-linux-x64.sha256
+# Output: aisanity-linux-x64: OK
 ```
 
 **Note**: Standalone executables bundle the Bun runtime, so no separate Bun installation is needed.
@@ -479,6 +529,57 @@ All templates include automatic opencode installation and proper directory mount
 
 
 
+
+## Release Process
+
+Aisanity uses automated releases triggered by semantic version tags. When a tag matching `v*.*.*` is pushed to the repository:
+
+1. **Automatic Build**: Cross-compilation builds binaries for all supported platforms
+2. **Checksum Generation**: SHA256 checksums are generated for each binary
+3. **GitHub Release**: A new release is created with all assets and generated notes
+4. **Asset Upload**: All binaries and checksum files are uploaded as release assets
+
+### Supported Platforms
+
+- **Linux x64** (`aisanity-linux-x64`)
+- **Linux ARM64** (`aisanity-linux-arm64`) 
+- **macOS Intel** (`aisanity-darwin-x64`)
+- **macOS Apple Silicon** (`aisanity-darwin-arm64`)
+
+### Creating a Release
+
+To create a new release:
+
+```bash
+# Create and push a semantic version tag
+git tag v1.0.0
+git push origin v1.0.0
+
+# The GitHub Actions workflow will automatically:
+# - Build all platform binaries
+# - Generate checksums
+# - Create the GitHub release
+# - Upload all assets
+```
+
+### Development Builds
+
+For development and testing, you can build binaries locally:
+
+```bash
+# Build all platforms
+bun run build:all
+
+# Build specific platform
+bun run build:linux-x64
+bun run build:darwin-arm64
+
+# Generate checksums
+bun run checksum:generate
+
+# Prepare complete release locally
+bun run release:prepare
+```
 
 ## FAQ
 

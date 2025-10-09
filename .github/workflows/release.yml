@@ -1,0 +1,62 @@
+name: Release
+
+permissions:
+  contents: write
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build binaries
+        run: |
+          mkdir -p release
+          bun build ./src/index.ts --compile --target bun-linux-x64 --outfile ./release/aisanity-linux-x64
+          bun build ./src/index.ts --compile --target bun-linux-arm64 --outfile ./release/aisanity-linux-arm64
+          bun build ./src/index.ts --compile --target bun-darwin-x64 --outfile ./release/aisanity-darwin-x64
+          bun build ./src/index.ts --compile --target bun-darwin-arm64 --outfile ./release/aisanity-darwin-arm64
+
+      - name: Set executable permissions
+        run: |
+          chmod +x ./release/aisanity-linux-x64
+          chmod +x ./release/aisanity-linux-arm64
+          chmod +x ./release/aisanity-darwin-x64
+          chmod +x ./release/aisanity-darwin-arm64
+
+      - name: Generate checksums
+        run: |
+          cd release
+          sha256sum aisanity-linux-x64 > aisanity-linux-x64.sha256
+          sha256sum aisanity-linux-arm64 > aisanity-linux-arm64.sha256
+          sha256sum aisanity-darwin-x64 > aisanity-darwin-x64.sha256
+          sha256sum aisanity-darwin-arm64 > aisanity-darwin-arm64.sha256
+
+      - name: Create GitHub Release
+        run: |
+          gh release create ${{ github.ref_name }} \
+            release/aisanity-linux-x64 \
+            release/aisanity-linux-x64.sha256 \
+            release/aisanity-linux-arm64 \
+            release/aisanity-linux-arm64.sha256 \
+            release/aisanity-darwin-x64 \
+            release/aisanity-darwin-x64.sha256 \
+            release/aisanity-darwin-arm64 \
+            release/aisanity-darwin-arm64.sha256 \
+            --title "Release ${{ github.ref_name }}" \
+            --generate-notes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
