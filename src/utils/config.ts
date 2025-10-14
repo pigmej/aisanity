@@ -184,7 +184,7 @@ export function getOpencodeConfigPath(cwd: string): string {
   return path.join(cwd, 'opencode.jsonc');
 }
 
-export type ProjectType = 'python' | 'nodejs' | 'go' | 'rust' | 'java' | 'unknown';
+export type ProjectType = 'python' | 'nodejs' | 'go' | 'rust' | 'java' | 'bun' | 'unknown';
 
 /**
  * Generates the expected container name based on the project directory and current branch.
@@ -204,6 +204,12 @@ export function detectProjectType(cwd: string): ProjectType {
       fs.existsSync(path.join(cwd, 'pyproject.toml')) ||
       fs.existsSync(path.join(cwd, 'Pipfile'))) {
     return 'python';
+  }
+
+  // Check for Bun indicators (BEFORE Node.js to prevent misclassification)
+  if (fs.existsSync(path.join(cwd, 'bun.lockb')) ||
+      fs.existsSync(path.join(cwd, 'bun.lock'))) {
+    return 'bun';
   }
 
   // Check for Node.js indicators

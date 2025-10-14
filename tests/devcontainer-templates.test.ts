@@ -50,6 +50,44 @@ describe('Devcontainer Templates', () => {
       expect(template?.devcontainerJson).toContain('mcr.microsoft.com/devcontainers/java:17');
     });
 
+    it('should return Bun devcontainer for bun project type', () => {
+      const template = getDevContainerTemplate('bun');
+      expect(template).toBeDefined();
+      expect(template?.devcontainerJson).toContain('Bun Development');
+      expect(template?.devcontainerJson).toContain('oven/bun:latest');
+    });
+
+    it('should include Bun-specific features in Bun devcontainer', () => {
+      const template = getDevContainerTemplate('bun');
+      expect(template).toBeDefined();
+      const config = JSON.parse(template!.devcontainerJson);
+      
+      // Verify Bun-specific configuration
+      expect(config.image).toBe('oven/bun:latest');
+      expect(config.name).toBe('Bun Development');
+      expect(config.remoteUser).toBe('bun');
+      
+      // Verify VSCode extensions
+      expect(config.customizations.vscode.extensions).toContain('ms-vscode.vscode-typescript-next');
+      expect(config.customizations.vscode.extensions).toContain('oven.bun-vscode');
+      
+      // Verify forward ports
+      expect(config.forwardPorts).toContain(3000);
+      expect(config.forwardPorts).toContain(3001);
+      
+      // Verify opencode mounts
+      expect(config.mounts.some((m: string) => m.includes('.config/opencode'))).toBe(true);
+      expect(config.mounts.some((m: string) => m.includes('.local/share/opencode'))).toBe(true);
+      
+      // Verify container environment
+      expect(config.containerEnv.TERM).toBe('xterm-256color');
+      expect(config.containerEnv.COLORTERM).toBe('truecolor');
+      
+      // Verify postCreateCommand uses curl install method (not npm)
+      expect(config.postCreateCommand).toContain('curl');
+      expect(config.postCreateCommand).toContain('opencode.ai/install');
+    });
+
     it('should return empty devcontainer for unknown project type', () => {
       const template = getDevContainerTemplate('unknown');
       expect(template).toBeDefined();

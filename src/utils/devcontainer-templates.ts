@@ -48,6 +48,8 @@ export function getDevContainerTemplate(projectType: ProjectType): DevContainerT
       return getRustDevContainer();
     case 'java':
       return getJavaDevContainer();
+    case 'bun':
+      return getBunDevContainer();
     case 'unknown':
       return getEmptyDevContainer();
     default:
@@ -125,6 +127,37 @@ forwardPorts: [3000, 3001],
     },
     postCreateCommand: "npm install -g opencode-ai",
     remoteUser: "node"  // node container really likes node user
+  }, null, 2);
+
+  return { devcontainerJson };
+}
+
+function getBunDevContainer(): DevContainerTemplate {
+   const devcontainerJson = JSON.stringify({
+     name: "Bun Development",
+     image: "oven/bun:latest",
+     features: {},
+     customizations: {
+       vscode: {
+         extensions: [
+           "ms-vscode.vscode-typescript-next",
+           "ms-vscode.vscode-json",
+           "oven.bun-vscode"
+         ]
+       }
+     },
+forwardPorts: [3000, 3001],
+       mounts: [
+         "source=${localEnv:HOME}/.config/opencode,target=/home/bun/.config/opencode,type=bind,consistency=cached",
+         "source=${localEnv:HOME}/.local/share/opencode,target=/home/bun/.local/share/opencode,type=bind,consistency=cached",
+         "source=${localEnv:HOME}/.local/state/opencode,target=/home/bun/.local/state/opencode,type=bind,consistency=cached"
+       ],
+    containerEnv: {
+      "TERM": "xterm-256color",
+      "COLORTERM": "truecolor"
+    },
+    postCreateCommand: "curl -fsSL https://opencode.ai/install | bash",
+    remoteUser: "bun"
   }, null, 2);
 
   return { devcontainerJson };

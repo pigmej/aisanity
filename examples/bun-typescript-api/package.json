@@ -1,0 +1,23 @@
+{
+  "name": "bun-typescript-api",
+  "version": "1.0.0",
+  "description": "High-performance TypeScript API example using Bun runtime for aisanity",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "start": "bun run src/index.ts",
+    "test": "bun test"
+  },
+  "keywords": [
+    "bun",
+    "typescript",
+    "api",
+    "aisanity",
+    "performance"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "bun-types": "latest"
+  }
+}

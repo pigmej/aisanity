@@ -54,6 +54,24 @@ aisanity init
 aisanity run npm run dev
 ```
 
+### ⚡️ [Bun TypeScript API](./bun-typescript-api/)
+A high-performance TypeScript REST API using Bun runtime.
+
+**Features:**
+- Blazing fast Bun runtime
+- Native TypeScript support (no transpilation)
+- Zero runtime dependencies (no Express needed)
+- Bun.serve() native HTTP server
+- Built-in hot reload and testing
+- 4x faster startup than Node.js
+
+**Quick Start:**
+```bash
+cd bun-typescript-api
+aisanity init
+aisanity run bun run dev
+```
+
 ## 🛠️ General Usage Pattern
 
 For any example project:

@@ -221,6 +221,39 @@ tests/
 - **Async Issues**: Use proper async/await patterns
 - **Timeout Issues**: Increase test timeout or fix slow operations
 
+## Test Structure
+
+### Test Files by Category
+
+#### Core Functionality Tests
+- **config.test.ts** - Configuration utilities and project type detection (including Bun)
+- **devcontainer-templates.test.ts** - DevContainer template generation (including Bun)
+- **container-utils.test.ts** - Container utility functions
+- **worktree-*.test.ts** - Git worktree management
+
+#### Bun-Specific Tests (Task 70)
+- **bun-integration.test.ts** - Integration tests for Bun project support
+  - Bun project detection with complete project structure
+  - DevContainer template generation for Bun projects
+  - Example project validation
+  - Bun vs Node.js priority verification
+  
+- **bun-performance.test.ts** - Performance benchmarks comparing Bun and Node.js
+  - Project type detection performance
+  - DevContainer template generation performance
+  - File system operations performance
+  - JSON parsing performance
+  - Memory usage comparison
+  - End-to-end performance scenarios
+  - Performance regression guards
+
+#### Integration Tests
+- **stats.test.ts** - Statistics and reporting
+- **devcontainer-name-compatibility.test.ts** - Container naming compatibility
+
+#### Basic Tests
+- **basic.test.ts** - Basic test runner functionality
+
 ## Running Tests
 
 ### 1. All Tests
@@ -230,7 +263,9 @@ npm test
 
 ### 2. Specific Test Files
 ```bash
-npm test tests/docker-integration.test.ts
+npm test tests/config.test.ts
+npm test tests/bun-integration.test.ts
+npm test tests/bun-performance.test.ts
 ```
 
 ### 3. Watch Mode
@@ -241,6 +276,11 @@ npm test -- --watch
 ### 4. Coverage
 ```bash
 npm test -- --coverage
+```
+
+### 5. Bun-Specific Test Suite
+```bash
+npm test tests/config.test.ts tests/devcontainer-templates.test.ts tests/bun-integration.test.ts tests/bun-performance.test.ts
 ```
 
 ## Review Checklist
