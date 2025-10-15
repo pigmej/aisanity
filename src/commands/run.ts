@@ -2,7 +2,7 @@ import { Command } from 'commander';
 import * as path from 'path';
 import { $ } from 'bun';
 import { loadAisanityConfig, getContainerName, getCurrentBranch } from '../utils/config';
-import { generateContainerLabels, validateContainerLabels } from '../utils/container-utils';
+import { generateContainerLabels, validateContainerLabels, ContainerLabels } from '../utils/container-utils';
 import { isWorktree, getMainGitDirPath } from '../utils/worktree-utils';
 import * as fs from 'fs';
 
@@ -46,7 +46,7 @@ export const runCommand = new Command('run')
 
        // Check for existing container first
        const branch = getCurrentBranch(cwd);
-       let containerLabels;
+       let containerLabels: Record<string, string> | ContainerLabels;
        let idLabels: string[];
        
        try {
@@ -67,21 +67,21 @@ export const runCommand = new Command('run')
              console.log('Found existing container, reusing labels');
              containerLabels = existingLabels;
              idLabels = Object.entries(containerLabels).map(([key, value]) => `${key}=${value}`);
-           } else {
-             // Generate new labels if existing ones are incomplete
-             containerLabels = generateContainerLabels(workspaceName, branch, containerName, cwd);
-             idLabels = Object.entries(containerLabels).map(([key, value]) => `${key}=${value}`);
-           }
-         } else {
-           // No existing container, generate new labels
-           containerLabels = generateContainerLabels(workspaceName, branch, containerName, cwd);
-           idLabels = Object.entries(containerLabels).map(([key, value]) => `${key}=${value}`);
-         }
-       } catch (error) {
-         // If Docker command fails, generate new labels
-         containerLabels = generateContainerLabels(workspaceName, branch, containerName, cwd);
-         idLabels = Object.entries(containerLabels).map(([key, value]) => `${key}=${value}`);
-       }
+            } else {
+              // Generate new labels if existing ones are incomplete
+              containerLabels = await generateContainerLabels(workspaceName, branch, containerName, cwd);
+              idLabels = Object.entries(containerLabels).map(([key, value]) => `${key}=${value}`);
+            }
+          } else {
+            // No existing container, generate new labels
+            containerLabels = await generateContainerLabels(workspaceName, branch, containerName, cwd);
+            idLabels = Object.entries(containerLabels).map(([key, value]) => `${key}=${value}`);
+          }
+        } catch (error) {
+          // If Docker command fails, generate new labels
+          containerLabels = await generateContainerLabels(workspaceName, branch, containerName, cwd);
+          idLabels = Object.entries(containerLabels).map(([key, value]) => `${key}=${value}`);
+        }
 
        // Validate that all required labels are present
        if (!validateContainerLabels(containerLabels)) {

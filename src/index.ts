@@ -17,13 +17,14 @@ import { discoverOpencodeCommand } from './commands/discover-opencode';
 import { statsCommand } from './commands/stats';
 import { worktreeCommand } from './commands/worktree';
 import { cleanupCommand } from './commands/cleanup';
+import { getVersion } from './utils/version';
 
 const program = new Command();
 
 program
   .name('aisanity')
   .description('Devcontainer wrapper for sandboxed development environments')
-  .version('0.1.0');
+  .version(getVersion()); // Dynamic version detection
 
 // Register commands
 program.addCommand(initCommand);

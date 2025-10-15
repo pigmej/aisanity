@@ -36,7 +36,7 @@ describe('Devcontainer Name Parameter Compatibility - Issue #150', () => {
     mockDiscoverContainers = spyOn(containerUtilsModule, 'discoverContainers').mockResolvedValue([]);
     mockDiscoverByLabels = spyOn(containerUtilsModule, 'discoverByLabels').mockResolvedValue([]);
     mockDiscoverByDevcontainerMetadata = spyOn(containerUtilsModule, 'discoverByDevcontainerMetadata').mockResolvedValue([]);
-    mockGenerateContainerLabels = spyOn(containerUtilsModule, 'generateContainerLabels').mockReturnValue({});
+    mockGenerateContainerLabels = spyOn(containerUtilsModule, 'generateContainerLabels').mockResolvedValue({});
     mockValidateContainerLabels = spyOn(containerUtilsModule, 'validateContainerLabels').mockReturnValue(true);
 
     // Mock worktree utils
@@ -100,13 +100,13 @@ describe('Devcontainer Name Parameter Compatibility - Issue #150', () => {
     expect(mockValidateContainerLabels).toHaveBeenCalledWith(labels);
   });
 
-  test('should generate container labels correctly', () => {
+  test('should generate container labels correctly', async () => {
     const workspacePath = '/main/workspace';
     const branch = 'main';
     const containerName = 'test-container';
 
     const containerUtils = require('../src/utils/container-utils');
-    const labels = containerUtils.generateContainerLabels(workspacePath, branch, containerName);
+    const labels = await containerUtils.generateContainerLabels(workspacePath, branch, containerName);
     
     expect(labels).toBeDefined();
     expect(typeof labels).toBe('object');

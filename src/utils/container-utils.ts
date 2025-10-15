@@ -1,7 +1,6 @@
 import { $ } from 'bun';
-import * as path from 'path';
 import { getAllWorktrees } from './worktree-utils';
-import { readFileSync } from 'fs';
+import { getVersionAsync } from './version';
 
 export interface ContainerLabels {
   'aisanity.workspace': string;
@@ -229,20 +228,14 @@ export function validateContainerLabels(labels: ContainerLabels | Record<string,
 /**
  * Generate container labels for a workspace
  */
-export function generateContainerLabels(
-  workspaceName: string,
+export async function generateContainerLabels(
+  _workspaceName: string,
   branch: string,
   containerName: string,
   workspacePath: string
-): ContainerLabels {
-  // Get version from package.json
-  let version = 'unknown';
-  try {
-    const packageJson = JSON.parse(readFileSync(path.join(__dirname, '../../package.json'), 'utf8'));
-    version = packageJson.version || 'unknown';
-  } catch (error) {
-    // Ignore error, use default
-  }
+): Promise<ContainerLabels> {
+  // Get version from version utility
+  const version = await getVersionAsync();
 
   return {
     'aisanity.workspace': workspacePath,

@@ -1,9 +1,8 @@
-import { expect, test, describe, spyOn } from 'bun:test';
+import { expect, test, describe } from 'bun:test';
 import {
   validateContainerLabels,
   generateContainerLabels,
-  ContainerLabels,
-  DockerContainer
+  ContainerLabels
 } from '../src/utils/container-utils';
 
 describe('container-utils', () => {
@@ -32,8 +31,8 @@ describe('container-utils', () => {
   });
 
   describe('generateContainerLabels', () => {
-    test('should generate correct labels', () => {
-      const labels = generateContainerLabels('test-project', 'main', 'test-container', '/test/workspace');
+    test('should generate correct labels', async () => {
+      const labels = await generateContainerLabels('test-project', 'main', 'test-container', '/test/workspace');
       
       expect(labels['aisanity.workspace']).toBe('/test/workspace');
       expect(labels['aisanity.branch']).toBe('main');
