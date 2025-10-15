@@ -135,6 +135,63 @@ export function getWorktreeName(worktreePath: string): string {
 }
 
 /**
+ * Validate if a worktree is properly configured and accessible
+ * 
+ * @param mainGitDir - Path to main repository's .git directory
+ * @param worktreeName - Name of the worktree (directory name in .git/worktrees/)
+ * @returns true if worktree is valid and accessible, false otherwise
+ */
+export function isValidGitWorktree(mainGitDir: string, worktreeName: string): boolean {
+  try {
+    // 1. Check .git/worktrees/<name>/gitdir file exists
+    const gitdirFilePath = path.join(mainGitDir, 'worktrees', worktreeName, 'gitdir');
+    if (!fs.existsSync(gitdirFilePath)) {
+      console.warn(`Skipping invalid worktree: ${worktreeName} (gitdir file missing)`);
+      return false;
+    }
+
+    // 2. Read and parse gitdir file content
+    const gitdirContent = fs.readFileSync(gitdirFilePath, 'utf8').trim();
+    if (!gitdirContent) {
+      console.warn(`Skipping invalid worktree: ${worktreeName} (gitdir file empty)`);
+      return false;
+    }
+
+    // 3. Verify target directory exists at gitdir path
+    // gitdir content can be absolute or relative to mainGitDir
+    const targetGitDir = path.isAbsolute(gitdirContent) 
+      ? gitdirContent 
+      : path.resolve(mainGitDir, gitdirContent);
+    
+    if (!fs.existsSync(targetGitDir)) {
+      console.warn(`Skipping invalid worktree: ${worktreeName} (target git directory missing: ${targetGitDir})`);
+      return false;
+    }
+
+    // 4. Verify target directory contains valid .git file
+    const worktreeDir = path.dirname(targetGitDir);
+    const worktreeGitFile = path.join(worktreeDir, '.git');
+    if (!fs.existsSync(worktreeGitFile)) {
+      console.warn(`Skipping invalid worktree: ${worktreeName} (.git file missing in worktree directory)`);
+      return false;
+    }
+
+    // 5. Verify .git file contains proper gitdir: reference
+    const worktreeGitContent = fs.readFileSync(worktreeGitFile, 'utf8').trim();
+    if (!worktreeGitContent.startsWith('gitdir:')) {
+      console.warn(`Skipping invalid worktree: ${worktreeName} (.git file has invalid format)`);
+      return false;
+    }
+
+    // All validation checks passed
+    return true;
+  } catch (error) {
+    console.warn(`Skipping invalid worktree: ${worktreeName} (validation error: ${error instanceof Error ? error.message : 'unknown'})`);
+    return false;
+  }
+}
+
+/**
  * Generate container name for worktree
  */
 export function generateWorktreeContainerName(workspaceName: string, worktreeName: string): string {
@@ -155,12 +212,13 @@ export function getAllWorktrees(cwd: string): WorktreeList {
     encoding: 'utf8'
   }).trim();
   
-  let mainGitRepo: string;
-  
+let mainGitRepo: string;
+  let mainGitDirPath: string;
+   
   if (gitDir.includes('worktrees')) {
     // We're in a worktree - extract main repo path from git dir
     // gitDir format: /main/repo/.git/worktrees/worktree-name
-    const mainGitDirPath = gitDir.split('/worktrees/')[0]; // /main/repo/.git
+    mainGitDirPath = gitDir.split('/worktrees/')[0]; // /main/repo/.git
     mainGitRepo = path.dirname(mainGitDirPath); // /main/repo
   } else {
     // We're in main repo - use show-toplevel
@@ -168,6 +226,7 @@ export function getAllWorktrees(cwd: string): WorktreeList {
       cwd,
       encoding: 'utf8'
     }).trim();
+    mainGitDirPath = path.join(mainGitRepo, '.git');
   }
   
   // Get main workspace info - config might be in top level or git root
@@ -205,10 +264,15 @@ export function getAllWorktrees(cwd: string): WorktreeList {
       .map(dirent => dirent.name);
     
     for (const worktreeName of worktreeDirs) {
+      // NEW: Proactive validation before git operations
+      if (!isValidGitWorktree(mainGitDirPath, worktreeName)) {
+        continue; // Validation function already logged the reason
+      }
+      
       const worktreePath = path.join(worktreesDir, worktreeName);
       
       try {
-        // Verify this is actually a git worktree
+        // This should now succeed for valid worktrees
         const worktreeBranch = getCurrentBranch(worktreePath);
         const worktreeConfig = loadAisanityConfig(worktreePath);
         
@@ -224,8 +288,8 @@ export function getAllWorktrees(cwd: string): WorktreeList {
           worktrees.push(worktreeInfo);
         }
       } catch (error) {
-        // Skip invalid worktrees
-        console.warn(`Skipping invalid worktree: ${worktreeName}`);
+        // Rare case - keep as safety net
+        console.warn(`Unexpected error reading worktree ${worktreeName}:`, error);
       }
     }
   }
@@ -330,16 +394,17 @@ export function getWorktreeByName(worktreeName: string, topLevelPath: string): W
 /**
  * Detect orphaned containers from manually deleted worktrees
  */
-export async function detectOrphanedContainers(verbose: boolean = false): Promise<{
+export async function detectOrphanedContainers(verbose: boolean = false, worktrees?: WorktreeList): Promise<{
   orphaned: DockerContainer[];
   worktreePaths: string[];
 }> {
   try {
-    const discoveryResult = await discoverContainers(verbose);
-    const worktrees = getAllWorktrees(process.cwd());
+    // Use provided worktrees or fetch them once if not provided
+    const worktreeData = worktrees || getAllWorktrees(process.cwd());
+    const discoveryResult = await discoverContainers(verbose, worktreeData);
     const existingWorktreePaths = new Set([
-      worktrees.main.path,
-      ...worktrees.worktrees.map(wt => wt.path)
+      worktreeData.main.path,
+      ...worktreeData.worktrees.map(wt => wt.path)
     ]);
 
     const orphaned = discoveryResult.containers.filter(container => {

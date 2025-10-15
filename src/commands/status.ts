@@ -28,23 +28,24 @@ export const statusCommand = new Command('status')
   .option('--worktree <path>', 'Show status for specific worktree')
   .option('-v, --verbose', 'Enable verbose logging')
   .action(async (options) => {
+    let cwd = process.cwd();
+    let worktrees: WorktreeList | null = null;
+    
+    // Handle worktree option - maintain existing behavior
+    if (options.worktree) {
+      const worktreePath = path.resolve(options.worktree);
+      if (!fs.existsSync(worktreePath)) {
+        throw new Error(`Worktree path does not exist: ${worktreePath}`);
+      }
+      console.log(`Showing status for worktree: ${worktreePath}`);
+      cwd = worktreePath;
+      await displaySingleWorktreeStatus(cwd, options.verbose || false);
+      return;
+    }
+    
     try {
-      let cwd = process.cwd();
-      
-       // Handle worktree option - maintain existing behavior
-       if (options.worktree) {
-         const worktreePath = path.resolve(options.worktree);
-         if (!fs.existsSync(worktreePath)) {
-           throw new Error(`Worktree path does not exist: ${worktreePath}`);
-         }
-         console.log(`Showing status for worktree: ${worktreePath}`);
-         cwd = worktreePath;
-         await displaySingleWorktreeStatus(cwd, options.verbose || false);
-         return;
-       }
-      
-      // Get all worktrees to determine display format
-      const worktrees = getAllWorktrees(cwd);
+      // Get all worktrees to determine display format (cache result to avoid duplicate calls)
+      worktrees = getAllWorktrees(cwd);
       const totalWorktrees = 1 + worktrees.worktrees.length;
       
       // Decision logic: use unified table for multiple worktrees, detailed for single
@@ -61,7 +62,10 @@ export const statusCommand = new Command('status')
         console.log('Warning: Docker not available, some status information may be incomplete');
         // For Docker errors in unified display, show a basic table with Unknown status
         try {
-          const worktrees = getAllWorktrees(process.cwd());
+          // Use cached worktrees if available, otherwise get them once
+          if (!worktrees) {
+            worktrees = getAllWorktrees(cwd);
+          }
           const totalWorktrees = 1 + worktrees.worktrees.length;
           if (totalWorktrees > 1) {
             // Create fallback status rows with Unknown status
@@ -158,7 +162,7 @@ async function displayUnifiedWorktreeStatus(worktrees: WorktreeList, verbose: bo
 
   // Check for orphaned containers
   try {
-    const { orphaned } = await detectOrphanedContainers(verbose);
+    const { orphaned } = await detectOrphanedContainers(verbose, worktrees);
     if (orphaned.length > 0) {
       console.log(`\n⚠️  Warning: ${orphaned.length} orphaned containers detected`);
       console.log('These containers may be from manually deleted worktrees.');

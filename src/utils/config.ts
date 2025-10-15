@@ -41,8 +41,7 @@ export function getCurrentBranch(cwd: string): string {
   try {
     const gitBranch = execSync('git rev-parse --abbrev-ref HEAD', {
       cwd,
-      encoding: 'utf8',
-      stdio: ['pipe', 'pipe', 'pipe'] // Suppress stderr output
+      encoding: 'utf8'
     }).trim();
     return gitBranch || 'main';
   } catch (error) {

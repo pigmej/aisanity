@@ -1,5 +1,5 @@
 import { $ } from 'bun';
-import { getAllWorktrees } from './worktree-utils';
+import { getAllWorktrees, WorktreeList } from './worktree-utils';
 import { getVersionAsync } from './version';
 
 export interface ContainerLabels {
@@ -46,7 +46,7 @@ export interface ContainerLifecycleState {
 /**
  * Discover all containers using multiple strategies
  */
-export async function discoverContainers(verbose: boolean = false): Promise<ContainerDiscoveryResult> {
+export async function discoverContainers(verbose: boolean = false, cachedWorktrees?: WorktreeList): Promise<ContainerDiscoveryResult> {
   const containers: DockerContainer[] = [];
   const labeled: DockerContainer[] = [];
   const unlabeled: DockerContainer[] = [];
@@ -84,10 +84,10 @@ export async function discoverContainers(verbose: boolean = false): Promise<Cont
   }
 
   // Identify orphaned containers
-  const worktrees = getAllWorktrees(process.cwd());
+  const worktreeData = cachedWorktrees || getAllWorktrees(process.cwd());
   const existingWorktreePaths = new Set([
-    worktrees.main.path,
-    ...worktrees.worktrees.map(wt => wt.path)
+    worktreeData.main.path,
+    ...worktreeData.worktrees.map(wt => wt.path)
   ]);
 
   for (const container of containers) {
