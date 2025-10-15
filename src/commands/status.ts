@@ -290,17 +290,43 @@ async function getContainerStatusWithPorts(containerName: string, verbose: boole
 }
 
 /**
+ * Truncate text to fit within specified width, adding ellipsis if needed
+ */
+function truncateText(text: string, maxWidth: number): string {
+  if (text.length <= maxWidth) {
+    return text;
+  }
+  return text.substring(0, maxWidth - 3) + '...';
+}
+
+/**
+ * Calculate optimal column widths based on content
+ */
+function calculateColumnWidths(rows: WorktreeStatusRow[]): { worktree: number; branch: number; container: number; status: number; ports: number } {
+  const minWidths = { worktree: 12, branch: 12, container: 12, status: 10, ports: 8 };
+  const maxWidths = { worktree: 20, branch: 25, container: 20, status: 12, ports: 15 };
+  
+  // Find the maximum content length for each column
+  const contentWidths = { ...minWidths };
+  
+  for (const row of rows) {
+    const indicator = row.isActive ? '→ ' : '  ';
+    contentWidths.worktree = Math.max(contentWidths.worktree, Math.min(indicator.length + row.name.length, maxWidths.worktree));
+    contentWidths.branch = Math.max(contentWidths.branch, Math.min(row.branch.length, maxWidths.branch));
+    contentWidths.container = Math.max(contentWidths.container, Math.min(row.container.length, maxWidths.container));
+    contentWidths.status = Math.max(contentWidths.status, Math.min(row.status.length, maxWidths.status));
+    contentWidths.ports = Math.max(contentWidths.ports, Math.min(row.ports.length, maxWidths.ports));
+  }
+  
+  return contentWidths;
+}
+
+/**
  * Format worktree status rows into a table
  */
 function formatWorktreeTable(rows: WorktreeStatusRow[]): string {
-  // Define column widths
-  const colWidths = {
-    worktree: 15,
-    branch: 15,
-    container: 15,
-    status: 15,
-    ports: 15
-  };
+  // Calculate optimal column widths
+  const colWidths = calculateColumnWidths(rows);
   
   // Build table header
   const header = '┌' + '─'.repeat(colWidths.worktree + 2) + '┬' + '─'.repeat(colWidths.branch + 2) + '┬' + '─'.repeat(colWidths.container + 2) + '┬' + '─'.repeat(colWidths.status + 2) + '┬' + '─'.repeat(colWidths.ports + 2) + '┐';
@@ -312,13 +338,13 @@ function formatWorktreeTable(rows: WorktreeStatusRow[]): string {
   // Build table rows
   for (const row of rows) {
     const indicator = row.isActive ? '→' : ' ';
-    const worktreeName = indicator + ' ' + row.name;
+    const worktreeName = indicator + ' ' + truncateText(row.name, colWidths.worktree - 2);
     
     const rowText = '│ ' + worktreeName.padEnd(colWidths.worktree) + ' │ ' + 
-                   row.branch.padEnd(colWidths.branch) + ' │ ' + 
-                   row.container.padEnd(colWidths.container) + ' │ ' + 
-                   row.status.padEnd(colWidths.status) + ' │ ' + 
-                   row.ports.padEnd(colWidths.ports) + ' │';
+                   truncateText(row.branch, colWidths.branch).padEnd(colWidths.branch) + ' │ ' + 
+                   truncateText(row.container, colWidths.container).padEnd(colWidths.container) + ' │ ' + 
+                   truncateText(row.status, colWidths.status).padEnd(colWidths.status) + ' │ ' + 
+                   truncateText(row.ports, colWidths.ports).padEnd(colWidths.ports) + ' │';
     
     table += rowText + '\n';
   }
