@@ -4,6 +4,7 @@ import { $ } from 'bun';
 import { loadAisanityConfig, getContainerName, getCurrentBranch } from '../utils/config';
 import { generateContainerLabels, validateContainerLabels, ContainerLabels } from '../utils/container-utils';
 import { isWorktree, getMainGitDirPath } from '../utils/worktree-utils';
+import { Logger } from '../utils/logger';
 import * as fs from 'fs';
 
 export const runCommand = new Command('run')
@@ -13,7 +14,14 @@ export const runCommand = new Command('run')
   .option('--force-recreate', 'Force recreation of branch-specific devcontainer file')
   .option('--worktree <path>', 'Run command in specific worktree')
   .option('-v, --verbose', 'Enable verbose logging')
+  .option('--silent, --quiet', 'Suppress aisanity output, show only tool output')
   .action(async (commandArgs: string[], options) => {
+    // Initialize logger with silent taking precedence over verbose
+    const logger = new Logger(
+      options.silent || options.quiet || false,
+      options.verbose && !options.silent && !options.quiet || false
+    );
+    
     let cwd = process.cwd();
     
     // Handle worktree option
@@ -24,7 +32,7 @@ export const runCommand = new Command('run')
         process.exit(1);
       }
       cwd = worktreePath;
-      console.log(`Running in worktree: ${worktreePath}`);
+      logger.info(`Running in worktree: ${worktreePath}`);
     }
     
     try {
@@ -41,8 +49,8 @@ export const runCommand = new Command('run')
       // Default to bash shell if no command provided
       const command = commandArgs.length > 0 ? commandArgs : ['bash'];
 
-      console.log(`Starting container for workspace: ${workspaceName}`);
-      console.log(`Running command: ${command.join(' ')}`);
+      logger.info(`Starting container for workspace: ${workspaceName}`);
+      logger.info(`Running command: ${command.join(' ')}`);
 
        // Check for existing container first
        const branch = getCurrentBranch(cwd);
@@ -63,9 +71,9 @@ export const runCommand = new Command('run')
              }
            });
            
-           if (existingLabels['aisanity.workspace'] && existingLabels['aisanity.branch'] && existingLabels['aisanity.container']) {
-             console.log('Found existing container, reusing labels');
-             containerLabels = existingLabels;
+            if (existingLabels['aisanity.workspace'] && existingLabels['aisanity.branch'] && existingLabels['aisanity.container']) {
+              logger.info('Found existing container, reusing labels');
+              containerLabels = existingLabels;
              idLabels = Object.entries(containerLabels).map(([key, value]) => `${key}=${value}`);
             } else {
               // Generate new labels if existing ones are incomplete
@@ -93,7 +101,7 @@ export const runCommand = new Command('run')
       let devcontainerPath: string;
       if (options.devcontainerJson) {
         devcontainerPath = path.resolve(options.devcontainerJson);
-        console.log(`Using specified devcontainer: ${devcontainerPath}`);
+        logger.info(`Using specified devcontainer: ${devcontainerPath}`);
       } else {
         // Use default devcontainer.json
         const defaultPath = path.join(cwd, '.devcontainer', 'devcontainer.json');
@@ -104,22 +112,22 @@ export const runCommand = new Command('run')
         devcontainerPath = defaultPath;
       }
       
-       console.log(`Starting devcontainer for branch '${branch}' with labels: ${idLabels.join(', ')}`);
+       logger.info(`Starting devcontainer for branch '${branch}' with labels: ${idLabels.join(', ')}`);
 
-        // Check if we're in a git worktree and add mount for main repo .git directory
+         // Check if we're in a git worktree and add mount for main repo .git directory
         const additionalMounts: string[] = [];
         if (isWorktree(cwd)) {
           const mainGitDir = getMainGitDirPath(cwd);
           if (mainGitDir) {
             const mountSpec = `type=bind,source=${mainGitDir},target=${mainGitDir}`;
             additionalMounts.push(mountSpec);
-            console.log(`Detected git worktree, mounting main repo .git directory: ${mainGitDir}`);
+            logger.info(`Detected git worktree, mounting main repo .git directory: ${mainGitDir}`);
           }
         }
 
-        // First, ensure the dev container is up and running
-        console.log('Checking/starting dev container...');
-        const upArgs = ['up', '--workspace-folder', cwd];
+         // First, ensure the dev container is up and running
+         logger.info('Checking/starting dev container...');
+         const upArgs = ['up', '--workspace-folder', cwd];
 
        if (devcontainerPath) {
          upArgs.push('--config', devcontainerPath);
@@ -135,8 +143,11 @@ export const runCommand = new Command('run')
           upArgs.push('--mount', mount);
         });
 
+      // Determine if silent mode is enabled
+      const isSilent = options.silent || options.quiet || false;
+
       const upResult = Bun.spawn(['devcontainer', ...upArgs], {
-        stdio: ['inherit', 'inherit', 'inherit'],
+        stdio: isSilent ? ['inherit', 'pipe', 'pipe'] : ['inherit', 'inherit', 'inherit'],
         cwd
       });
 
@@ -145,9 +156,9 @@ export const runCommand = new Command('run')
         throw new Error(`devcontainer up failed with code ${upExitCode}`);
       }
 
-      console.log('Dev container is ready');
+      logger.info('Dev container is ready');
 
-       // Now execute the command in the running container
+        // Now execute the command in the running container
        const execArgs = [
          'exec',
          '--workspace-folder', cwd
