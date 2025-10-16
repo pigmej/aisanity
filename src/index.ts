@@ -17,6 +17,7 @@ import { discoverOpencodeCommand } from './commands/discover-opencode';
 import { statsCommand } from './commands/stats';
 import { worktreeCommand } from './commands/worktree';
 import { cleanupCommand } from './commands/cleanup';
+import { startAndAttachCommand } from './commands/start-and-attach';
 import { getVersion } from './utils/version';
 
 const program = new Command();
@@ -36,6 +37,7 @@ program.addCommand(discoverOpencodeCommand);
 program.addCommand(statsCommand);
 program.addCommand(worktreeCommand);
 program.addCommand(cleanupCommand);
+program.addCommand(startAndAttachCommand);
 
 // Parse command line arguments
 program.parse();
