@@ -19,21 +19,21 @@ describe("Devcontainer Templates", () => {
       const template = getDevContainerTemplate("python");
       expect(template).toBeDefined();
       expect(template?.devcontainerJson).toContain("Python Development");
-      expect(template?.devcontainerJson).toContain("mcr.microsoft.com/devcontainers/python:3.11");
+      expect(template?.devcontainerJson).toContain("mcr.microsoft.com/devcontainers/python:3.13");
     });
 
     it("should return Node.js devcontainer for nodejs project type", () => {
       const template = getDevContainerTemplate("nodejs");
       expect(template).toBeDefined();
       expect(template?.devcontainerJson).toContain("Node.js Development");
-      expect(template?.devcontainerJson).toContain("mcr.microsoft.com/devcontainers/javascript-node:18");
+      expect(template?.devcontainerJson).toContain("mcr.microsoft.com/devcontainers/javascript-node:22");
     });
 
     it("should return Go devcontainer for go project type", () => {
       const template = getDevContainerTemplate("go");
       expect(template).toBeDefined();
       expect(template?.devcontainerJson).toContain("Go Development Environment");
-      expect(template?.devcontainerJson).toContain("mcr.microsoft.com/devcontainers/go:1.21");
+      expect(template?.devcontainerJson).toContain("mcr.microsoft.com/devcontainers/go:1.25");
     });
 
     it("should return Rust devcontainer for rust project type", () => {
@@ -65,7 +65,7 @@ describe("Devcontainer Templates", () => {
       // Verify Bun-specific configuration
       expect(config.image).toBe("mcr.microsoft.com/devcontainers/base:ubuntu");
       expect(config.name).toBe("Bun Development");
-      expect(config.remoteUser).toBe("bun");
+      expect(config.remoteUser).toBe("vscode");
 
       // Verify VSCode extensions
       expect(config.customizations.vscode.extensions).toContain("ms-vscode.vscode-typescript-next");

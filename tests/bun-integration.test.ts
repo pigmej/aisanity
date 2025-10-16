@@ -105,7 +105,7 @@ describe("Bun Integration Tests", () => {
       expect(config.name).toBe("Bun Development");
 
       // Verify user
-      expect(config.remoteUser).toBe("bun");
+      expect(config.remoteUser).toBe("vscode");
     });
 
     test("Bun devcontainer includes proper TypeScript support", () => {
