@@ -1,7 +1,7 @@
-import { expect, test, describe, beforeEach, afterEach, it } from 'bun:test';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
+import { expect, test, describe, beforeEach, afterEach, it } from "bun:test";
+import * as fs from "fs";
+import * as path from "path";
+import * as os from "os";
 import {
   getDevContainerTemplate,
   readDevContainerJson,
@@ -9,99 +9,99 @@ import {
   getBranchSpecificDevContainerPath,
   getBaseDevContainerPath,
   FileNotFoundError,
-  InvalidJsonError
-} from '../src/utils/devcontainer-templates';
-import { ProjectType } from '../src/utils/config';
+  InvalidJsonError,
+} from "../src/utils/devcontainer-templates";
+import { ProjectType } from "../src/utils/config";
 
-describe('Devcontainer Templates', () => {
-  describe('getDevContainerTemplate', () => {
-    it('should return Python devcontainer for python project type', () => {
-      const template = getDevContainerTemplate('python');
+describe("Devcontainer Templates", () => {
+  describe("getDevContainerTemplate", () => {
+    it("should return Python devcontainer for python project type", () => {
+      const template = getDevContainerTemplate("python");
       expect(template).toBeDefined();
-      expect(template?.devcontainerJson).toContain('Python Development');
-      expect(template?.devcontainerJson).toContain('mcr.microsoft.com/devcontainers/python:3.11');
+      expect(template?.devcontainerJson).toContain("Python Development");
+      expect(template?.devcontainerJson).toContain("mcr.microsoft.com/devcontainers/python:3.11");
     });
 
-    it('should return Node.js devcontainer for nodejs project type', () => {
-      const template = getDevContainerTemplate('nodejs');
+    it("should return Node.js devcontainer for nodejs project type", () => {
+      const template = getDevContainerTemplate("nodejs");
       expect(template).toBeDefined();
-      expect(template?.devcontainerJson).toContain('Node.js Development');
-      expect(template?.devcontainerJson).toContain('mcr.microsoft.com/devcontainers/javascript-node:18');
+      expect(template?.devcontainerJson).toContain("Node.js Development");
+      expect(template?.devcontainerJson).toContain("mcr.microsoft.com/devcontainers/javascript-node:18");
     });
 
-    it('should return Go devcontainer for go project type', () => {
-      const template = getDevContainerTemplate('go');
+    it("should return Go devcontainer for go project type", () => {
+      const template = getDevContainerTemplate("go");
       expect(template).toBeDefined();
-      expect(template?.devcontainerJson).toContain('Go Development Environment');
-      expect(template?.devcontainerJson).toContain('mcr.microsoft.com/devcontainers/go:1.21');
+      expect(template?.devcontainerJson).toContain("Go Development Environment");
+      expect(template?.devcontainerJson).toContain("mcr.microsoft.com/devcontainers/go:1.21");
     });
 
-    it('should return Rust devcontainer for rust project type', () => {
-      const template = getDevContainerTemplate('rust');
+    it("should return Rust devcontainer for rust project type", () => {
+      const template = getDevContainerTemplate("rust");
       expect(template).toBeDefined();
-      expect(template?.devcontainerJson).toContain('Rust Development Environment');
-      expect(template?.devcontainerJson).toContain('mcr.microsoft.com/devcontainers/rust:1');
+      expect(template?.devcontainerJson).toContain("Rust Development Environment");
+      expect(template?.devcontainerJson).toContain("mcr.microsoft.com/devcontainers/rust:1");
     });
 
-    it('should return Java devcontainer for java project type', () => {
-      const template = getDevContainerTemplate('java');
+    it("should return Java devcontainer for java project type", () => {
+      const template = getDevContainerTemplate("java");
       expect(template).toBeDefined();
-      expect(template?.devcontainerJson).toContain('Java Development Environment');
-      expect(template?.devcontainerJson).toContain('mcr.microsoft.com/devcontainers/java:17');
+      expect(template?.devcontainerJson).toContain("Java Development Environment");
+      expect(template?.devcontainerJson).toContain("mcr.microsoft.com/devcontainers/java:17");
     });
 
-    it('should return Bun devcontainer for bun project type', () => {
-      const template = getDevContainerTemplate('bun');
+    it("should return Bun devcontainer for bun project type", () => {
+      const template = getDevContainerTemplate("bun");
       expect(template).toBeDefined();
-      expect(template?.devcontainerJson).toContain('Bun Development');
-      expect(template?.devcontainerJson).toContain('oven/bun:latest');
+      expect(template?.devcontainerJson).toContain("Bun Development");
+      expect(template?.devcontainerJson).toContain("mcr.microsoft.com/devcontainers/base:ubuntu");
     });
 
-    it('should include Bun-specific features in Bun devcontainer', () => {
-      const template = getDevContainerTemplate('bun');
+    it("should include Bun-specific features in Bun devcontainer", () => {
+      const template = getDevContainerTemplate("bun");
       expect(template).toBeDefined();
       const config = JSON.parse(template!.devcontainerJson);
-      
+
       // Verify Bun-specific configuration
-      expect(config.image).toBe('oven/bun:latest');
-      expect(config.name).toBe('Bun Development');
-      expect(config.remoteUser).toBe('bun');
-      
+      expect(config.image).toBe("mcr.microsoft.com/devcontainers/base:ubuntu");
+      expect(config.name).toBe("Bun Development");
+      expect(config.remoteUser).toBe("bun");
+
       // Verify VSCode extensions
-      expect(config.customizations.vscode.extensions).toContain('ms-vscode.vscode-typescript-next');
-      expect(config.customizations.vscode.extensions).toContain('oven.bun-vscode');
-      
+      expect(config.customizations.vscode.extensions).toContain("ms-vscode.vscode-typescript-next");
+      expect(config.customizations.vscode.extensions).toContain("oven.bun-vscode");
+
       // Verify forward ports
       expect(config.forwardPorts).toContain(3000);
       expect(config.forwardPorts).toContain(3001);
-      
+
       // Verify opencode mounts
-      expect(config.mounts.some((m: string) => m.includes('.config/opencode'))).toBe(true);
-      expect(config.mounts.some((m: string) => m.includes('.local/share/opencode'))).toBe(true);
-      
+      expect(config.mounts.some((m: string) => m.includes(".config/opencode"))).toBe(true);
+      expect(config.mounts.some((m: string) => m.includes(".local/share/opencode"))).toBe(true);
+
       // Verify container environment
-      expect(config.containerEnv.TERM).toBe('xterm-256color');
-      expect(config.containerEnv.COLORTERM).toBe('truecolor');
-      
+      expect(config.containerEnv.TERM).toBe("xterm-256color");
+      expect(config.containerEnv.COLORTERM).toBe("truecolor");
+
       // Verify postCreateCommand uses curl install method (not npm)
-      expect(config.postCreateCommand).toContain('curl');
-      expect(config.postCreateCommand).toContain('opencode.ai/install');
+      expect(config.postCreateCommand).toContain("curl");
+      expect(config.postCreateCommand).toContain("opencode.ai/install");
     });
 
-    it('should return empty devcontainer for unknown project type', () => {
-      const template = getDevContainerTemplate('unknown');
+    it("should return empty devcontainer for unknown project type", () => {
+      const template = getDevContainerTemplate("unknown");
       expect(template).toBeDefined();
-      expect(template?.devcontainerJson).toContain('Empty Development Environment');
-      expect(template?.devcontainerJson).toContain('mcr.microsoft.com/devcontainers/base:ubuntu');
+      expect(template?.devcontainerJson).toContain("Empty Development Environment");
+      expect(template?.devcontainerJson).toContain("mcr.microsoft.com/devcontainers/base:ubuntu");
     });
 
-    it('should return null for invalid project type', () => {
-      const template = getDevContainerTemplate('invalid' as ProjectType);
+    it("should return null for invalid project type", () => {
+      const template = getDevContainerTemplate("invalid" as ProjectType);
       expect(template).toBeNull();
     });
   });
 
-  describe('readDevContainerJson', () => {
+  describe("readDevContainerJson", () => {
     let tempDir: string;
 
     beforeEach(() => {
@@ -115,24 +115,24 @@ describe('Devcontainer Templates', () => {
       }
     });
 
-    it('should read and parse valid JSON file', () => {
-      const filePath = path.join(tempDir, 'devcontainer.json');
-      const jsonContent = { name: 'Test', image: 'test:latest' };
-      fs.writeFileSync(filePath, JSON.stringify(jsonContent), 'utf8');
+    it("should read and parse valid JSON file", () => {
+      const filePath = path.join(tempDir, "devcontainer.json");
+      const jsonContent = { name: "Test", image: "test:latest" };
+      fs.writeFileSync(filePath, JSON.stringify(jsonContent), "utf8");
 
       const result = readDevContainerJson(filePath);
       expect(result).toEqual(jsonContent);
     });
 
-    it('should throw FileNotFoundError for non-existent file', () => {
-      const filePath = path.join(tempDir, 'nonexistent.json');
+    it("should throw FileNotFoundError for non-existent file", () => {
+      const filePath = path.join(tempDir, "nonexistent.json");
       expect(() => readDevContainerJson(filePath)).toThrow(FileNotFoundError);
       expect(() => readDevContainerJson(filePath)).toThrow(`File not found: ${filePath}`);
     });
 
-    it('should throw InvalidJsonError for invalid JSON', () => {
-      const filePath = path.join(tempDir, 'invalid.json');
-      fs.writeFileSync(filePath, '{ invalid json }', 'utf8');
+    it("should throw InvalidJsonError for invalid JSON", () => {
+      const filePath = path.join(tempDir, "invalid.json");
+      fs.writeFileSync(filePath, "{ invalid json }", "utf8");
 
       expect(() => readDevContainerJson(filePath)).toThrow(InvalidJsonError);
       expect(() => readDevContainerJson(filePath)).toThrow(`Invalid JSON in file: ${filePath}`);
@@ -141,7 +141,7 @@ describe('Devcontainer Templates', () => {
     // Note: PermissionError test would require setting up file permissions, which is complex in a test environment
   });
 
-  describe('createBranchSpecificDevContainer', () => {
+  describe("createBranchSpecificDevContainer", () => {
     let tempDir: string;
 
     beforeEach(() => {
@@ -155,27 +155,27 @@ describe('Devcontainer Templates', () => {
       }
     });
 
-    it('should create branch-specific file with containerName', () => {
-      const basePath = path.join(tempDir, 'devcontainer.json');
-      const branchPath = path.join(tempDir, 'devcontainer_branch.json');
-      const baseContent = { name: 'Base', image: 'base:latest' };
-      fs.writeFileSync(basePath, JSON.stringify(baseContent, null, 2), 'utf8');
+    it("should create branch-specific file with containerName", () => {
+      const basePath = path.join(tempDir, "devcontainer.json");
+      const branchPath = path.join(tempDir, "devcontainer_branch.json");
+      const baseContent = { name: "Base", image: "base:latest" };
+      fs.writeFileSync(basePath, JSON.stringify(baseContent, null, 2), "utf8");
 
-      createBranchSpecificDevContainer(basePath, branchPath, 'test-container');
+      createBranchSpecificDevContainer(basePath, branchPath, "test-container");
 
       expect(fs.existsSync(branchPath)).toBe(true);
-      const result = JSON.parse(fs.readFileSync(branchPath, 'utf8'));
+      const result = JSON.parse(fs.readFileSync(branchPath, "utf8"));
       expect(result).toEqual({
         ...baseContent,
-        containerName: 'test-container'
+        containerName: "test-container",
       });
     });
 
-    it('should create .devcontainer directory if it does not exist', () => {
-      const devcontainerDir = path.join(tempDir, '.devcontainer');
-      const basePath = path.join(devcontainerDir, 'devcontainer.json');
-      const branchPath = path.join(devcontainerDir, 'devcontainer_branch.json');
-      const baseContent = { name: 'Base', image: 'base:latest' };
+    it("should create .devcontainer directory if it does not exist", () => {
+      const devcontainerDir = path.join(tempDir, ".devcontainer");
+      const basePath = path.join(devcontainerDir, "devcontainer.json");
+      const branchPath = path.join(devcontainerDir, "devcontainer_branch.json");
+      const baseContent = { name: "Base", image: "base:latest" };
 
       // Ensure .devcontainer doesn't exist
       if (fs.existsSync(devcontainerDir)) {
@@ -183,61 +183,67 @@ describe('Devcontainer Templates', () => {
       }
 
       fs.mkdirSync(devcontainerDir, { recursive: true });
-      fs.writeFileSync(basePath, JSON.stringify(baseContent, null, 2), 'utf8');
+      fs.writeFileSync(basePath, JSON.stringify(baseContent, null, 2), "utf8");
 
-      createBranchSpecificDevContainer(basePath, branchPath, 'test-container');
+      createBranchSpecificDevContainer(basePath, branchPath, "test-container");
 
       expect(fs.existsSync(devcontainerDir)).toBe(true);
       expect(fs.existsSync(branchPath)).toBe(true);
     });
 
-    it('should throw error for invalid containerName', () => {
-      const basePath = path.join(tempDir, 'devcontainer.json');
-      const branchPath = path.join(tempDir, 'devcontainer_branch.json');
-      const baseContent = { name: 'Base', image: 'base:latest' };
-      fs.writeFileSync(basePath, JSON.stringify(baseContent, null, 2), 'utf8');
+    it("should throw error for invalid containerName", () => {
+      const basePath = path.join(tempDir, "devcontainer.json");
+      const branchPath = path.join(tempDir, "devcontainer_branch.json");
+      const baseContent = { name: "Base", image: "base:latest" };
+      fs.writeFileSync(basePath, JSON.stringify(baseContent, null, 2), "utf8");
 
-      expect(() => createBranchSpecificDevContainer(basePath, branchPath, '')).toThrow('containerName must be a non-empty string');
-      expect(() => createBranchSpecificDevContainer(basePath, branchPath, '   ')).toThrow('containerName must be a non-empty string');
-      expect(() => createBranchSpecificDevContainer(basePath, branchPath, null as any)).toThrow('containerName must be a non-empty string');
+      expect(() => createBranchSpecificDevContainer(basePath, branchPath, "")).toThrow(
+        "containerName must be a non-empty string",
+      );
+      expect(() => createBranchSpecificDevContainer(basePath, branchPath, "   ")).toThrow(
+        "containerName must be a non-empty string",
+      );
+      expect(() => createBranchSpecificDevContainer(basePath, branchPath, null as any)).toThrow(
+        "containerName must be a non-empty string",
+      );
     });
 
-    it('should throw FileNotFoundError if base file does not exist', () => {
-      const basePath = path.join(tempDir, 'nonexistent.json');
-      const branchPath = path.join(tempDir, 'devcontainer_branch.json');
+    it("should throw FileNotFoundError if base file does not exist", () => {
+      const basePath = path.join(tempDir, "nonexistent.json");
+      const branchPath = path.join(tempDir, "devcontainer_branch.json");
 
-      expect(() => createBranchSpecificDevContainer(basePath, branchPath, 'test-container')).toThrow(FileNotFoundError);
+      expect(() => createBranchSpecificDevContainer(basePath, branchPath, "test-container")).toThrow(FileNotFoundError);
     });
 
-    it('should throw InvalidJsonError if base file has invalid JSON', () => {
-      const basePath = path.join(tempDir, 'invalid.json');
-      const branchPath = path.join(tempDir, 'devcontainer_branch.json');
-      fs.writeFileSync(basePath, '{ invalid json }', 'utf8');
+    it("should throw InvalidJsonError if base file has invalid JSON", () => {
+      const basePath = path.join(tempDir, "invalid.json");
+      const branchPath = path.join(tempDir, "devcontainer_branch.json");
+      fs.writeFileSync(basePath, "{ invalid json }", "utf8");
 
-      expect(() => createBranchSpecificDevContainer(basePath, branchPath, 'test-container')).toThrow(InvalidJsonError);
-    });
-  });
-
-  describe('getBranchSpecificDevContainerPath', () => {
-    it('should return correct path for branch', () => {
-      const cwd = '/home/user/project';
-      const branch = 'feature-branch';
-      const expected = path.join(cwd, '.devcontainer', 'devcontainer_feature_branch.json');
-      expect(getBranchSpecificDevContainerPath(cwd, branch)).toBe(expected);
-    });
-
-    it('should sanitize branch name with special characters', () => {
-      const cwd = '/home/user/project';
-      const branch = 'feature/branch-with-dashes';
-      const expected = path.join(cwd, '.devcontainer', 'devcontainer_feature_branch_with_dashes.json');
-      expect(getBranchSpecificDevContainerPath(cwd, branch)).toBe(expected);
+      expect(() => createBranchSpecificDevContainer(basePath, branchPath, "test-container")).toThrow(InvalidJsonError);
     });
   });
 
-  describe('getBaseDevContainerPath', () => {
-    it('should return correct path for base devcontainer', () => {
-      const cwd = '/home/user/project';
-      const expected = path.join(cwd, '.devcontainer', 'devcontainer.json');
+  describe("getBranchSpecificDevContainerPath", () => {
+    it("should return correct path for branch", () => {
+      const cwd = "/home/user/project";
+      const branch = "feature-branch";
+      const expected = path.join(cwd, ".devcontainer", "devcontainer_feature_branch.json");
+      expect(getBranchSpecificDevContainerPath(cwd, branch)).toBe(expected);
+    });
+
+    it("should sanitize branch name with special characters", () => {
+      const cwd = "/home/user/project";
+      const branch = "feature/branch-with-dashes";
+      const expected = path.join(cwd, ".devcontainer", "devcontainer_feature_branch_with_dashes.json");
+      expect(getBranchSpecificDevContainerPath(cwd, branch)).toBe(expected);
+    });
+  });
+
+  describe("getBaseDevContainerPath", () => {
+    it("should return correct path for base devcontainer", () => {
+      const cwd = "/home/user/project";
+      const expected = path.join(cwd, ".devcontainer", "devcontainer.json");
       expect(getBaseDevContainerPath(cwd)).toBe(expected);
     });
   });

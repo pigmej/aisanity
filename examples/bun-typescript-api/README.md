@@ -174,7 +174,7 @@ bun test
 
 The Bun template uses the official Bun Docker image:
 
-- **Image**: `oven/bun:latest`
+- **Image**: `mcr.microsoft.com/devcontainers/base:ubuntu`
 - **User**: `bun`
 - **Ports**: 3000, 3001
 - **Extensions**: TypeScript, JSON, Bun VSCode extension

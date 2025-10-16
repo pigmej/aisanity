@@ -43,7 +43,7 @@ This validates the plan requirement that Bun detection must run before Node.js d
 
 1. **Basic Bun DevContainer Test**
    - Verifies template generation for 'bun' project type
-   - Checks for 'Bun Development' name and 'oven/bun:latest' image
+   - Checks for 'Bun Development' name and 'mcr.microsoft.com/devcontainers/base:ubuntu' image
 
 2. **Comprehensive Bun Features Test**
    - Validates Bun-specific configuration
@@ -58,8 +58,8 @@ This validates the plan requirement that Bun detection must run before Node.js d
 it('should include Bun-specific features in Bun devcontainer', () => {
   const template = getDevContainerTemplate('bun');
   const config = JSON.parse(template!.devcontainerJson);
-  
-  expect(config.image).toBe('oven/bun:latest');
+
+  expect(config.image).toBe('mcr.microsoft.com/devcontainers/base:ubuntu');
   expect(config.remoteUser).toBe('bun');
   expect(config.customizations.vscode.extensions).toContain('oven.bun-vscode');
   expect(config.postCreateCommand).toContain('curl');
@@ -99,11 +99,11 @@ it('should include Bun-specific features in Bun devcontainer', () => {
 ```typescript
 test('example Bun project uses Bun.serve API', () => {
   const content = fs.readFileSync(indexPath, 'utf8');
-  
+
   // Verify it uses Bun.serve (not Express or other frameworks)
   expect(content).toContain('Bun.serve');
   expect(content).toContain('fetch(req)');
-  
+
   // Should not use Express
   expect(content).not.toContain('express()');
 });
@@ -204,7 +204,7 @@ test('prioritizes Bun over Node.js when both files present', () => {
 ```typescript
 it('should include Bun-specific features in Bun devcontainer', () => {
   const config = JSON.parse(template!.devcontainerJson);
-  expect(config.image).toBe('oven/bun:latest');
+  expect(config.image).toBe('mcr.microsoft.com/devcontainers/base:ubuntu');
   expect(config.remoteUser).toBe('bun');
   expect(config.postCreateCommand).toContain('curl'); // Not npm!
 });
