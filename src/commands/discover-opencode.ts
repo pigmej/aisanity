@@ -104,6 +104,69 @@ async function getContainerName(containerId: string, verbose: boolean = false): 
   }
 }
 
+/**
+ * Resolves the IP address of a Docker container using Docker inspect commands.
+ * 
+ * This function attempts to retrieve the container's IP address using two methods:
+ * 1. Primary method: Uses NetworkSettings.IPAddress field for containers on default bridge network
+ * 2. Fallback method: Iterates through all network interfaces to find first available IP
+ * 
+ * @param containerId - The Docker container ID (12-64 character hex string)
+ * @param verbose - Enable verbose logging to stderr for debugging IP resolution process
+ * @returns Promise<string> - Resolved IP address or empty string if resolution fails
+ * 
+ * @example
+ * ```typescript
+ * const ip = await getContainerIpAddress('abc123def456', true);
+ * if (ip) {
+ *   console.log(`Container IP: ${ip}`);
+ * } else {
+ *   console.log('Could not resolve container IP');
+ * }
+ * ```
+ */
+export async function getContainerIpAddress(containerId: string, verbose: boolean): Promise<string> {
+  // Validate container ID
+  if (!containerId || !isValidContainerId(containerId)) {
+    if (verbose) console.error('Invalid container ID for IP resolution');
+    return '';
+  }
+
+  // Log resolution attempt
+  if (verbose) console.error(`Resolving IP address for container ${containerId}...`);
+
+  try {
+    // Primary method: Default IPAddress field
+    const primaryResult = await $`docker inspect --format '{{.NetworkSettings.IPAddress}}' ${containerId}`.text();
+    const primaryIp = primaryResult.trim();
+    
+    if (primaryIp && primaryIp !== '' && primaryIp !== '<no value>') {
+      if (verbose) console.error(`Primary IP resolution successful: ${primaryIp}`);
+      return primaryIp;
+    }
+    
+    if (verbose) console.error('Primary IP resolution returned empty, trying fallback method...');
+    
+    // Fallback method: Iterate through Networks
+    const fallbackResult = await $`docker inspect --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ${containerId}`.text();
+    const fallbackIp = fallbackResult.trim();
+    
+    if (fallbackIp && fallbackIp !== '' && fallbackIp !== '<no value>') {
+      if (verbose) console.error(`Fallback IP resolution successful: ${fallbackIp}`);
+      return fallbackIp;
+    }
+    
+    if (verbose) console.error('Both IP resolution methods returned empty');
+    return '';
+    
+  } catch (error) {
+    if (verbose) {
+      console.error('IP resolution failed with error:', error instanceof Error ? error.message : String(error));
+    }
+    return '';
+  }
+}
+
 // Main discovery function
 export async function discoverOpencodeInstances(options: CommandOptions): Promise<DiscoveryResult> {
   const instances: OpencodeInstance[] = [];
@@ -131,13 +194,29 @@ export async function discoverOpencodeInstances(options: CommandOptions): Promis
        // No main container
      }
 
-     // Get devcontainer
-     try {
-       const devOutput = await $`docker ps -q --filter label=devcontainer.local_folder=${cwd}`.text();
-       devOutput.trim().split('\n').filter((id: string) => id.length > 0).forEach((id: string) => containerIdsSet.add(id));
-     } catch (error) {
-       // No devcontainer
-     }
+      // Get devcontainer
+       try {
+         const devOutput = await $`docker ps -q --filter label=devcontainer.local_folder=${cwd}`.text();
+         devOutput.trim().split('\n').filter((id: string) => id.length > 0).forEach((id: string) => containerIdsSet.add(id));
+       } catch (error) {
+         // No devcontainer
+       }
+
+      // Get aisanity-labeled containers
+      try {
+        if (options.verbose) console.error(`Searching for containers with label aisanity.container=${containerName}...`);
+        const labelOutput = await $`docker ps -q --filter label=aisanity.container=${containerName}`.text();
+        const labeledContainers = labelOutput.trim().split('\n').filter((id: string) => id.length > 0);
+        if (options.verbose && labeledContainers.length > 0) {
+          console.error(`Found ${labeledContainers.length} container(s) with aisanity.container label`);
+        }
+        labeledContainers.forEach((id: string) => containerIdsSet.add(id));
+      } catch (error) {
+        if (options.verbose) console.error('Error searching for aisanity-labeled containers:', error instanceof Error ? error.message : String(error));
+        // No aisanity-labeled containers
+      }
+
+
 
     const containerIds = Array.from(containerIdsSet);
 
@@ -197,22 +276,46 @@ export async function discoverOpencodeInstances(options: CommandOptions): Promis
 
          if (processes.length === 0) continue;
 
-         // Get listening ports with hosts
-         const portsOutput = await $`docker exec ${containerId} netstat -tlnp`.text();
-         const listeningAddresses = portsOutput
-           .split('\n')
-           .filter((line: string) => line.includes('LISTEN'))
-           .map((line: string) => {
-             // Match patterns like "127.0.0.1:3000", "0.0.0.0:3000", "192.168.1.100:3000"
-             const match = line.match(/(\d+\.\d+\.\d+\.\d+|localhost|0\.0\.0\.0):(\d+)/);
-             if (match) {
-               const host = match[1] === '0.0.0.0' ? 'localhost' : match[1]; // Convert 0.0.0.0 to localhost for external access
-               const port = parseInt(match[2]);
-               return { host, port };
-             }
-             return null;
-           })
-           .filter(Boolean) as { host: string; port: number }[];
+          // Get listening ports with hosts
+          const portsOutput = await $`docker exec ${containerId} netstat -tlnp`.text();
+          const rawListeningAddresses = portsOutput
+            .split('\n')
+            .filter((line: string) => line.includes('LISTEN'))
+            .map((line: string) => {
+              // Match patterns like "127.0.0.1:3000", "0.0.0.0:3000", "192.168.1.100:3000"
+              const match = line.match(/(\d+\.\d+\.\d+\.\d+|localhost|0\.0\.0\.0):(\d+)/);
+              if (match) {
+                const rawHost = match[1];
+                const port = parseInt(match[2]);
+                return { rawHost, port };
+              }
+              return null;
+            })
+            .filter(Boolean) as { rawHost: string; port: number }[];
+
+          // Resolve 0.0.0.0 to actual container IP
+          const listeningAddresses = [];
+          for (const { rawHost, port } of rawListeningAddresses) {
+            let host: string;
+            
+            // Check if 0.0.0.0 (listen on all interfaces)
+            if (rawHost === '0.0.0.0') {
+              // Resolve to actual container IP
+              const containerIp = await getContainerIpAddress(containerId, options.verbose);
+              
+              // Use resolved IP or fallback to localhost
+              host = containerIp || 'localhost';
+              
+              if (options.verbose) {
+                console.error(`Resolved 0.0.0.0 to ${host} for container ${containerId}`);
+              }
+            } else {
+              // Preserve existing behavior for specific IPs
+              host = rawHost;
+            }
+            
+            listeningAddresses.push({ host, port });
+          }
 
          if (listeningAddresses.length === 0) continue;
 
