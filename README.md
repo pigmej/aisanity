@@ -435,6 +435,409 @@ env:
   DATABASE_URL: "postgresql://localhost:5432/auth_db"
 ```
 
+## Environment Variables
+
+Aisanity supports secure environment variable pass-through from host to container using a whitelist-based approach with wildcard pattern matching.
+
+### Configuration
+
+Add an `envWhitelist` section to your `.aisanity` file to specify which host environment variables can pass through:
+
+```yaml
+workspace: my-project
+envWhitelist:
+  - "HTTP_*"
+  - "NODE_ENV"
+  - "OPENCODE_*"
+  - "DATABASE_*"
+```
+
+#### Whitelist Pattern Syntax
+
+- `*` matches any sequence of characters (e.g., `HTTP_*` matches `HTTP_PROXY`, `HTTP_PORT`)
+- `?` matches any single character (e.g., `API_KEY?` matches `API_KEY1`, `API_KEY2`)
+- Use specific variable names for exact matches (e.g., `NODE_ENV`)
+- Patterns are case-sensitive
+
+#### Static Environment Variables
+
+You can also define static environment variables that always pass through:
+
+```yaml
+workspace: my-project
+env:
+  NODE_ENV: development
+  DEBUG: "aisanity:*"
+envWhitelist:
+  - "HTTP_*"
+  - "DATABASE_*"
+```
+
+### CLI Usage
+
+#### Set Environment Variables via CLI
+
+Override or add environment variables using the `--env` option:
+
+```bash
+# Set specific environment variables
+aisanity run --env API_KEY=secret --env DEBUG=true bash
+
+# Multiple environment variables
+aisanity run --env HTTP_PROXY=proxy.com --env HTTPS_PROXY=proxy.com npm start
+
+# Environment variables with complex values
+aisanity run --env DATABASE_URL="postgresql://user:pass@localhost:5432/db" node app.js
+```
+
+#### Host Environment Variables
+
+Set environment variables in your shell and they'll pass through if whitelisted:
+
+```bash
+# Set in shell
+export HTTP_PROXY=http://proxy.company.com
+export NODE_ENV=production
+
+# Run with whitelist matching
+aisanity run npm start
+```
+
+#### Dry-run Preview
+
+Use `--dry-run` to preview which environment variables would be passed without executing:
+
+```bash
+# Preview environment variables
+aisanity run --dry-run --env EXTRA_VAR=value command
+
+# Output shows:
+# Environment variables that would be passed to container:
+#   HTTP_PROXY=http://proxy.company.com
+#   NODE_ENV=production
+#   EXTRA_VAR=value
+```
+
+### Security Considerations
+
+#### Whitelist-Only Approach
+- Only variables explicitly allowed in `envWhitelist` pass through from host environment
+- CLI `--env` variables bypass whitelist (explicit user intent)
+- Static `env` variables always pass through (explicitly configured)
+
+#### Blocked System Variables
+For security, these system variables are always blocked:
+- `PATH`, `HOME`, `USER`, `SHELL`, `TERM`, `LANG`, `LC_*`
+- `SSH_AUTH_SOCK`, `SSH_AGENT_PID`, `GPG_AGENT_INFO`
+
+#### Pattern Restrictions
+- Overly broad patterns like `*` or `**` are rejected
+- Patterns must contain at least 3 characters for specificity
+- Only alphanumeric characters, underscores, hyphens, and wildcards allowed
+
+### Precedence Order
+
+Environment variables are merged with the following precedence (highest to lowest):
+
+1. **CLI variables** (`--env` flag) - highest precedence
+2. **Host environment variables** (from `process.env`, filtered by whitelist)
+3. **Config variables** (static `env` in `.aisanity`) - lowest precedence
+
+### Examples
+
+#### Development Environment
+```yaml
+# .aisanity
+workspace: my-app
+env:
+  NODE_ENV: development
+  DEBUG: "myapp:*"
+envWhitelist:
+  - "HTTP_*"
+  - "API_*"
+  - "DATABASE_*"
+```
+
+```bash
+# Run with additional debug flag
+aisanity run --env DEBUG="myapp:*:verbose" npm start
+```
+
+#### Production Deployment
+```yaml
+# .aisanity
+workspace: my-app
+env:
+  NODE_ENV: production
+envWhitelist:
+  - "DATABASE_*"
+  - "REDIS_*"
+  - "API_KEY_*"
+```
+
+```bash
+# Deploy with production secrets
+export DATABASE_URL="postgresql://prod:secret@db.prod.com/prod"
+export API_KEY_PRODUCTION="sk-1234567890"
+aisanity run npm run deploy
+```
+
+## Troubleshooting
+
+### Variable Not Passing Through
+
+#### Check envWhitelist Configuration
+```bash
+# Verify your .aisanity configuration
+cat .aisanity
+
+# Test with dry-run to see what would pass
+aisanity run --dry-run echo "test"
+```
+
+**Common Issues:**
+- Missing `envWhitelist` section in `.aisanity` file
+- Typos in pattern names (e.g., `HTTP_*` vs `HTTP_*`)
+- Patterns are case-sensitive
+
+#### Verify Pattern Matching
+```bash
+# Test specific patterns with dry-run
+export HTTP_PROXY=http://proxy.example.com
+export NODE_ENV=production
+
+# With whitelist that should match HTTP_* but not NODE_ENV
+aisanity run --dry-run --env TEST_VAR=test env | grep -E "(HTTP_PROXY|NODE_ENV|TEST_VAR)"
+```
+
+#### Check for Blocked System Variables
+System variables are always blocked for security:
+```bash
+# These will NEVER pass through, even if whitelisted:
+# PATH, HOME, USER, SHELL, TERM, LANG, LC_*
+# SSH_AUTH_SOCK, SSH_AGENT_PID, GPG_AGENT_INFO
+```
+
+### Pattern Not Matching
+
+#### Case Sensitivity Issues
+```yaml
+# This will NOT match "http_proxy" (lowercase)
+envWhitelist:
+  - "HTTP_*"  # Only matches uppercase
+
+# Use both cases if needed:
+envWhitelist:
+  - "HTTP_*"
+  - "http_*"
+```
+
+#### Pattern Syntax Verification
+```bash
+# Valid patterns:
+HTTP_*          # Matches HTTP_PROXY, HTTP_PORT
+API_KEY?        # Matches API_KEY1, API_KEY2
+NODE_ENV        # Matches exactly NODE_ENV
+
+# Invalid patterns (will be rejected):
+*               # Too broad
+**              # Too broad
+A*B*C           # Too many wildcards
+```
+
+#### Test Patterns Step by Step
+```bash
+# Start with a specific variable
+export TEST_VAR=hello
+aisanity run --dry-run --env TEST_VAR=hello env | grep TEST_VAR
+
+# Then test with pattern
+export TEST_PATTERN_VAR=world
+aisanity run --dry-run env | grep TEST_PATTERN
+```
+
+### Common Error Messages
+
+#### "Invalid environment variable pattern"
+**Cause**: Pattern contains invalid characters or is too broad
+```yaml
+# Invalid examples:
+envWhitelist:
+  - "*"              # Too broad
+  - "A*B*C"          # Too many wildcards
+  - "VAR$"           # Invalid character
+
+# Valid examples:
+envWhitelist:
+  - "HTTP_*"
+  - "API_KEY?"
+  - "NODE_ENV"
+```
+
+#### "Environment variable name must match POSIX standards"
+**Cause**: Variable name contains invalid characters
+```bash
+# Invalid variable names:
+--env "123_INVALID=value"    # Starts with number
+--env "INVALID-NAME=value"   # Contains hyphen
+--env "INVALID.NAME=value"   # Contains period
+
+# Valid variable names:
+--env "VALID_NAME=value"
+--env "API_KEY_123=value"
+--env "_PRIVATE_VAR=value"
+```
+
+#### "Pattern too broad"
+**Cause**: Pattern would match too many variables
+```yaml
+# Too broad (rejected):
+envWhitelist:
+  - "*"
+  - "*_*"
+  - "A*"
+
+# More specific (accepted):
+envWhitelist:
+  - "HTTP_*"
+  - "API_*"
+  - "OPENCODE_*"
+```
+
+### Debug Techniques
+
+#### Using --dry-run Effectively
+```bash
+# Preview all environment variables that would pass
+aisanity run --dry-run
+
+# Test with additional CLI variables
+aisanity run --dry-run --env DEBUG=true --env VERBOSE=1
+
+# Combine with grep to filter results
+aisanity run --dry-run env | grep -E "(HTTP|API|DEBUG)"
+```
+
+#### Using --verbose for Detailed Output
+```bash
+# Get detailed information about pattern matching
+aisanity run --verbose --dry-run
+
+# Output shows:
+# - Which patterns matched which variables
+# - Why certain variables were blocked
+# - Precedence resolution details
+```
+
+#### Test Configuration Incrementally
+```bash
+# 1. Start with empty whitelist
+echo "envWhitelist: []" >> .aisanity
+aisanity run --dry-run
+
+# 2. Add one pattern at a time
+echo "envWhitelist: ['HTTP_*']" > .aisanity
+aisanity run --dry-run
+
+# 3. Test with multiple patterns
+echo "envWhitelist: ['HTTP_*', 'NODE_ENV']" > .aisanity
+aisanity run --dry-run
+```
+
+#### Verify Configuration Loading
+```bash
+# Check that your configuration is being read correctly
+aisanity run --dry-run 2>&1 | grep -i "whitelist\|pattern"
+
+# Or check the configuration directly
+cat .aisanity
+```
+
+### FAQ
+
+#### Why isn't my variable passing through?
+1. **Check whitelist**: Is the variable name or pattern in `envWhitelist`?
+2. **Check case sensitivity**: Patterns are case-sensitive
+3. **Check system variables**: Some variables are always blocked
+4. **Use --dry-run**: See exactly what would pass through
+
+```bash
+# Debug step by step
+export MY_VAR=test
+aisanity run --dry-run env | grep MY_VAR
+```
+
+#### Can I pass all environment variables?
+No, for security reasons. Use specific patterns:
+```yaml
+# Instead of "*"
+envWhitelist:
+  - "HTTP_*"
+  - "API_*"
+  - "NODE_ENV"
+  - "DATABASE_*"
+```
+
+#### Do CLI variables require whitelist?
+No, CLI `--env` variables bypass the whitelist:
+```bash
+# This works even with empty whitelist
+aisanity run --env CUSTOM_VAR=value env | grep CUSTOM_VAR
+```
+
+#### Why can't I pass PATH or HOME?
+These are system variables that are always blocked for security:
+```bash
+# These will never work, even if whitelisted:
+aisanity run --env PATH=/custom/path echo $PATH
+aisanity run --env HOME=/custom/home echo $HOME
+```
+
+#### How do I debug precedence issues?
+Use `--dry-run` to see the final result:
+```bash
+# Set up conflicting variables
+export NODE_ENV=production
+aisanity run --dry-run --env NODE_ENV=development env | grep NODE_ENV
+# Output will show NODE_ENV=development (CLI takes precedence)
+```
+
+#### My pattern matches too many variables. How do I fix it?
+Be more specific with your patterns:
+```yaml
+# Too broad:
+envWhitelist:
+  - "*_*"
+
+# More specific:
+envWhitelist:
+  - "API_*"
+  - "DATABASE_*"
+  - "HTTP_*"
+```
+
+#### How do I test if my regex-like patterns work?
+Use the `--dry-run` option with test variables:
+```bash
+# Set up test variables
+export API_TEST=123
+export API_PROD=456
+export OTHER_VAR=789
+
+# Test pattern matching
+aisanity run --dry-run env | grep -E "(API_TEST|API_PROD|OTHER_VAR)"
+```
+
+#### What if I need to pass a variable with special characters?
+CLI variables handle escaping automatically:
+```bash
+# Variables with special characters in values
+aisanity run --env URL="https://example.com?param=value&other=test" env | grep URL
+
+# Variables with spaces (use quotes)
+aisanity run --env MESSAGE="Hello world" env | grep MESSAGE
+```
+
 ## Requirements
 
 - Docker

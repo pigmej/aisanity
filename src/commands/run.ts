@@ -5,6 +5,7 @@ import { loadAisanityConfig, getContainerName, getCurrentBranch } from '../utils
 import { generateContainerLabels, validateContainerLabels, ContainerLabels } from '../utils/container-utils';
 import { isWorktree, getMainGitDirPath } from '../utils/worktree-utils';
 import { Logger } from '../utils/logger';
+import { processEnvironmentVariables, generateDevcontainerEnvFlags } from '../utils/env-utils';
 import * as fs from 'fs';
 
 export const runCommand = new Command('run')
@@ -13,6 +14,9 @@ export const runCommand = new Command('run')
   .option('--devcontainer-json <path>', 'Path to devcontainer.json file')
   .option('--force-recreate', 'Force recreation of branch-specific devcontainer file')
   .option('--worktree <path>', 'Run command in specific worktree')
+  .option('--env <key=value>', 'Set environment variable (can be used multiple times). Bypasses whitelist filtering.', 
+          (value, previous: string[] = []) => [...previous, value])
+  .option('--dry-run', 'Show environment variables that would be passed to container without executing command')
   .option('-v, --verbose', 'Enable verbose logging')
   .option('--silent, --quiet', 'Suppress aisanity output, show only tool output')
   .action(async (commandArgs: string[], options) => {
@@ -41,6 +45,49 @@ export const runCommand = new Command('run')
       if (!config) {
         console.error('No .aisanity config found. Run "aisanity init" first.');
         process.exit(1);
+      }
+
+      // Process environment variables
+      const cliEnvVars = options.env || [];
+      const envCollection = processEnvironmentVariables(config, cliEnvVars, {
+        dryRun: options.dryRun || false,
+        verbose: options.verbose && !options.silent && !options.quiet
+      });
+
+      // Handle dry-run mode
+      if (options.dryRun) {
+        if (!options.silent && !options.quiet) {
+          console.log('Environment variables that would be passed to container:');
+          if (Object.keys(envCollection.merged).length === 0) {
+            console.log('  None');
+          } else {
+            Object.entries(envCollection.merged).forEach(([key, value]) => {
+              console.log(`  ${key}=${value}`);
+            });
+          }
+          
+          if (envCollection.cli && Object.keys(envCollection.cli).length > 0) {
+            console.log('\nCLI environment variables:');
+            Object.entries(envCollection.cli).forEach(([key, value]) => {
+              console.log(`  ${key}=${value}`);
+            });
+          }
+          
+          if (envCollection.host && Object.keys(envCollection.host).length > 0) {
+            console.log('\nHost environment variables (from whitelist):');
+            Object.entries(envCollection.host).forEach(([key, value]) => {
+              console.log(`  ${key}=${value}`);
+            });
+          }
+          
+          if (envCollection.config && Object.keys(envCollection.config).length > 0) {
+            console.log('\nConfig environment variables:');
+            Object.entries(envCollection.config).forEach(([key, value]) => {
+              console.log(`  ${key}=${value}`);
+            });
+          }
+        }
+        process.exit(0);
       }
 
       const workspaceName = config.workspace;
@@ -138,13 +185,23 @@ export const runCommand = new Command('run')
           upArgs.push('--id-label', label);
         });
 
-        // Add mounts for git worktree support
-        additionalMounts.forEach(mount => {
-          upArgs.push('--mount', mount);
-        });
+         // Add mounts for git worktree support
+         additionalMounts.forEach(mount => {
+           upArgs.push('--mount', mount);
+         });
 
-      // Determine if silent mode is enabled
-      const isSilent = options.silent || options.quiet || false;
+         // Add environment variables
+         const remoteEnvFlags = generateDevcontainerEnvFlags(envCollection.merged);
+         remoteEnvFlags.forEach(flag => {
+           upArgs.push(flag);
+         });
+
+         if (options.verbose && !options.silent && !options.quiet && Object.keys(envCollection.merged).length > 0) {
+           logger.info(`Passing ${Object.keys(envCollection.merged).length} environment variables to container`);
+         }
+
+       // Determine if silent mode is enabled
+       const isSilent = options.silent || options.quiet || false;
 
       const upResult = Bun.spawn(['devcontainer', ...upArgs], {
         stdio: isSilent ? ['inherit', 'pipe', 'pipe'] : ['inherit', 'inherit', 'inherit'],
@@ -168,12 +225,17 @@ export const runCommand = new Command('run')
          execArgs.push('--config', devcontainerPath);
        }
 
-       // Add ID labels for consistent container identification
-       idLabels.forEach(label => {
-         execArgs.push('--id-label', label);
-       });
+        // Add ID labels for consistent container identification
+        idLabels.forEach(label => {
+          execArgs.push('--id-label', label);
+        });
 
-      execArgs.push(...command);
+        // Add environment variables
+        remoteEnvFlags.forEach(flag => {
+          execArgs.push(flag);
+        });
+
+       execArgs.push(...command);
 
       // Spawn devcontainer exec process
       const child = Bun.spawn(['devcontainer', ...execArgs], {

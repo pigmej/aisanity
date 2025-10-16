@@ -74,6 +74,12 @@ bun run lint
 - **Bun Test Runner**: Native TypeScript support, faster execution
 - **Performance Benchmarks**: Automated performance validation
 
+### Environment Variable Processing
+- **Security-First Design**: Whitelist-based filtering with wildcard pattern matching
+- **Performance Optimized**: Pattern caching and efficient filtering algorithms
+- **Precedence Management**: CLI > host > config environment variable resolution
+- **Devcontainer Integration**: Seamless integration with `--remote-env` flags
+
 ## Best Practices
 
 ### Using Bun APIs
@@ -214,6 +220,281 @@ time npm test
 3. Create release artifacts
 4. Update documentation
 5. Deploy to package registries
+
+## Environment Variable Processing
+
+### Core Utilities (src/utils/env-utils.ts)
+
+The environment variable processing pipeline is implemented in `src/utils/env-utils.ts` with the following key components:
+
+#### Pattern Matching
+```typescript
+// Convert wildcard patterns to regex for efficient matching
+export function matchEnvPattern(pattern: string, varName: string): boolean
+
+// Validate pattern syntax and security
+export function validateEnvPattern(pattern: string): boolean
+```
+
+#### Environment Collection
+```typescript
+// Collect host environment variables based on whitelist
+export function collectHostEnv(whitelist: string[]): Record<string, string>
+
+// Parse CLI --env arguments with validation
+export function parseCliEnvVars(cliEnvArgs: string[]): Record<string, string>
+```
+
+#### Merging and Precedence
+```typescript
+// Merge environment variables with precedence: CLI > config > host
+export function mergeEnvVariables(
+  cliEnv: Record<string, string>,
+  hostEnv: Record<string, string>,
+  configEnv: Record<string, string>,
+  whitelist: string[]
+): Record<string, string>
+```
+
+#### Devcontainer Integration
+```typescript
+// Generate --remote-env flags for devcontainer commands
+export function generateDevcontainerEnvFlags(envVars: Record<string, string>): string[]
+```
+
+### Development Guidelines
+
+#### Adding New Environment Variable Features
+
+1. **Security First**: Always validate input and follow whitelist-only approach
+2. **Pattern Caching**: Use `getCompiledPattern()` for performance with repeated patterns
+3. **Error Handling**: Provide clear, actionable error messages for invalid inputs
+4. **Precedence Respect**: Maintain CLI > host > config precedence order
+
+#### Testing Environment Variable Features
+
+```typescript
+// Test pattern matching
+import { matchEnvPattern, validateEnvPattern } from '../src/utils/env-utils';
+
+test('wildcard pattern matching', () => {
+  expect(matchEnvPattern('HTTP_*', 'HTTP_PROXY')).toBe(true);
+  expect(matchEnvPattern('API_KEY?', 'API_KEY1')).toBe(true);
+  expect(matchEnvPattern('NODE_ENV', 'NODE_ENV')).toBe(true);
+});
+
+// Test environment collection
+test('host environment collection', () => {
+  const whitelist = ['HTTP_*', 'NODE_ENV'];
+  const collected = collectHostEnv(whitelist);
+  // Verify only whitelisted variables are collected
+});
+```
+
+#### Performance Considerations
+
+- **Pattern Caching**: Compiled regex patterns are cached (max 100 entries)
+- **Efficient Filtering**: Use Set operations and early termination
+- **Memory Management**: Limit cache size and clean up unused patterns
+- **Target Performance**: <10ms for 100 variables with 20 patterns
+
+#### Security Guidelines
+
+- **Input Validation**: Always validate environment variable names and patterns
+- **Blocked Variables**: System variables are automatically blocked
+- **Pattern Restrictions**: Reject overly broad patterns like `*`
+- **Value Safety**: Devcontainer CLI handles value escaping internally
+
+#### Security Levels
+
+The environment variable processing system supports three security levels that control the strictness of pattern validation and variable filtering:
+
+##### Strict Mode (Default)
+```typescript
+// Maximum security - recommended for production
+const strictConfig = {
+  securityLevel: 'strict',
+  blockedPatterns: ['*'],
+  maxPatternBreadth: 10,
+  requireExplicitWhitelist: true,
+  blockSystemVars: true
+};
+```
+
+**Characteristics:**
+- Rejects overly broad patterns (`*`, `**`, `A*`)
+- Maximum pattern breadth limit (10 variables per pattern)
+- All system variables blocked
+- Requires explicit whitelist for host variables
+- CLI variables still bypass whitelist (explicit user intent)
+
+**Use Cases:**
+- Production environments
+- CI/CD pipelines
+- Security-sensitive applications
+- Multi-user systems
+
+##### Moderate Mode
+```typescript
+// Balanced security - recommended for development
+const moderateConfig = {
+  securityLevel: 'moderate',
+  blockedPatterns: ['*', '**'],
+  maxPatternBreadth: 50,
+  requireExplicitWhitelist: true,
+  blockSystemVars: true
+};
+```
+
+**Characteristics:**
+- Allows reasonable wildcard patterns (`API_*`, `HTTP_*`)
+- Moderate pattern breadth limit (50 variables per pattern)
+- System variables blocked
+- Requires explicit whitelist for host variables
+- CLI variables bypass whitelist
+
+**Use Cases:**
+- Development environments
+- Staging environments
+- Team collaboration
+- Feature testing
+
+##### Permissive Mode
+```typescript
+# Configure in .aisanity for permissive mode
+workspace: my-project
+securityLevel: permissive
+envWhitelist:
+  - "*_*"  # More permissive patterns allowed
+```
+
+**Characteristics:**
+- Allows broader patterns with warnings
+- Higher pattern breadth limit (100+ variables per pattern)
+- Critical system variables still blocked
+- Whitelist still required for host variables
+- CLI variables bypass whitelist
+
+**Use Cases:**
+- Local development
+- Debugging environments
+- Legacy application migration
+- Rapid prototyping
+
+##### Security Level Configuration
+
+**Via Configuration File:**
+```yaml
+# .aisanity
+workspace: my-project
+securityLevel: strict  # strict | moderate | permissive
+envWhitelist:
+  - "API_*"
+  - "DATABASE_*"
+```
+
+**Via CLI Options:**
+```bash
+# Override security level temporarily
+aisanity run --security-level=permissive --env DEBUG=* command
+
+# Use with caution - only for trusted environments
+aisanity run --security-level=strict --dry-run command
+```
+
+**Programmatic Configuration:**
+```typescript
+// In custom scripts or extensions
+import { processEnvironmentVariables } from './src/utils/env-utils';
+
+const envCollection = processEnvironmentVariables(config, cliEnvVars, {
+  securityLevel: 'moderate',
+  verbose: true
+});
+```
+
+##### Security Level Behavior Comparison
+
+| Feature | Strict | Moderate | Permissive |
+|---------|--------|----------|------------|
+| Pattern `*` | ❌ Blocked | ❌ Blocked | ⚠️ Warning |
+| Pattern `*_*` | ❌ Blocked | ✅ Allowed | ✅ Allowed |
+| Pattern `API_*` | ✅ Allowed | ✅ Allowed | ✅ Allowed |
+| Max Pattern Breadth | 10 vars | 50 vars | 100+ vars |
+| System Variables | ❌ Blocked | ❌ Blocked | ❌ Blocked |
+| CLI Override | ✅ Allowed | ✅ Allowed | ✅ Allowed |
+| Default Level | ✅ Yes | ❌ No | ❌ No |
+
+##### Security Level Migration
+
+**Upgrading to Strict Mode:**
+```bash
+# Test current configuration with strict mode
+aisanity run --security-level=strict --dry-run
+
+# Fix any pattern warnings
+# Update .aisanity:
+#   securityLevel: strict
+#   envWhitelist: ["API_*", "DATABASE_*"]  # More specific patterns
+```
+
+**Downgrading for Development:**
+```bash
+# Temporary permissive mode for debugging
+aisanity run --security-level=permissive --env DEBUG=* command
+
+# Or set in development .aisanity
+# securityLevel: moderate
+```
+
+##### Security Level Best Practices
+
+1. **Use Strict Mode** for production and CI/CD
+2. **Use Moderate Mode** for team development
+3. **Use Permissive Mode** only for local debugging
+4. **Always Test** configuration changes with `--dry-run`
+5. **Monitor Pattern Breadth** to avoid accidental data exposure
+6. **Document Security Level** in team guidelines
+
+##### Security Level Validation
+
+The system automatically validates security level configurations:
+
+```typescript
+// Invalid security level
+aisanity run --security-level=invalid  # Error: Invalid security level
+
+// Conflicting configuration
+# .aisanity with both strict and broad patterns
+securityLevel: strict
+envWhitelist: ["*"]  # Warning: Pattern too broad for strict mode
+```
+
+### Integration Points
+
+#### CLI Integration (src/commands/run.ts)
+```typescript
+// Parse --env options
+.option('--env <key=value>', 'Set environment variable', 
+        (value, previous) => [...(previous || []), value])
+
+// Process environment variables
+const envCollection = processEnvironmentVariables(config, cliEnvVars, options);
+
+// Generate devcontainer flags
+const remoteEnvFlags = generateDevcontainerEnvFlags(envCollection.merged);
+```
+
+#### Configuration Integration (src/utils/config.ts)
+```typescript
+interface AisanityConfig {
+  workspace: string;
+  containerName?: string;
+  env?: Record<string, string;           // Static environment variables
+  envWhitelist?: string[];               // Whitelist patterns for host env
+  worktree?: boolean;
+}
+```
 
 ## Additional Resources
 

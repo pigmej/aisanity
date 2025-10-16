@@ -8,6 +8,7 @@ export interface AisanityConfig {
   workspace: string;
   containerName?: string;
   env?: Record<string, string>;
+  envWhitelist?: string[];
   worktree?: boolean;
 }
 
