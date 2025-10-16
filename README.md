@@ -859,58 +859,14 @@ If you have already .devcontainer based setup then most likely you want to add o
 
 When you run `aisanity init`, Aisanity detects your project type and generates an appropriate devcontainer configuration:
 
-- **Python projects** - Python 3.11 with uv, ruff, and opencode integration
-- **Node.js projects** - Node.js 18 with TypeScript and Tailwind support
-- **Go projects** - Go 1.21 with Go extensions and tools
+- **Python projects** - Python 3.13 with uv, ruff, and opencode integration
+- **Node.js projects** - Node.js 22 with TypeScript and Tailwind support
+- **Bun projects** - Most recent (at the build time) Bun with Bun extensions and tools
+- **Go projects** - Go 1.24 with Go extensions and tools
 - **Rust projects** - Rust toolchain with rust-analyzer
-- **Java projects** - Java 17 with Java Development Pack
 - **Unknown projects** - Base Ubuntu environment with Node.js
 
-### Auto-Generated Configuration Examples
 
-#### Python Project Example
-```json
-{
-  "name": "Python Development",
-  "image": "mcr.microsoft.com/devcontainers/python:3.11",
-  "features": {
-    "ghcr.io/devcontainers/features/node:1": {
-      "version": "lts"
-    },
-    "ghcr.io/gvatsal60/dev-container-features/uv:0": {},
-    "ghcr.io/jsburckhardt/devcontainer-features/ruff:1": {}
-  },
-  "forwardPorts": [5000, 8000],
-  "mounts": [
-    "source=${localEnv:HOME}/.config/opencode,target=/home/vscode/.config/opencode,type=bind,consistency=cached",
-    "source=${localEnv:HOME}/.local/share/opencode,target=/home/vscode/.local/share/opencode,type=bind,consistency=cached",
-    "source=${localEnv:HOME}/.local/state/opencode,target=/home/vscode/.local/state/opencode,type=bind,consistency=cached"
-  ],
-  "postCreateCommand": "npm install -g opencode-ai",
-  "remoteUser": "vscode"
-}
-```
-
-#### Node.js Project Example
-```json
-{
-  "name": "Node.js Development",
-  "image": "mcr.microsoft.com/devcontainers/javascript-node:18",
-  "features": {
-    "ghcr.io/devcontainers/features/node:1": {
-      "version": "lts"
-    }
-  },
-  "forwardPorts": [3000, 3001],
-  "mounts": [
-    "source=${localEnv:HOME}/.config/opencode,target=/home/node/.config/opencode,type=bind,consistency=cached",
-    "source=${localEnv:HOME}/.local/share/opencode,target=/home/node/.local/share/opencode,type=bind,consistency=cached",
-    "source=${localEnv:HOME}/.local/state/opencode,target=/home/node/.local/state/opencode,type=bind,consistency=cached"
-  ],
-  "postCreateCommand": "npm install -g opencode-ai",
-  "remoteUser": "node"
-}
-```
 
 ### Cross-Platform Compatibility
 
@@ -945,7 +901,7 @@ Aisanity uses automated releases triggered by semantic version tags. When a tag 
 ### Supported Platforms
 
 - **Linux x64** (`aisanity-linux-x64`)
-- **Linux ARM64** (`aisanity-linux-arm64`) 
+- **Linux ARM64** (`aisanity-linux-arm64`)
 - **macOS Intel** (`aisanity-darwin-x64`)
 - **macOS Apple Silicon** (`aisanity-darwin-arm64`)
 
