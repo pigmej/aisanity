@@ -1,0 +1,25 @@
+workflows:
+  deploy:
+    name: "Deploy Application"
+    description: "Build and deploy application to production"
+    initialState: "build"
+    states:
+      build:
+        description: "Build the application"
+        command: "npm run build"
+        timeout: 300
+        transitions:
+          success: "test"
+          failure: "cleanup"
+      test:
+        description: "Run test suite"
+        command: "npm test"
+        args: ["--coverage"  # Missing closing quote - YAML syntax error
+        timeout: 600
+        transitions:
+          success: "deploy"
+          failure: "cleanup"
+
+metadata:
+  version: "1.0.0"
+  invalid: [unclosed array
