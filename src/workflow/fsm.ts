@@ -21,6 +21,7 @@ import {
   WorkflowExecutionError,
   StateNotFoundError
 } from './errors';
+import { ConfirmationHandler } from './confirmation-handler';
 
 /**
  * Main StateMachine class for workflow execution
@@ -31,12 +32,14 @@ export class StateMachine {
   private context: ExecutionContext;
   private stateHistory: StateHistoryEntry[];
   private executor?: StateExecutionCoordinator;
+  private confirmationHandler?: ConfirmationHandler;
   private maxIterations: number = 1000; // Prevent infinite loops
 
   constructor(
     private workflow: Workflow,
     private logger?: Logger,
-    executor?: StateExecutionCoordinator
+    executor?: StateExecutionCoordinator,
+    confirmationHandler?: ConfirmationHandler
   ) {
     // Validate workflow structure on construction
     const validationResult = StateTransitionValidator.validateWorkflow(workflow);
@@ -58,6 +61,7 @@ export class StateMachine {
     this.currentState = workflow.initialState;
     this.stateHistory = [];
     this.executor = executor;
+    this.confirmationHandler = confirmationHandler;
     this.context = {
       workflowName: workflow.name,
       startedAt: new Date(),
@@ -85,7 +89,7 @@ export class StateMachine {
    * Execute the complete workflow sequentially
    * Returns execution result with history and final state
    */
-  async execute(): Promise<ExecutionResult> {
+  async execute(options: { yesFlag?: boolean } = {}): Promise<ExecutionResult> {
     const startTime = Date.now();
     let iterations = 0;
 
@@ -105,7 +109,7 @@ export class StateMachine {
         this.logger?.debug(`Executing state: ${this.currentState}`);
 
         // Execute current state
-        const result = await this.executeState(this.currentState);
+        const result = await this.executeState(this.currentState, options);
 
         // Record in history
         this.recordStateExecution(result);
@@ -153,7 +157,7 @@ export class StateMachine {
    * Execute a single state
    * Returns the execution result for that state
    */
-  async executeState(stateName: string): Promise<StateExecutionResult> {
+  async executeState(stateName: string, options: { yesFlag?: boolean } = {}): Promise<StateExecutionResult> {
     // Validate state exists
     const state = this.workflow.states[stateName];
     if (!state) {
@@ -166,6 +170,37 @@ export class StateMachine {
 
     const startTime = Date.now();
     const executedAt = new Date();
+
+    // Handle confirmation if configured
+    if (state.confirmation && this.confirmationHandler) {
+      // Skip confirmation entirely if --yes flag is set
+      if (!options.yesFlag) {
+        const result = await this.confirmationHandler.requestConfirmation(
+          state.confirmation.message || `Execute ${stateName}?`,
+          {
+            timeout: state.confirmation.timeout,
+            defaultResponse: state.confirmation.defaultAccept,
+            yesFlag: false
+          }
+        );
+        
+        if (!result.confirmed) {
+          // Return failure result for declined confirmation
+          const duration = Date.now() - startTime;
+          this.logger?.info(`State '${stateName}' confirmation declined`);
+          
+          return {
+            stateName,
+            exitCode: 1,
+            executedAt,
+            duration,
+            output: `Confirmation declined: ${state.confirmation.message || `Execute ${stateName}?`}`
+          };
+        }
+      } else {
+        this.logger?.info(`State '${stateName}' confirmation bypassed with --yes flag`);
+      }
+    }
 
     this.logger?.debug(`Executing command in state '${stateName}': ${state.command}`);
 
