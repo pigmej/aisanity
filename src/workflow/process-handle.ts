@@ -19,7 +19,7 @@ export interface ProcessResult {
 /**
  * Handle for managing process lifecycle
  */
-export interface ProcessHandle {
+export interface IProcessHandle {
   readonly process: any; // Bun.Process equivalent
   readonly abortController: AbortController;
   readonly startTime: number;
@@ -48,7 +48,7 @@ export interface ProcessSpawnOptions {
 /**
  * Implementation of ProcessHandle
  */
-class ProcessHandleImpl implements ProcessHandle {
+export class ProcessHandleImpl implements IProcessHandle {
   private _killed = false;
   private _exitCode: number | null = null;
   private _signalCode?: string | number;
@@ -120,7 +120,7 @@ export async function createProcessHandle(
   command: string,
   args: string[],
   options: ProcessSpawnOptions
-): Promise<ProcessHandle> {
+): Promise<IProcessHandle> {
   const startTime = Date.now();
   const abortController = new AbortController();
   

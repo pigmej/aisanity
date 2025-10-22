@@ -4,7 +4,7 @@
  */
 
 // Core interfaces and types
-export {
+export type {
   WorkflowDefinitions,
   Workflow,
   State,
@@ -40,16 +40,16 @@ export {
 } from './errors';
 
 // Execution context types
-export {
+export type {
   ExecutionContext,
+  ExecutionOptions,
   ExecutionResult,
   StateExecutionResult,
-  StateHistoryEntry,
-  ExecutionOptions,
-  CommandResult,
   StateExecutionCoordinator,
   TransitionResult,
-  ExecutionSummary
+  ExecutionSummary,
+  StateHistoryEntry,
+  CommandResult
 } from './execution-context';
 
 // State machine
@@ -57,7 +57,10 @@ export { StateMachine } from './fsm';
 
 // State validator
 export {
-  StateTransitionValidator,
+  StateTransitionValidator
+} from './state-validator';
+
+export type {
   ValidationResult,
   CircularityResult
 } from './state-validator';
@@ -65,16 +68,23 @@ export {
 // Command executor and related components
 export {
   CommandExecutor,
-  CommandExecutionError,
-  ExecutionErrorCode,
-  ExecutorOptions
+  CommandExecutionError
+} from './executor';
+
+export type {
+  ExecutorOptions,
+  ExecutionErrorCode
 } from './executor';
 
 export {
-  ProcessHandle,
-  ProcessResult,
-  ProcessSpawnOptions,
+  ProcessHandleImpl as ProcessHandle,
   createProcessHandle
+} from './process-handle';
+
+export type {
+  IProcessHandle,
+  ProcessResult,
+  ProcessSpawnOptions
 } from './process-handle';
 
 export {
@@ -89,16 +99,22 @@ export {
 export {
   ArgumentTemplater,
   TemplateValidator,
-  VariableResolver,
-  ProcessedCommand,
-  ValidationResult as TemplateValidationResult,
+  VariableResolver
+} from './argument-templater';
+
+export type {
   CLIParameterMapping,
-  TemplateVariableRegistry
+  TemplateVariableRegistry,
+  ProcessedCommand,
+  ValidationResult as TemplateValidationResult
 } from './argument-templater';
 
 // Confirmation timeout system
 export {
-  ConfirmationHandler,
+  ConfirmationHandler
+} from './confirmation-handler';
+
+export type {
   ConfirmationOptions,
   ConfirmationResult,
   ConfirmationMethod,
