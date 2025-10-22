@@ -33,14 +33,23 @@ export interface ExecutorOptions {
  * Command execution error with detailed context
  */
 export class CommandExecutionError extends Error {
+  public readonly command: string;
+  public readonly args: string[];
+  public readonly code: ExecutionErrorCode;
+  public readonly cause?: Error;
+
   constructor(
     message: string,
-    public readonly command: string,
-    public readonly args: string[],
-    public readonly code: ExecutionErrorCode,
-    public readonly cause?: Error
+    command: string,
+    args: string[],
+    code: ExecutionErrorCode,
+    cause?: Error
   ) {
     super(message);
+    this.command = command;
+    this.args = args;
+    this.code = code;
+    this.cause = cause;
     this.name = 'CommandExecutionError';
   }
 }

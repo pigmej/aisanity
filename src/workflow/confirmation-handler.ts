@@ -52,12 +52,16 @@ export interface ConfirmationHandlerConfig {
  */
 export class ConfirmationHandler {
   private readonly config: Required<ConfirmationHandlerConfig>;
+  private executor: CommandExecutor;
+  private logger?: Logger;
 
   constructor(
-    private executor: CommandExecutor,
-    private logger?: Logger,
+    executor: CommandExecutor,
+    logger?: Logger,
     config?: ConfirmationHandlerConfig
   ) {
+    this.executor = executor;
+    this.logger = logger;
     this.config = {
       defaultTimeout: config?.defaultTimeout ?? 30000,
       minTimeout: config?.minTimeout ?? 1000,
