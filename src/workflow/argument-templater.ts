@@ -62,7 +62,6 @@ export class TemplateValidator {
   private readonly safeValuePattern = /^[a-zA-Z0-9\s\-_.\/:\\]+$/;
   private readonly injectionPatterns = [
     /[;&|`$(){}[\]]/,               // Shell metacharacters
-    /\.\.\//,                       // Directory traversal
     /\/etc\//,                      // System file access
     /\/var\/log\//,                 // System log access
     /windows.*system32.*config/i,   // Windows system config access

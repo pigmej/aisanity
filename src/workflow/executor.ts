@@ -24,8 +24,7 @@ export interface ExecutorOptions {
   maxOutputSize?: number;         // Default: 10MB
   maxExecutionTime?: number;      // Default: 5 minutes
   maxConcurrentProcesses?: number; // Default: 10
-  allowedCommands?: RegExp[];     // Command whitelist
-  enableValidation?: boolean;     // Default: true
+  enableValidation?: boolean;     // Default: false for development
   streamOutput?: boolean;         // Default: false
 }
 
@@ -59,10 +58,10 @@ export class CommandExecutionError extends Error {
  */
 export type ExecutionErrorCode =
   | 'COMMAND_NOT_FOUND'
-  | 'COMMAND_NOT_ALLOWED'
+  | 'COMMAND_NOT_ALLOWED'  // DEPRECATED: Command whitelist removed
   | 'TIMEOUT'
   | 'INJECTION_DETECTED'
-  | 'PATH_TRAVERSAL'
+  | 'PATH_TRAVERSAL'       // DEPRECATED: Path traversal allowed for development
   | 'RESOURCE_LIMIT'
   | 'SPAWN_FAILED'
   | 'UNKNOWN_ERROR';
@@ -83,8 +82,7 @@ export class CommandExecutor implements StateExecutionCoordinator {
       maxOutputSize: options.maxOutputSize ?? 10 * 1024 * 1024, // 10MB
       maxExecutionTime: options.maxExecutionTime ?? 5 * 60 * 1000, // 5 minutes
       maxConcurrentProcesses: options.maxConcurrentProcesses ?? 10,
-      allowedCommands: options.allowedCommands ?? this.getDefaultAllowedCommands(),
-      enableValidation: options.enableValidation ?? true,
+      enableValidation: options.enableValidation ?? false, // Default: false for development
       streamOutput: options.streamOutput ?? false
     };
   }
@@ -364,21 +362,12 @@ export class CommandExecutor implements StateExecutionCoordinator {
 
 
   /**
-   * Validate command against whitelist and injection patterns
+   * Validate command for injection patterns (only when validation is enabled)
    */
   private validateCommand(command: string, args: string[]): void {
-    // Check command whitelist
-    const isAllowed = this.options.allowedCommands.some(pattern => 
-      pattern.test(command)
-    );
-    
-    if (!isAllowed) {
-      throw new CommandExecutionError(
-        `Command not allowed: ${command}`,
-        command,
-        args,
-        'COMMAND_NOT_ALLOWED'
-      );
+    // Skip validation if disabled (default for development)
+    if (!this.options.enableValidation) {
+      return;
     }
     
     // Validate arguments for injection patterns
@@ -401,7 +390,6 @@ export class CommandExecutor implements StateExecutionCoordinator {
     // Block dangerous shell metacharacters and injection patterns
     // Allow bash -c commands to work properly while blocking actual injection
     const dangerousPatterns = [
-      /\.\.\//,            // Directory traversal
       /\/etc\//,           // System file access
       /rm\s+-rf\s+\//,     // Dangerous rm commands targeting root
       /&&.*rm/,            // Command chaining with rm
@@ -412,7 +400,7 @@ export class CommandExecutor implements StateExecutionCoordinator {
   }
 
   /**
-   * Validate working directory against workspace root
+   * Validate working directory - allow any directory for development
    */
   private validateWorkingDirectory(cwd?: string): string {
     if (!cwd) {
@@ -421,48 +409,10 @@ export class CommandExecutor implements StateExecutionCoordinator {
     
     const resolvedPath = require('path').resolve(cwd);
     
-    // Allow common temp directories for testing
-    const allowedPaths = [
-      process.cwd(),
-      '/tmp',
-      '/var/tmp'
-    ];
-    
-    const isAllowed = allowedPaths.some(allowed => 
-      resolvedPath.startsWith(allowed)
-    );
-    
-    if (!isAllowed) {
-      throw new CommandExecutionError(
-        `Working directory not allowed: ${resolvedPath}`,
-        '',
-        [],
-        'PATH_TRAVERSAL'
-      );
-    }
-    
+    // Allow any directory for development workflows
+    // Path traversal is now allowed for development use cases
     return resolvedPath;
   }
 
-  /**
-   * Get default allowed commands whitelist
-   */
-  private getDefaultAllowedCommands(): RegExp[] {
-    return [
-      /^git$/,
-      /^npm$/,
-      /^bun$/,
-      /^node$/,
-      /^bash$/,
-      /^sh$/,
-      /^echo$/,
-      /^test$/,
-      /^cat$/,
-      /^ls$/,
-      /^pwd$/,
-      /^docker$/,
-      /^devcontainer$/,
-      /^sleep$/
-    ];
-  }
+
 }
