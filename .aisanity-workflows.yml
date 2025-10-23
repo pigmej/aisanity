@@ -1,0 +1,85 @@
+workflows:
+  deploy:
+    name: "Deploy Application"
+    description: "Build and deploy application to production"
+    initialState: "build"
+    globalTimeout: 1800
+    states:
+      build:
+        description: "Build the application"
+        command: "npm"
+        args: ["run", "build"]
+        timeout: 300
+        transitions:
+          success: "test"
+          failure: "cleanup"
+      test:
+        description: "Run test suite"
+        command: "npm"
+        args: ["test", "--coverage"]
+        timeout: 600
+        confirmation:
+          message: "Run tests before deployment?"
+          timeout: 30
+          defaultAccept: true
+        transitions:
+          success: "deploy"
+          failure: "cleanup"
+      deploy:
+        description: "Deploy to production"
+        command: "npm"
+        args: ["run", "deploy"]
+        timeout: 900
+        transitions:
+          success: "complete"
+          failure: "rollback"
+      cleanup:
+        description: "Clean up build artifacts"
+        command: "npm"
+        args: ["run", "clean"]
+        transitions:
+          success: "complete"
+      rollback:
+        description: "Rollback deployment"
+        command: "npm"
+        args: ["run", "rollback"]
+        transitions:
+          success: "complete"
+      complete:
+        description: "Deployment complete"
+        command: "echo"
+        args: ["Deployment finished"]
+        transitions: {}
+
+  simple:
+    name: "Simple Workflow"
+    description: "A minimal workflow for testing"
+    initialState: "start"
+    states:
+      start:
+        command: "echo"
+        args: ["Starting"]
+        transitions:
+          success: "opencode"
+        confirmation:
+          message: "Run tests before deployment?"
+          timeout: 30000
+          defaultAccept: true
+      opencode:
+        command: "opencode"
+        confirmation:
+          message: "Run opencode before deployment?"
+          timeout: 30000
+          defaultAccept: true
+        transitions:
+          success: "end"
+          failure: "end"
+      end:
+        command: "echo"
+        args: ["Finished"]
+        transitions: {}
+
+metadata:
+  version: "1.0.0"
+  created: "2025-01-20"
+  modified: "2025-01-20"
