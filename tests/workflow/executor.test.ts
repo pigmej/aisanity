@@ -2,7 +2,8 @@
  * Tests for CommandExecutor component
  */
 
-import { CommandExecutor, CommandExecutionError } from '../../src/workflow/executor';
+import { CommandExecutor } from '../../src/workflow/executor';
+import { CommandExecutionError } from '../../src/workflow/error-handler';
 import { Logger } from '../../src/utils/logger';
 
 describe('CommandExecutor', () => {
