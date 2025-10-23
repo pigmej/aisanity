@@ -7,6 +7,8 @@ import { CommandExecutor } from './executor';
 import { Logger } from '../utils/logger';
 import { ConfirmationBuilder } from './confirmation-builder';
 import { ProgressIndicator } from './progress-indicator';
+import { WorkflowErrorHandler, ConfirmationTimeoutError } from './error-handler';
+import { createConfirmationContext } from './error-context';
 
 /**
  * Confirmation configuration options
@@ -58,7 +60,8 @@ export class ConfirmationHandler {
   constructor(
     executor: CommandExecutor,
     logger?: Logger,
-    config?: ConfirmationHandlerConfig
+    config?: ConfirmationHandlerConfig,
+    private errorHandler?: WorkflowErrorHandler
   ) {
     this.executor = executor;
     this.logger = logger;
@@ -142,7 +145,24 @@ export class ConfirmationHandler {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger?.warn(`Confirmation error: ${errorMessage}`);
       
-      const isTimeout = error.code === 'TIMEOUT';
+      const isTimeout = error.code === 'TIMEOUT' || errorMessage.includes('timeout');
+      
+      // Handle with error handler if available
+      if (this.errorHandler && error instanceof Error) {
+        if (isTimeout) {
+          const timeoutError = new ConfirmationTimeoutError(
+            `Confirmation timed out after ${timeout}ms`,
+            timeout
+          );
+          this.errorHandler.enrichAndThrowSync(timeoutError, createConfirmationContext('requestConfirmation', 'user input', {
+            additionalData: { message, timeout }
+          }));
+        } else {
+          this.errorHandler.enrichAndThrowSync(error, createConfirmationContext('requestConfirmation', 'user input', {
+            additionalData: { message, timeout }
+          }));
+        }
+      }
       
       return {
         confirmed: options.defaultResponse ?? false,

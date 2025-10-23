@@ -5,6 +5,8 @@
 
 import { Logger } from '../utils/logger';
 import { ExecutionContext } from './execution-context';
+import { WorkflowErrorHandler } from './error-handler';
+import { createTemplaterContext } from './error-context';
 
 /**
  * Result of template processing with detailed information
@@ -329,7 +331,7 @@ export class ArgumentTemplater {
   private validator: TemplateValidator;
   private variableResolver: VariableResolver;
 
-  constructor(private logger?: Logger) {
+  constructor(private logger?: Logger, private errorHandler?: WorkflowErrorHandler) {
     this.validator = new TemplateValidator();
     this.variableResolver = new VariableResolver(logger);
   }
@@ -338,31 +340,40 @@ export class ArgumentTemplater {
    * Substitute template placeholders with variable values
    */
   substituteTemplate(template: string, variables: Record<string, string>): string {
-    let result = template;
-    const substitutions: Record<string, string> = {};
+    try {
+      let result = template;
+      const substitutions: Record<string, string> = {};
 
-    // Handle escaped braces first
-    result = result.replace(/{{/g, '\u0001').replace(/}}/g, '\u0002');
+      // Handle escaped braces first
+      result = result.replace(/{{/g, '\u0001').replace(/}}/g, '\u0002');
 
-    // Find and substitute placeholders
-    const placeholderRegex = /{(\w+)}/g;
-    let match;
+      // Find and substitute placeholders
+      const placeholderRegex = /{(\w+)}/g;
+      let match;
 
-    while ((match = placeholderRegex.exec(result)) !== null) {
-      const varName = match[1];
-      const value = variables[varName];
+      while ((match = placeholderRegex.exec(result)) !== null) {
+        const varName = match[1];
+        const value = variables[varName];
 
-      if (value !== undefined) {
-        substitutions[varName] = value;
-        result = result.replace(match[0], value);
+        if (value !== undefined) {
+          substitutions[varName] = value;
+          result = result.replace(match[0], value);
+        }
       }
+
+      // Restore escaped braces
+      result = result.replace(/\u0001/g, '{').replace(/\u0002/g, '}');
+
+      this.logger?.debug(`Template substitution: ${JSON.stringify(substitutions)}`);
+      return result;
+    } catch (error) {
+      if (this.errorHandler && error instanceof Error) {
+        this.errorHandler.enrichAndThrowSync(error, createTemplaterContext('substituteTemplate', {
+          additionalData: { template, variableKeys: Object.keys(variables) }
+        }));
+      }
+      throw error;
     }
-
-    // Restore escaped braces
-    result = result.replace(/\u0001/g, '{').replace(/\u0002/g, '}');
-
-    this.logger?.debug(`Template substitution: ${JSON.stringify(substitutions)}`);
-    return result;
   }
 
   /**
@@ -373,69 +384,78 @@ export class ArgumentTemplater {
     args: string[],
     cliParams: Record<string, string>
   ): Promise<ProcessedCommand> {
-    const validationErrors: string[] = [];
-    const substitutions: Record<string, string> = {};
+    try {
+      const validationErrors: string[] = [];
+      const substitutions: Record<string, string> = {};
 
-    // Validate command template
-    const commandValidation = this.validator.validateTemplateSyntax(command);
-    if (!commandValidation.isValid) {
-      validationErrors.push(...commandValidation.errors);
-    }
-
-    // Validate arguments
-    for (const arg of args) {
-      const argValidation = this.validator.validateTemplateSyntax(arg);
-      if (!argValidation.isValid) {
-        validationErrors.push(...argValidation.errors);
+      // Validate command template
+      const commandValidation = this.validator.validateTemplateSyntax(command);
+      if (!commandValidation.isValid) {
+        validationErrors.push(...commandValidation.errors);
       }
-    }
 
-    // Resolve all variables
-    const builtInVars = await this.variableResolver.resolveBuiltInVariables();
-    const customVars = await this.variableResolver.resolveCustomVariables();
-    const allVariables = { ...builtInVars, ...customVars, ...cliParams };
-
-    // Validate CLI parameters
-    for (const [key, value] of Object.entries(cliParams)) {
-      if (!this.validator.validateVariableName(key)) {
-        validationErrors.push(`Invalid CLI parameter name: ${key}`);
+      // Validate arguments
+      for (const arg of args) {
+        const argValidation = this.validator.validateTemplateSyntax(arg);
+        if (!argValidation.isValid) {
+          validationErrors.push(...argValidation.errors);
+        }
       }
-      if (!this.validator.validateVariableValue(value)) {
-        validationErrors.push(`Invalid CLI parameter value for ${key}: ${value}`);
+
+      // Resolve all variables
+      const builtInVars = await this.variableResolver.resolveBuiltInVariables();
+      const customVars = await this.variableResolver.resolveCustomVariables();
+      const allVariables = { ...builtInVars, ...customVars, ...cliParams };
+
+      // Validate CLI parameters
+      for (const [key, value] of Object.entries(cliParams)) {
+        if (!this.validator.validateVariableName(key)) {
+          validationErrors.push(`Invalid CLI parameter name: ${key}`);
+        }
+        if (!this.validator.validateVariableValue(value)) {
+          validationErrors.push(`Invalid CLI parameter value for ${key}: ${value}`);
+        }
       }
-    }
 
-    // Substitute command
-    const processedCommand = this.substituteTemplate(command, allVariables);
-    const hasCommandPlaceholders = command !== processedCommand;
+      // Substitute command
+      const processedCommand = this.substituteTemplate(command, allVariables);
+      const hasCommandPlaceholders = command !== processedCommand;
 
-    // Substitute arguments
-    const processedArgs: string[] = [];
-    let hasArgPlaceholders = false;
+      // Substitute arguments
+      const processedArgs: string[] = [];
+      let hasArgPlaceholders = false;
 
-    for (const arg of args) {
-      const processedArg = this.substituteTemplate(arg, allVariables);
-      processedArgs.push(processedArg);
-      if (arg !== processedArg) {
-        hasArgPlaceholders = true;
+      for (const arg of args) {
+        const processedArg = this.substituteTemplate(arg, allVariables);
+        processedArgs.push(processedArg);
+        if (arg !== processedArg) {
+          hasArgPlaceholders = true;
+        }
       }
-    }
 
-    // Track substitutions
-    for (const [key, value] of Object.entries(allVariables)) {
-      if (command.includes(`{${key}}`) || args.some(arg => arg.includes(`{${key}}`))) {
-        substitutions[key] = value;
+      // Track substitutions
+      for (const [key, value] of Object.entries(allVariables)) {
+        if (command.includes(`{${key}}`) || args.some(arg => arg.includes(`{${key}}`))) {
+          substitutions[key] = value;
+        }
       }
-    }
 
-    return {
-      command: processedCommand,
-      args: processedArgs,
-      substitutions,
-      hasPlaceholders: hasCommandPlaceholders || hasArgPlaceholders,
-      validationErrors,
-      executionReady: validationErrors.length === 0
-    };
+      return {
+        command: processedCommand,
+        args: processedArgs,
+        substitutions,
+        hasPlaceholders: hasCommandPlaceholders || hasArgPlaceholders,
+        validationErrors,
+        executionReady: validationErrors.length === 0
+      };
+    } catch (error) {
+      if (this.errorHandler && error instanceof Error) {
+        this.errorHandler.enrichAndThrowSync(error, createTemplaterContext('processCommandArgs', {
+          additionalData: { command, args, cliParams }
+        }));
+      }
+      throw error;
+    }
   }
 
   /**

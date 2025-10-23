@@ -9,6 +9,8 @@ import { ArgumentTemplater } from './argument-templater';
 import { VariableResolver } from './argument-templater';
 import { ExecutionContext } from './execution-context';
 import { Logger } from '../utils/logger';
+import { WorkflowErrorHandler } from './error-handler';
+import { createTemplaterContext } from './error-context';
 
 /**
  * Enhanced DryRunResult interface with comprehensive execution preview data
@@ -145,9 +147,10 @@ export class DryRunSimulator {
 
   constructor(
     private stateMachine: StateMachine,
-    private logger?: Logger
+    private logger?: Logger,
+    private errorHandler?: WorkflowErrorHandler
   ) {
-    this.templater = new ArgumentTemplater(logger);
+    this.templater = new ArgumentTemplater(logger, errorHandler);
     this.variableResolver = new VariableResolver(logger);
     this.workflow = this.extractWorkflowFromStateMachine();
   }
@@ -235,6 +238,14 @@ export class DryRunSimulator {
 
     } catch (error) {
       this.logger?.error(`Dry-run simulation failed: ${error}`);
+      
+      // Handle with error handler if available
+      if (this.errorHandler && error instanceof Error) {
+        this.errorHandler.handleSimulationError(error, createTemplaterContext('simulate', {
+          additionalData: { options, isDryRun: true }
+        }));
+      }
+      
       return {
         success: false,
         finalState: this.stateMachine.getCurrentState(),
@@ -265,7 +276,13 @@ export class DryRunSimulator {
 
     // Validate starting state exists
     if (!this.workflow.states[currentState]) {
-      throw new Error(`Starting state '${currentState}' not found in workflow`);
+      const error = new Error(`Starting state '${currentState}' not found in workflow`);
+      if (this.errorHandler) {
+        this.errorHandler.handleSimulationError(error, createTemplaterContext('generateExecutionPlan', {
+          additionalData: { startingState: currentState, isDryRun: true }
+        }));
+      }
+      throw error;
     }
 
     while (currentState && iterations < this.maxIterations) {
