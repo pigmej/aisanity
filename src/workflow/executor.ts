@@ -10,7 +10,7 @@ import {
   CommandResult 
 } from './execution-context';
 import { 
-  ProcessHandle, 
+  IProcessHandle, 
   ProcessSpawnOptions, 
   createProcessHandle 
 } from './process-handle';
@@ -70,7 +70,7 @@ export type ExecutionErrorCode =
  * Main command executor implementing StateExecutionCoordinator interface
  */
 export class CommandExecutor implements StateExecutionCoordinator {
-  private activeProcesses = new Set<ProcessHandle>();
+  private activeProcesses = new Set<IProcessHandle>();
   private readonly options: Required<ExecutorOptions>;
 
   constructor(
@@ -267,7 +267,7 @@ export class CommandExecutor implements StateExecutionCoordinator {
   private async executeWithTimeout(
     command: string,
     args: string[],
-    options: { cwd?: string; env?: Record<string, string> },
+    options: ExecutionOptions,
     timeoutMs: number
   ): Promise<CommandResult> {
     const startTime = Date.now();
@@ -287,7 +287,8 @@ export class CommandExecutor implements StateExecutionCoordinator {
       cwd: options.cwd,
       env: options.env,
       stdout: stdoutBuffer,
-      stderr: stderrBuffer
+      stderr: stderrBuffer,
+      stdin: options.stdin
     });
 
     try {
@@ -335,7 +336,7 @@ export class CommandExecutor implements StateExecutionCoordinator {
     command: string,
     args: string[],
     options: ProcessSpawnOptions
-  ): Promise<ProcessHandle> {
+  ): Promise<IProcessHandle> {
     try {
       const handle = await createProcessHandle(command, args, options);
       

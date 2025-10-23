@@ -43,6 +43,7 @@ export interface ProcessSpawnOptions {
   timeout?: number;
   stdout?: any; // OutputBuffer or stream
   stderr?: any; // OutputBuffer or stream
+  stdin?: 'inherit' | 'pipe' | null; // stdin configuration for interactive commands
 }
 
 /**
@@ -129,7 +130,8 @@ export async function createProcessHandle(
     cwd: options.cwd,
     env: options.env,
     stdout: 'pipe',
-    stderr: 'pipe'
+    stderr: 'pipe',
+    stdin: options.stdin ?? 'pipe' // Use provided stdin configuration or default to 'pipe'
   };
   
   const process = Bun.spawn([command, ...args], spawnOptions);

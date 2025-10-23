@@ -106,6 +106,9 @@ async function executeWorkflowAction(
     // Report results
     reportExecutionResult(result, logger);
     
+    // Exit successfully
+    process.exit(0);
+    
   } catch (error) {
     handleCommandError(error, logger);
     process.exit(1);

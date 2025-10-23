@@ -22,8 +22,16 @@ export class ConfirmationBuilder {
     // Validate prompt message first
     this.validatePromptMessage(message);
     
-    const basePrompt = this.buildBasePrompt(message, defaultValue);
-    return this.wrapWithTimeout(basePrompt, timeoutMs, defaultValue);
+    // Use bash's built-in read -t for timeout instead of external timeout command
+    // This avoids nested bash -c calls that break stdin
+    const timeoutSeconds = Math.ceil(timeoutMs / 1000);
+    const escapedMessage = this.escapePromptText(message);
+    const defaultChar = defaultValue ? 'Y/n' : 'y/N';
+    const defaultExit = defaultValue ? '0' : '1';
+    
+    // Use read -t for timeout, reading from /dev/tty for true interactive terminal support
+    // This allows user input even when stdin is not properly forwarded
+    return `if read -t ${timeoutSeconds} -p "${escapedMessage} [${defaultChar}]: " -n 1 answer < /dev/tty; then echo; [[ "$answer" =~ ^[Yy]$ ]] && exit 0 || [[ "$answer" =~ ^[Nn]$ ]] && exit 1 || exit ${defaultExit}; else echo; exit ${defaultExit}; fi`;
   }
 
   /**
@@ -42,51 +50,6 @@ export class ConfirmationBuilder {
       .replace(/\$/g, '\\$')     // Escape dollar signs (variable expansion)
       .replace(/\n/g, '\\n')     // Escape newlines
       .replace(/\r/g, '\\r');    // Escape carriage returns
-  }
-
-  /**
-   * Build base confirmation prompt (without timeout)
-   * @param message Confirmation message
-   * @param defaultValue Default value on Enter
-   * @returns Bash command for confirmation prompt
-   */
-  private static buildBasePrompt(
-    message: string,
-    defaultValue: boolean
-  ): string {
-    const escapedMessage = this.escapePromptText(message);
-    const defaultChar = defaultValue ? 'Y/n' : 'y/N';
-    
-    return `read -p "${escapedMessage} [${defaultChar}]: " -n 1 answer; echo; [[ "$answer" =~ ^[Yy]$ ]] && exit 0 || [[ "$answer" =~ ^[Nn]$ ]] && exit 1 || exit ${defaultValue ? '0' : '1'}`;
-  }
-
-  /**
-   * Wrap prompt with bash timeout command
-   * @param command Base confirmation command
-   * @param timeoutMs Timeout in milliseconds
-   * @param defaultValue Default value on timeout
-   * @returns Timeout-wrapped bash command
-   */
-  private static wrapWithTimeout(
-    command: string,
-    timeoutMs: number,
-    defaultValue: boolean
-  ): string {
-    const timeoutSeconds = Math.ceil(timeoutMs / 1000);
-    const defaultExit = defaultValue ? 0 : 1;
-    
-    // Use bash timeout command with proper signal handling
-    // Exit code 124 indicates timeout occurred
-    return `
-      timeout ${timeoutSeconds} bash -c '${command}' || {
-        exit_code=$?
-        if [ $exit_code -eq 124 ]; then
-          exit ${defaultExit}
-        else
-          exit $exit_code
-        fi
-      }
-    `.trim().replace(/\s+/g, ' ');
   }
 
   /**

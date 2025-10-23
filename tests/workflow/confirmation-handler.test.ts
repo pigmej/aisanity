@@ -49,7 +49,7 @@ describe('ConfirmationHandler', () => {
       expect(mockExecutor.executeCommand).toHaveBeenCalledWith(
         'bash',
         ['-c', expect.stringContaining('Continue?')],
-        { timeout: 30000 }
+        { timeout: 32000 } // 30000 + 2000 buffer
       );
     });
 
@@ -168,7 +168,7 @@ describe('ConfirmationHandler', () => {
       expect(mockExecutor.executeCommand).toHaveBeenCalledWith(
         'bash',
         ['-c', expect.stringContaining('Continue?')],
-        { timeout: 45000 }
+        { timeout: 47000 } // 45000 + 2000 buffer
       );
     });
   });
