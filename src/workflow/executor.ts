@@ -102,6 +102,8 @@ export class CommandExecutor implements StateExecutionCoordinator {
   ): Promise<CommandResult> {
     const startTime = Date.now();
     
+
+    
     try {
       // Validate command if enabled
       if (this.options.enableValidation) {
@@ -129,7 +131,7 @@ export class CommandExecutor implements StateExecutionCoordinator {
 
       // Handle timeout if specified (always use async for timeout commands)
       if (options.timeout) {
-        return this.executeWithTimeout(command, args, { cwd, env: options.env }, timeout);
+        return this.executeWithTimeout(command, args, { cwd, env: options.env, stdin: options.stdin }, timeout);
       }
 
       // For simple cases without timeout, use Bun.spawnSync
@@ -193,8 +195,16 @@ export class CommandExecutor implements StateExecutionCoordinator {
     prompt: string,
     timeout: number = 30000
   ): Promise<CommandResult> {
-    // Force async execution for TUI commands to capture output properly
-    return this.executeWithTimeout('bash', ['-c', prompt], {}, timeout);
+    try {
+      return await this.executeWithTimeout('bash', ['-c', prompt], {
+        stdin: 'inherit'
+      }, timeout);
+    } finally {
+      if (process.stdout.isTTY) {
+        process.stdout.write('\x1b[0m');
+        process.stdout.write('\x1b[?25h');
+      }
+    }
   }
 
   /**

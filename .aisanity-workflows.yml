@@ -1,85 +1,85 @@
 workflows:
-  deploy:
-    name: "Deploy Application"
-    description: "Build and deploy application to production"
-    initialState: "build"
-    globalTimeout: 1800
+  tui-test:
+    name: "TUI Application Test"
+    description: "Test workflow for interactive TUI applications"
+    initialState: "create-file"
     states:
-      build:
-        description: "Build the application"
-        command: "npm"
-        args: ["run", "build"]
-        timeout: 300
+      create-file:
+        description: "Create a test file"
+        command: "bash"
+        args: ["-c", "echo 'Hello from TUI workflow' > test-tui-file.txt"]
         transitions:
-          success: "test"
+          success: "edit-with-nano"
+      edit-with-nano:
+        description: "Edit file with nano"
+        command: "nano"
+        args: ["test-tui-file.txt"]
+        stdin: "inherit"
+        timeout: 300000
+        transitions:
+          success: "show-result"
           failure: "cleanup"
-      test:
-        description: "Run test suite"
-        command: "npm"
-        args: ["test", "--coverage"]
-        timeout: 600
-        confirmation:
-          message: "Run tests before deployment?"
-          timeout: 30
-          defaultAccept: true
+      show-result:
+        description: "Show edited file content"
+        command: "cat"
+        args: ["test-tui-file.txt"]
         transitions:
-          success: "deploy"
-          failure: "cleanup"
-      deploy:
-        description: "Deploy to production"
-        command: "npm"
-        args: ["run", "deploy"]
-        timeout: 900
-        transitions:
-          success: "complete"
-          failure: "rollback"
+          success: "cleanup"
       cleanup:
-        description: "Clean up build artifacts"
-        command: "npm"
-        args: ["run", "clean"]
-        transitions:
-          success: "complete"
-      rollback:
-        description: "Rollback deployment"
-        command: "npm"
-        args: ["run", "rollback"]
+        description: "Clean up test file"
+        command: "rm"
+        args: ["-f", "test-tui-file.txt"]
         transitions:
           success: "complete"
       complete:
-        description: "Deployment complete"
+        description: "TUI test complete"
         command: "echo"
-        args: ["Deployment finished"]
+        args: ["TUI test workflow completed"]
         transitions: {}
 
-  simple:
-    name: "Simple Workflow"
-    description: "A minimal workflow for testing"
-    initialState: "start"
+  simple-nano:
+    name: "Simple Nano Test"
+    description: "Simple workflow to test nano editor"
+    initialState: "setup"
     states:
-      start:
-        command: "echo"
-        args: ["Starting"]
+      setup:
+        description: "Create test file"
+        command: "bash"
+        args: ["-c", "echo 'Edit this file with nano!' > nano-test.txt"]
+        transitions:
+          success: "edit"
+      edit:
+        description: "Open nano editor"
+        command: "nano"
+        args: ["nano-test.txt"]
+        stdin: "inherit"
+        timeout: 300000
         transitions:
           success: "opencode"
+          failure: "complete"
         confirmation:
-          message: "Run tests before deployment?"
-          timeout: 30000
+          message: "Run nano?"
+          timeout: 3000
           defaultAccept: true
       opencode:
+        description: "Open opencode"
         command: "opencode"
-        confirmation:
-          message: "Run opencode before deployment?"
-          timeout: 30000
-          defaultAccept: true
+        stdin: "inherit"
+        timeout: 300000
         transitions:
-          success: "end"
-          failure: "end"
-      end:
+          success: "complete"
+          failure: "complete"
+        confirmation:
+          message: "Run opencode?"
+          timeout: 3000
+          defaultAccept: true
+      complete:
+        description: "Done"
         command: "echo"
-        args: ["Finished"]
+        args: ["Nano test completed. File nano-test.txt created."]
         transitions: {}
 
 metadata:
   version: "1.0.0"
-  created: "2025-01-20"
-  modified: "2025-01-20"
+  created: "2025-10-23"
+  modified: "2025-10-23"

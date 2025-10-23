@@ -125,14 +125,18 @@ export async function createProcessHandle(
   const startTime = Date.now();
   const abortController = new AbortController();
   
+  // Determine if this is a TUI command (needs full terminal access)
+  const isTUICommand = options.stdin === 'inherit';
+  
   // Prepare spawn options
   const spawnOptions: any = {
     cwd: options.cwd,
     env: options.env,
-    stdout: 'pipe',
-    stderr: 'pipe',
-    stdin: options.stdin ?? 'pipe' // Use provided stdin configuration or default to 'pipe'
+    // TUI commands need full terminal access - inherit all streams
+    stdio: isTUICommand ? ['inherit', 'inherit', 'inherit'] : [options.stdin ?? 'pipe', 'pipe', 'pipe']
   };
+  
+
   
   const process = Bun.spawn([command, ...args], spawnOptions);
   
@@ -143,35 +147,38 @@ export async function createProcessHandle(
       try {
 
         
-        // Read output streams asynchronously
+        // Read output streams asynchronously (only if not inherited)
         let stdoutOutput = '';
         let stderrOutput = '';
         
-        // Read stdout if available
-        if (process.stdout) {
-          try {
-            stdoutOutput = await new Response(process.stdout).text();
-            
-            // Write to buffer if provided
-            if (options.stdout && typeof options.stdout === 'object' && options.stdout.write) {
-              options.stdout.write(Buffer.from(stdoutOutput));
+        // Only read streams if they're piped (not inherited for TUI commands)
+        if (!isTUICommand) {
+          // Read stdout if available
+          if (process.stdout) {
+            try {
+              stdoutOutput = await new Response(process.stdout).text();
+              
+              // Write to buffer if provided
+              if (options.stdout && typeof options.stdout === 'object' && options.stdout.write) {
+                options.stdout.write(Buffer.from(stdoutOutput));
+              }
+            } catch (error) {
+              // Ignore read errors
             }
-          } catch (error) {
-            // Ignore read errors
           }
-        }
-        
-        // Read stderr if available
-        if (process.stderr) {
-          try {
-            stderrOutput = await new Response(process.stderr).text();
-            
-            // Write to buffer if provided
-            if (options.stderr && typeof options.stderr === 'object' && options.stderr.write) {
-              options.stderr.write(Buffer.from(stderrOutput));
+          
+          // Read stderr if available
+          if (process.stderr) {
+            try {
+              stderrOutput = await new Response(process.stderr).text();
+              
+              // Write to buffer if provided
+              if (options.stderr && typeof options.stderr === 'object' && options.stderr.write) {
+                options.stderr.write(Buffer.from(stderrOutput));
+              }
+            } catch (error) {
+              // Ignore read errors
             }
-          } catch (error) {
-            // Ignore read errors
           }
         }
         

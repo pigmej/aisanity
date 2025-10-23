@@ -24,6 +24,7 @@ export interface State {
   command: string;
   args?: string[];
   timeout?: number;
+  stdin?: 'inherit' | 'pipe' | null;
   confirmation?: ConfirmationConfig;
   transitions: StateTransitions;
 }

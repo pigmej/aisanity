@@ -213,7 +213,8 @@ export class StateMachine {
           {
             timeout: state.timeout,
             cwd: undefined,
-            env: undefined
+            env: undefined,
+            stdin: state.stdin
           }
         );
 
