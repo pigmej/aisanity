@@ -556,7 +556,8 @@ export class StateMachine {
       exitedAt: new Date(result.executedAt.getTime() + result.duration),
       exitCode: result.exitCode,
       duration: result.duration,
-      transitionedTo: nextState
+      transitionedTo: nextState,
+      timestamp: result.executedAt // Alias for enteredAt
     };
 
     this.stateHistory.push(historyEntry);

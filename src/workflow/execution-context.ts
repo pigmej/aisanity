@@ -49,6 +49,7 @@ export interface StateHistoryEntry {
   exitCode: number;
   duration: number;
   transitionedTo: string | null; // null = terminal state
+  timestamp: Date; // Alias for enteredAt for convenience
 }
 
 /**
