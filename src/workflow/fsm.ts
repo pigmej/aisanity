@@ -21,7 +21,10 @@ import {
   WorkflowExecutionError,
   StateNotFoundError
 } from './errors';
+import { CommandExecutionError } from './error-handler';
 import { ConfirmationHandler } from './confirmation-handler';
+import { WorkflowErrorHandler } from './error-handler';
+import { createFSMContext } from './error-context';
 
 /**
  * Main StateMachine class for workflow execution
@@ -39,16 +42,21 @@ export class StateMachine {
     private workflow: Workflow,
     private logger?: Logger,
     executor?: StateExecutionCoordinator,
-    confirmationHandler?: ConfirmationHandler
+    confirmationHandler?: ConfirmationHandler,
+    private errorHandler?: WorkflowErrorHandler
   ) {
     // Validate workflow structure on construction
     const validationResult = StateTransitionValidator.validateWorkflow(workflow);
     if (!validationResult.valid) {
-      throw new WorkflowValidationError(
+      const error = new WorkflowValidationError(
         `Invalid workflow structure: ${validationResult.errors.join(', ')}`,
         workflow.name,
         'structure'
       );
+      if (this.errorHandler) {
+        this.errorHandler.handleValidationError(error, createFSMContext('constructor', workflow.name));
+      }
+      throw error;
     }
 
     // Log warnings
@@ -78,11 +86,12 @@ export class StateMachine {
   static fromWorkflowName(
     workflowName: string,
     workspacePath: string,
-    logger?: Logger
+    logger?: Logger,
+    errorHandler?: WorkflowErrorHandler
   ): StateMachine {
-    const parser = new WorkflowParser(logger);
+    const parser = new WorkflowParser(logger, errorHandler);
     const workflow = parser.getWorkflow(workflowName, workspacePath);
-    return new StateMachine(workflow, logger);
+    return new StateMachine(workflow, logger, undefined, undefined, errorHandler);
   }
 
   /**
@@ -99,11 +108,15 @@ export class StateMachine {
       while (this.currentState) {
         // Check for infinite loop protection
         if (iterations++ >= this.maxIterations) {
-          throw new WorkflowExecutionError(
+          const error = new WorkflowExecutionError(
             `Maximum iteration limit (${this.maxIterations}) reached - possible infinite loop`,
             this.workflow.name,
             this.currentState
           );
+          if (this.errorHandler) {
+            this.errorHandler.handleExecutionError(error, createFSMContext('execute', this.workflow.name, this.currentState));
+          }
+          throw error;
         }
 
         this.logger?.debug(`Executing state: ${this.currentState}`);
@@ -141,7 +154,22 @@ export class StateMachine {
       };
     } catch (error) {
       const totalDuration = Date.now() - startTime;
-      this.logger?.error(`Workflow execution failed: ${error instanceof Error ? error.message : String(error)}`);
+      
+      // Handle error with error handler if available
+      // Skip errors that were already handled by executeState()
+      if (this.errorHandler && error instanceof Error) {
+        if (error instanceof WorkflowExecutionError) {
+          this.logger?.error(`Workflow execution failed: ${error instanceof Error ? error.message : String(error)}`);
+          this.errorHandler.handleExecutionError(error, createFSMContext('execute', this.workflow.name, this.currentState));
+        } else if (error instanceof CommandExecutionError) {
+          // CommandExecutionError was already handled by executor
+          // Just re-throw without additional handling
+          throw error;
+        } else {
+          this.logger?.error(`Workflow execution failed: ${error instanceof Error ? error.message : String(error)}`);
+          this.errorHandler.enrichAndThrowSync(error, createFSMContext('execute', this.workflow.name, this.currentState));
+        }
+      }
 
       return {
         success: false,
@@ -161,11 +189,15 @@ export class StateMachine {
     // Validate state exists
     const state = this.workflow.states[stateName];
     if (!state) {
-      throw new StateNotFoundError(
+      const error = new StateNotFoundError(
         `State '${stateName}' not found in workflow`,
         stateName,
         this.workflow.name
       );
+      if (this.errorHandler) {
+        this.errorHandler.enrichAndThrowSync(error, createFSMContext('executeState', this.workflow.name, stateName));
+      }
+      throw error;
     }
 
     const startTime = Date.now();
@@ -231,6 +263,13 @@ export class StateMachine {
       } catch (error) {
         const duration = Date.now() - startTime;
         this.logger?.error(`State '${stateName}' execution failed: ${error instanceof Error ? error.message : String(error)}`);
+
+        // Handle error with error handler if available
+        if (this.errorHandler && error instanceof Error) {
+          this.errorHandler.enrichAndThrowSync(error, createFSMContext('executeState', this.workflow.name, stateName, {
+            command: state.command
+          }));
+        }
 
         // Return failure result
         return {
@@ -477,11 +516,15 @@ export class StateMachine {
     const currentState = this.workflow.states[this.currentState];
 
     if (!currentState) {
-      throw new StateNotFoundError(
+      const error = new StateNotFoundError(
         `Current state '${this.currentState}' not found in workflow`,
         this.currentState,
         this.workflow.name
       );
+      if (this.errorHandler) {
+        this.errorHandler.enrichAndThrowSync(error, createFSMContext('getNextState', this.workflow.name, this.currentState));
+      }
+      throw error;
     }
 
     // Check for success transition (exit code 0)

@@ -39,6 +39,12 @@ export {
   StateNotFoundError
 } from './errors';
 
+export {
+  CommandExecutionError,
+  ConfirmationTimeoutError,
+  WorkflowErrorHandler
+} from './error-handler';
+
 // Execution context types
 export type {
   ExecutionContext,
@@ -67,8 +73,7 @@ export type {
 
 // Command executor and related components
 export {
-  CommandExecutor,
-  CommandExecutionError
+  CommandExecutor
 } from './executor';
 
 export type {

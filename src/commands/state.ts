@@ -1,6 +1,21 @@
 import { Command } from 'commander';
-import { WorkflowParser, StateMachine, CommandExecutor, ConfirmationHandler, WorkflowExecutionError, WorkflowFileError } from '../workflow';
+import { 
+  WorkflowParser, 
+  StateMachine, 
+  CommandExecutor, 
+  ConfirmationHandler, 
+  WorkflowExecutionError, 
+  WorkflowFileError,
+  WorkflowValidationError,
+  WorkflowParseError,
+  StateTransitionError,
+  StateNotFoundError,
+  CommandExecutionError,
+  ConfirmationTimeoutError
+} from '../workflow';
 import { Logger } from '../utils/logger';
+import { WorkflowErrorHandler } from '../workflow/error-handler';
+import { createCLIContext } from '../workflow/error-context';
 import picocolors from 'picocolors';
 
 /**
@@ -77,16 +92,19 @@ async function executeWorkflowAction(
     options.verbose && !options.silent && !options.quiet || false
   );
   
+  // Initialize error handler for CLI boundary
+  const errorHandler = new WorkflowErrorHandler(logger);
+  
   try {
     // Validate inputs
     await validateInputs(workflowName, stateName, args, logger);
     
     // Load and validate workflow
     const workspacePath = process.cwd();
-    const workflow = await loadWorkflow(workflowName, workspacePath, logger);
+    const workflow = await loadWorkflow(workflowName, workspacePath, logger, errorHandler);
     
     // Initialize state machine with dependencies
-    const stateMachine = await createStateMachine(workflow, logger, options);
+    const stateMachine = await createStateMachine(workflow, logger, options, errorHandler);
     
     // Process CLI arguments through templating system
     const templateVariables = processCLIArguments(args, workflowName, logger);
@@ -110,8 +128,33 @@ async function executeWorkflowAction(
     process.exit(0);
     
   } catch (error) {
-    handleCommandError(error, logger);
-    process.exit(1);
+    // Use error handler to get proper exit code
+    if (error instanceof Error) {
+      const exitCode = errorHandler.getExitCode(error);
+      
+      // WorkflowErrorHandler already logged comprehensive error details
+      // Only log if this is an unexpected error type that bypassed handler
+      const isWorkflowError = error instanceof WorkflowFileError || 
+                             error instanceof WorkflowValidationError ||
+                             error instanceof WorkflowExecutionError ||
+                             error instanceof EnhancedWorkflowExecutionError ||
+                             error instanceof StateTransitionError ||
+                             error instanceof StateNotFoundError ||
+                             error instanceof ConfirmationTimeoutError ||
+                             error instanceof CommandExecutionError ||
+                             error instanceof WorkflowParseError;
+      
+      if (!isWorkflowError) {
+        // Unexpected error - log it
+        logger.error(`Unexpected error: ${error.message}`);
+        logger.debug(`Stack trace: ${error.stack}`);
+      }
+      
+      process.exit(exitCode);
+    } else {
+      logger.error(`Unknown error: ${String(error)}`);
+      process.exit(1);
+    }
   }
 }
 
@@ -194,9 +237,9 @@ async function validateInputs(
 /**
  * Load workflow from file system
  */
-async function loadWorkflow(workflowName: string, workspacePath: string, logger: Logger): Promise<any> {
+async function loadWorkflow(workflowName: string, workspacePath: string, logger: Logger, errorHandler?: WorkflowErrorHandler): Promise<any> {
   try {
-    const parser = new WorkflowParser(logger);
+    const parser = new WorkflowParser(logger, errorHandler);
     const workflow = parser.getWorkflow(workflowName, workspacePath);
     
     if (!workflow) {
@@ -212,13 +255,10 @@ async function loadWorkflow(workflowName: string, workspacePath: string, logger:
     return workflow;
     
   } catch (error) {
+    // Don't re-wrap errors that were already handled by WorkflowErrorHandler
+    // They already have proper logging and exit codes
     if (error instanceof WorkflowFileError) {
-      throw new EnhancedWorkflowExecutionError(
-        `Failed to load workflow file: ${error.message}`,
-        workflowName,
-        'file_error',
-        'file_error'
-      );
+      throw error; // Re-throw the original error, don't wrap it
     }
     throw error;
   }
@@ -230,20 +270,21 @@ async function loadWorkflow(workflowName: string, workspacePath: string, logger:
 async function createStateMachine(
   workflow: any,
   logger: Logger,
-  _options: ExecuteOptions
+  _options: ExecuteOptions,
+  errorHandler?: WorkflowErrorHandler
 ): Promise<StateMachine> {
   // Create command executor
-  const executor = new CommandExecutor(logger, 120000, {});
+  const executor = new CommandExecutor(logger, 120000, {}, errorHandler);
   
   // Create confirmation handler
   const confirmationHandler = new ConfirmationHandler(executor, logger, {
     defaultTimeout: 30000,
     enableProgressIndicator: true,
     progressUpdateInterval: 1000
-  });
+  }, errorHandler);
   
   // Create state machine with dependencies
-  return new StateMachine(workflow, logger, executor, confirmationHandler);
+  return new StateMachine(workflow, logger, executor, confirmationHandler, errorHandler);
 }
 
 /**

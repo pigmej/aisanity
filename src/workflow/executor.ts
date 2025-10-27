@@ -16,6 +16,8 @@ import {
 } from './process-handle';
 import { OutputBuffer } from './output-buffer';
 import { TUIPromptBuilder } from './tui-prompt-builder';
+import { WorkflowErrorHandler, CommandExecutionError } from './error-handler';
+import { createExecutorContext } from './error-context';
 
 /**
  * Executor configuration options
@@ -28,30 +30,7 @@ export interface ExecutorOptions {
   streamOutput?: boolean;         // Default: false
 }
 
-/**
- * Command execution error with detailed context
- */
-export class CommandExecutionError extends Error {
-  public readonly command: string;
-  public readonly args: string[];
-  public readonly code: ExecutionErrorCode;
-  public readonly cause?: Error;
-
-  constructor(
-    message: string,
-    command: string,
-    args: string[],
-    code: ExecutionErrorCode,
-    cause?: Error
-  ) {
-    super(message);
-    this.command = command;
-    this.args = args;
-    this.code = code;
-    this.cause = cause;
-    this.name = 'CommandExecutionError';
-  }
-}
+// Note: CommandExecutionError is now defined in error-handler.ts to avoid duplication
 
 /**
  * Command execution error codes
@@ -76,7 +55,8 @@ export class CommandExecutor implements StateExecutionCoordinator {
   constructor(
     private logger?: Logger,
     defaultTimeout: number = 120000, // 2 minutes
-    options: ExecutorOptions = {}
+    options: ExecutorOptions = {},
+    private errorHandler?: WorkflowErrorHandler
   ) {
     this.options = {
       maxOutputSize: options.maxOutputSize ?? 10 * 1024 * 1024, // 10MB
@@ -102,8 +82,6 @@ export class CommandExecutor implements StateExecutionCoordinator {
   ): Promise<CommandResult> {
     const startTime = Date.now();
     
-
-    
     try {
       // Validate command if enabled
       if (this.options.enableValidation) {
@@ -124,8 +102,7 @@ export class CommandExecutor implements StateExecutionCoordinator {
         throw new CommandExecutionError(
           'Too many concurrent processes',
           command,
-          args,
-          'RESOURCE_LIMIT'
+          1 // General error exit code
         );
       }
 
@@ -172,16 +149,27 @@ export class CommandExecutor implements StateExecutionCoordinator {
 
     } catch (error) {
       if (error instanceof CommandExecutionError) {
+        if (this.errorHandler) {
+          this.errorHandler.enrichAndThrowSync(error, createExecutorContext('executeCommand', command, {
+            additionalData: { args, options }
+          }));
+        }
         throw error;
       }
       
-      throw new CommandExecutionError(
+      const commandError = new CommandExecutionError(
         `Command execution failed: ${error instanceof Error ? error.message : String(error)}`,
         command,
-        args,
-        'UNKNOWN_ERROR',
-        error instanceof Error ? error : undefined
+        1 // General error exit code
       );
+      
+      if (this.errorHandler) {
+        this.errorHandler.enrichAndThrowSync(commandError, createExecutorContext('executeCommand', command, {
+          additionalData: { args, options }
+        }));
+      }
+      
+      throw commandError;
     }
   }
 
@@ -311,8 +299,7 @@ export class CommandExecutor implements StateExecutionCoordinator {
             reject(new CommandExecutionError(
               'Command timed out',
               command,
-              args,
-              'TIMEOUT'
+              124 // Timeout exit code
             ));
           }, timeoutMs);
         })
@@ -332,9 +319,7 @@ export class CommandExecutor implements StateExecutionCoordinator {
       throw new CommandExecutionError(
         `Command execution failed: ${error instanceof Error ? error.message : String(error)}`,
         command,
-        args,
-        'UNKNOWN_ERROR',
-        error instanceof Error ? error : undefined
+        1 // General error exit code
       );
     }
   }
@@ -363,9 +348,7 @@ export class CommandExecutor implements StateExecutionCoordinator {
       throw new CommandExecutionError(
         `Failed to spawn process: ${error instanceof Error ? error.message : String(error)}`,
         command,
-        args,
-        'SPAWN_FAILED',
-        error instanceof Error ? error : undefined
+        1 // General error exit code
       );
     }
   }
@@ -387,8 +370,7 @@ export class CommandExecutor implements StateExecutionCoordinator {
         throw new CommandExecutionError(
           `Argument contains injection patterns: ${arg}`,
           command,
-          args,
-          'INJECTION_DETECTED'
+          1 // General error exit code
         );
       }
     }
