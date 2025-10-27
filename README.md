@@ -4,6 +4,8 @@
 
 Aisanity is a secure, hassle-free tool for running AI agents in isolated environments, protecting your host OS from risks while enabling seamless development workflows. It provides sandboxed containers with automatic AI integration, git worktree support for parallel development, and compatibility with any IDE or terminal tool.
 
+I highly recommend to use Aisanity with my [opencode workflow](https://github.com/pigmej/opencode_tools) to fully benefit from Aisanity's features.
+
 ## Tool Compatibility
 
 Aisanity works with all development tools and IDEs. While opencode is the primary tool of interest and automatically integrated into all development environments, you can use any development tool you prefer:
