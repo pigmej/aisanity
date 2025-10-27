@@ -19,7 +19,7 @@ export interface ProcessResult {
 /**
  * Handle for managing process lifecycle
  */
-export interface ProcessHandle {
+export interface IProcessHandle {
   readonly process: any; // Bun.Process equivalent
   readonly abortController: AbortController;
   readonly startTime: number;
@@ -48,19 +48,33 @@ export interface ProcessSpawnOptions {
 /**
  * Implementation of ProcessHandle
  */
-class ProcessHandleImpl implements ProcessHandle {
+export class ProcessHandleImpl implements IProcessHandle {
   private _killed = false;
   private _exitCode: number | null = null;
   private _signalCode?: string | number;
+  
+  public readonly process: any; // Bun.Process equivalent
+  public readonly abortController: AbortController;
+  public readonly startTime: number;
+  public readonly command: string;
+  public readonly args: string[];
+  public readonly promise: Promise<ProcessResult>;
 
   constructor(
-    readonly process: any, // Bun.Process equivalent
-    readonly abortController: AbortController,
-    readonly startTime: number,
-    readonly command: string,
-    readonly args: string[],
-    readonly promise: Promise<ProcessResult>
-  ) {}
+    process: any, // Bun.Process equivalent
+    abortController: AbortController,
+    startTime: number,
+    command: string,
+    args: string[],
+    promise: Promise<ProcessResult>
+  ) {
+    this.process = process;
+    this.abortController = abortController;
+    this.startTime = startTime;
+    this.command = command;
+    this.args = args;
+    this.promise = promise;
+  }
 
   kill(signal: NodeJS.Signals | number = 'SIGTERM'): void {
     if (this._killed) return;
@@ -106,7 +120,7 @@ export async function createProcessHandle(
   command: string,
   args: string[],
   options: ProcessSpawnOptions
-): Promise<ProcessHandle> {
+): Promise<IProcessHandle> {
   const startTime = Date.now();
   const abortController = new AbortController();
   
