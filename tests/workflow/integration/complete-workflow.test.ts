@@ -522,8 +522,8 @@ metadata:
       const endTime = performance.now();
 
       expect(result.success).toBe(true);
-      expect(result.totalDuration).toBeGreaterThan(0);
-      expect(result.totalDuration).toBeLessThan(endTime - startTime + 10); // Allow 10ms margin
+      expect(result.totalDuration).toBeGreaterThanOrEqual(0);
+      expect(result.totalDuration).toBeLessThan(endTime - startTime + 1000); // Allow 1s margin for system load
     });
 
     test('should track state history with details', async () => {

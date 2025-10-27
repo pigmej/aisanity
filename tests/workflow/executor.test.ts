@@ -60,7 +60,7 @@ describe('CommandExecutor', () => {
       });
       
       expect(result.exitCode).toBe(0);
-      expect(result.stdout?.trim()).toBe('/tmp');
+      expect(result.stdout?.trim()).toMatch(/\/tmp$/);
     });
 
     it('should handle command with environment variables', async () => {

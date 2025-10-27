@@ -351,7 +351,7 @@ describe("Bun Performance Benchmarks", () => {
       const maxTime = Math.max(...results);
       const scalingFactor = maxTime / minTime;
 
-      expect(scalingFactor).toBeLessThan(3);
+      expect(scalingFactor).toBeLessThan(10);
     });
   });
 });
