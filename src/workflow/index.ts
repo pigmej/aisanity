@@ -95,3 +95,24 @@ export {
   CLIParameterMapping,
   TemplateVariableRegistry
 } from './argument-templater';
+
+// Confirmation timeout system
+export {
+  ConfirmationHandler,
+  ConfirmationOptions,
+  ConfirmationResult,
+  ConfirmationMethod,
+  ConfirmationHandlerConfig
+} from './confirmation-handler';
+
+export {
+  ConfirmationBuilder
+} from './confirmation-builder';
+
+export {
+  ProgressIndicator
+} from './progress-indicator';
+
+export {
+  TimeoutManager
+} from './timeout-manager';
