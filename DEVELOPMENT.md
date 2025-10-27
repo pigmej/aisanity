@@ -502,3 +502,249 @@ interface AisanityConfig {
 - [Migration Guide](./MIGRATION.md)
 - [API Reference](./README.md)
 - [GitHub Issues](https://github.com/your-username/aisanity/issues)
+
+## Workflow System Architecture
+
+The aisanity workflow system provides a state machine-based approach to defining and executing multi-step development processes.
+
+### Core Components
+
+#### 1. WorkflowParser (`src/workflow/parser.ts`)
+- Loads and parses `.aisanity-workflows.yml` files
+- Validates workflow structure and state definitions
+- Converts YAML into typed workflow objects
+- Provides workflow discovery and listing
+
+#### 2. StateMachine (FSM) (`src/workflow/fsm.ts`)
+- Manages workflow state transitions
+- Tracks execution history and context
+- Validates state graph for cycles and reachability
+- Provides dry-run simulation capabilities
+- Performance target: <20ms initialization
+
+#### 3. CommandExecutor (`src/workflow/executor.ts`)
+- Executes state commands in subprocesses
+- Manages stdin/stdout/stderr handling
+- Enforces timeout limits
+- Provides real-time output streaming
+
+#### 4. ArgumentTemplater (`src/workflow/argument-templater.ts`)
+- Substitutes template variables in commands and arguments
+- Validates inputs for security (injection prevention)
+- Resolves built-in variables (branch, workspace, timestamp)
+- Supports CLI parameter mapping
+
+#### 5. ConfirmationHandler (`src/workflow/confirmation-handler.ts`)
+- Manages interactive confirmation prompts
+- Handles timeout with default behaviors
+- Integrates with TUI progress indicators
+- Supports --yes flag for automation
+
+#### 6. WorkflowErrorHandler (`src/workflow/error-handler.ts`)
+- Centralizes error handling across components
+- Provides context-rich error messages
+- Maps errors to appropriate exit codes
+- Manages resource cleanup
+
+### Integration Architecture
+
+```
+CLI (state.ts)
+    ↓
+WorkflowParser → Load YAML
+    ↓
+StateMachine → Initialize FSM
+    ↓
+    ├─→ CommandExecutor → Execute commands
+    ├─→ ArgumentTemplater → Substitute variables
+    └─→ ConfirmationHandler → Handle prompts
+    ↓
+WorkflowErrorHandler → Handle errors
+    ↓
+Exit with appropriate code
+```
+
+### Performance Requirements
+
+- **Complete system startup**: <500ms (YAML load + parse + FSM init)
+- **FSM initialization**: <20ms per workflow
+- **State transitions**: <1ms per transition
+- **YAML parsing**: <100ms for complex workflows
+- **Template substitution**: <1ms per variable
+
+### Development Patterns
+
+#### Adding New State Features
+
+1. **Update Interfaces** (`src/workflow/interfaces.ts`)
+   - Define new state configuration options
+   - Update State interface
+
+2. **Update Parser** (`src/workflow/parser.ts`)
+   - Add validation for new options
+   - Parse new configuration
+
+3. **Update Executor** (`src/workflow/executor.ts`)
+   - Implement new execution behavior
+   - Add tests for new functionality
+
+4. **Update Documentation**
+   - Add to WORKFLOW_REFERENCE.md
+   - Add examples to WORKFLOW_EXAMPLES.md
+
+#### Testing Workflow Components
+
+```typescript
+// Unit test pattern
+import { StateMachine } from '../../../src/workflow/fsm';
+import { simpleWorkflow } from '../fixtures/test-workflows';
+
+test('should transition states correctly', () => {
+  const fsm = new StateMachine(simpleWorkflow, logger);
+  fsm.transition(0); // success
+  expect(fsm.getCurrentState()).toBe('expected-state');
+});
+
+// Integration test pattern
+import { WorkflowParser } from '../../../src/workflow/parser';
+
+test('should execute complete workflow', async () => {
+  const parser = new WorkflowParser(logger);
+  const workflow = parser.getWorkflow('test-workflow');
+  const fsm = new StateMachine(workflow, logger, executor);
+  const result = await fsm.execute();
+  expect(result.success).toBe(true);
+});
+```
+
+#### Error Handling Pattern
+
+```typescript
+import { WorkflowErrorHandler } from '../../../src/workflow/error-handler';
+import { createExecutorContext } from '../../../src/workflow/error-context';
+
+try {
+  // Workflow operation
+} catch (error) {
+  if (error instanceof Error) {
+    await errorHandler.enrichAndThrow(
+      error,
+      createExecutorContext('operationName', {
+        additionalData: { /* context */ }
+      })
+    );
+  }
+  throw error;
+}
+```
+
+### Security Considerations
+
+#### Template Variable Validation
+
+All template variables are validated to prevent command injection:
+
+```typescript
+// Blocked patterns
+const dangerousPatterns = [
+  /[;&|`$(){}[\]]/,  // Shell metacharacters
+  /\/etc\//,          // System files
+  /\brm\s+-rf\s+\//,  // Dangerous commands
+];
+
+// Validation before substitution
+if (validator.checkForInjectionPatterns(value)) {
+  throw new SecurityError('Invalid template value');
+}
+```
+
+#### Command Execution Safety
+
+- Commands execute with user's permissions (no privilege escalation)
+- Timeout enforcement prevents hanging processes
+- stdin/stdout/stderr properly managed
+- Process cleanup on errors and timeouts
+
+### Extending the Workflow System
+
+#### Custom Variable Resolvers
+
+```typescript
+import { VariableResolver } from '../src/workflow/argument-templater';
+
+const resolver = new VariableResolver(logger);
+resolver.registerCustomResolver('custom_var', async () => {
+  // Custom resolution logic
+  return 'resolved-value';
+});
+```
+
+#### Custom State Validators
+
+```typescript
+import { StateValidator } from '../src/workflow/state-validator';
+
+class CustomValidator extends StateValidator {
+  validateState(state: State): ValidationResult {
+    // Custom validation logic
+    return { isValid: true, errors: [] };
+  }
+}
+```
+
+#### Error Handler Extensions
+
+```typescript
+const errorHandler = new WorkflowErrorHandler(logger);
+
+// Register cleanup handler
+errorHandler.registerCleanupHandler(async () => {
+  // Custom cleanup logic
+});
+```
+
+### Troubleshooting Development Issues
+
+#### Workflow Not Loading
+
+Check parser logs with verbose mode:
+```bash
+aisanity state execute my-workflow --verbose
+```
+
+Common issues:
+- YAML syntax errors
+- Missing required fields
+- Invalid state references
+
+#### FSM Validation Failures
+
+Enable debug logging:
+```typescript
+const logger = new Logger(false, true); // verbose mode
+const fsm = new StateMachine(workflow, logger);
+```
+
+Common issues:
+- Circular state references
+- Unreachable states
+- Invalid transition targets
+
+#### Performance Issues
+
+Run performance benchmarks:
+```bash
+bun test tests/workflow/performance/
+```
+
+Check for:
+- Large workflow files (>50 states)
+- Complex template substitutions
+- Excessive timeout values
+
+### Related Documentation
+
+- [WORKFLOWS.md](./WORKFLOWS.md) - Getting started guide
+- [WORKFLOW_EXAMPLES.md](./WORKFLOW_EXAMPLES.md) - Real-world examples
+- [WORKFLOW_REFERENCE.md](./WORKFLOW_REFERENCE.md) - Complete reference
+- [CLI_EXAMPLES.md](./CLI_EXAMPLES.md) - Command-line examples

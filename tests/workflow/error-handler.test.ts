@@ -177,5 +177,120 @@ describe('WorkflowErrorHandler', () => {
         );
       }
     });
+
+    it('should sanitize Windows paths', () => {
+      const error = new Error('Error with /Users/admin/secret.txt');
+      const context = createExecutorContext('test', 'test-command');
+
+      try {
+        errorHandler.enrichAndThrowSync(error, context);
+      } catch (e) {
+        expect(mockLogger.error).toHaveBeenCalledWith(
+          expect.stringContaining('~')
+        );
+      }
+    });
+
+    it('should limit error message length', () => {
+      const longMessage = 'Error: ' + 'x'.repeat(600);
+      const error = new Error(longMessage);
+      const context = createExecutorContext('test', 'test-command');
+
+      try {
+        errorHandler.enrichAndThrowSync(error, context);
+      } catch (e) {
+        expect(mockLogger.error).toHaveBeenCalled();
+        const errorCall = (mockLogger.error as jest.Mock).mock.calls[0][0];
+        expect(errorCall.length).toBeLessThan(600);
+      }
+    });
+  });
+
+  describe('Additional error handlers', () => {
+    it('should handle timeout errors', () => {
+      const context = createExecutorContext('test', 'test-command');
+
+      expect(() => errorHandler.handleTimeoutError(context, 5000)).toThrow();
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        expect.stringContaining('timed out after 5000ms')
+      );
+    });
+
+    it('should handle confirmation errors', () => {
+      const context = createExecutorContext('test', 'test-command');
+
+      expect(() => errorHandler.handleConfirmationError(context, 'User declined')).toThrow();
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        expect.stringContaining('Confirmation failed: User declined')
+      );
+    });
+
+    it('should handle simulation errors', () => {
+      const error = new Error('Simulation failed');
+      const context = createExecutorContext('test', 'test-command');
+
+      expect(() => errorHandler.handleSimulationError(error, context)).toThrow();
+      expect(mockLogger.error).toHaveBeenCalled();
+    });
+  });
+
+  describe('Error code mapping', () => {
+    it('should map ENOENT errors correctly', () => {
+      const error = new Error('Command not found: ENOENT');
+      const exitCode = errorHandler.getExitCode(error);
+      expect(exitCode).toBe(3); // COMMAND_NOT_FOUND as defined in EXIT_CODES
+    });
+
+    it('should map EACCES errors correctly', () => {
+      const error = new Error('Permission denied: EACCES');
+      const exitCode = errorHandler.getExitCode(error);
+      expect(exitCode).toBe(4); // PERMISSION_DENIED as defined in EXIT_CODES
+    });
+
+    it('should map timeout messages correctly', () => {
+      const error = new Error('Operation timeout occurred');
+      const exitCode = errorHandler.getExitCode(error);
+      expect(exitCode).toBe(6); // TIMEOUT_ERROR as defined in EXIT_CODES
+    });
+  });
+
+  describe('Async cleanup handlers', () => {
+    it('should handle async cleanup handlers', async () => {
+      const asyncCleanup = jest.fn(async () => {
+        await new Promise(resolve => setTimeout(resolve, 10));
+      });
+      errorHandler.registerCleanupHandler(asyncCleanup);
+
+      const error = new Error('Test error');
+      const context = createExecutorContext('test', 'test-command');
+
+      try {
+        await errorHandler.enrichAndThrow(error, context);
+      } catch (e) {
+        // Expected to throw
+      }
+
+      expect(asyncCleanup).toHaveBeenCalled();
+    });
+
+    it('should warn about async cleanup in sync context', () => {
+      const asyncCleanup = jest.fn(async () => {
+        await new Promise(resolve => setTimeout(resolve, 10));
+      });
+      errorHandler.registerCleanupHandler(asyncCleanup);
+
+      const error = new Error('Test error');
+      const context = createExecutorContext('test', 'test-command');
+
+      try {
+        errorHandler.enrichAndThrowSync(error, context);
+      } catch (e) {
+        // Expected to throw
+      }
+
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('Async cleanup handler in sync context')
+      );
+    });
   });
 });

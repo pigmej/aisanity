@@ -356,6 +356,12 @@ export class ArgumentTemplater {
         const value = variables[varName];
 
         if (value !== undefined) {
+          // Validate variable value before substitution
+          if (!this.validator.validateVariableValue(value)) {
+            this.logger?.warn(`Skipping invalid variable value for ${varName}: contains dangerous patterns`);
+            continue;
+          }
+          
           substitutions[varName] = value;
           result = result.replace(match[0], value);
         }

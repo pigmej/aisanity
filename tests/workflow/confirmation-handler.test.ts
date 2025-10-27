@@ -219,5 +219,204 @@ describe('ConfirmationHandler', () => {
       // Configuration is applied internally
       expect(customHandler).toBeDefined();
     });
+
+    it('should use default configuration when not provided', () => {
+      const defaultHandler = new ConfirmationHandler(mockExecutor, mockLogger);
+      expect(defaultHandler).toBeDefined();
+    });
+  });
+
+  describe('progress indicator', () => {
+    it('should show progress indicator by default', async () => {
+      mockExecutor.executeCommand.mockResolvedValue({
+        exitCode: 0,
+        stdout: '',
+        stderr: '',
+        duration: 100
+      });
+
+      const result = await handler.requestConfirmation('Test?', {
+        showProgress: true
+      });
+
+      expect(result.confirmed).toBe(true);
+    });
+
+    it('should hide progress indicator when disabled', async () => {
+      mockExecutor.executeCommand.mockResolvedValue({
+        exitCode: 0,
+        stdout: '',
+        stderr: '',
+        duration: 100
+      });
+
+      const result = await handler.requestConfirmation('Test?', {
+        showProgress: false
+      });
+
+      expect(result.confirmed).toBe(true);
+    });
+
+    it('should use custom progress interval', async () => {
+      mockExecutor.executeCommand.mockResolvedValue({
+        exitCode: 0,
+        stdout: '',
+        stderr: '',
+        duration: 100
+      });
+
+      const result = await handler.requestConfirmation('Test?', {
+        showProgress: true,
+        progressInterval: 500
+      });
+
+      expect(result.confirmed).toBe(true);
+    });
+  });
+
+  describe('error handling with error handler', () => {
+    it('should use error handler when available', async () => {
+      const mockErrorHandler = {
+        enrichAndThrowSync: jest.fn((error: Error) => {
+          throw error;
+        })
+      } as any;
+
+      const handlerWithErrorHandler = new ConfirmationHandler(
+        mockExecutor,
+        mockLogger,
+        undefined,
+        mockErrorHandler
+      );
+
+      mockExecutor.executeCommand.mockRejectedValue({
+        code: 'TIMEOUT',
+        message: 'Command timed out'
+      });
+
+      const result = await handlerWithErrorHandler.requestConfirmation('Test?');
+
+      expect(result.method).toBe('timeout');
+    });
+
+    it('should handle non-timeout errors with error handler', async () => {
+      const mockErrorHandler = {
+        enrichAndThrowSync: jest.fn((error: Error) => {
+          // Don't actually throw for this test
+          return undefined as never;
+        })
+      } as any;
+
+      const handlerWithErrorHandler = new ConfirmationHandler(
+        mockExecutor,
+        mockLogger,
+        undefined,
+        mockErrorHandler
+      );
+
+      mockExecutor.executeCommand.mockRejectedValue(new Error('Spawn failed'));
+
+      const result = await handlerWithErrorHandler.requestConfirmation('Test?');
+
+      expect(result.method).toBe('error');
+    });
+  });
+
+  describe('timeout validation', () => {
+    it('should use default timeout when not specified', async () => {
+      mockExecutor.executeCommand.mockResolvedValue({
+        exitCode: 0,
+        stdout: '',
+        stderr: '',
+        duration: 100
+      });
+
+      await handler.requestConfirmation('Test?');
+
+      expect(mockExecutor.executeCommand).toHaveBeenCalledWith(
+        'bash',
+        ['-c', expect.any(String)],
+        { timeout: 32000 } // 30000 + 2000 buffer
+      );
+    });
+
+    it('should clamp timeout to minimum', async () => {
+      const handlerWithLimits = new ConfirmationHandler(
+        mockExecutor,
+        mockLogger,
+        { minTimeout: 5000 }
+      );
+
+      mockExecutor.executeCommand.mockResolvedValue({
+        exitCode: 0,
+        stdout: '',
+        stderr: '',
+        duration: 100
+      });
+
+      await handlerWithLimits.requestConfirmation('Test?', { timeout: 100 });
+
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('too short')
+      );
+    });
+
+    it('should clamp timeout to maximum', async () => {
+      const handlerWithLimits = new ConfirmationHandler(
+        mockExecutor,
+        mockLogger,
+        { maxTimeout: 60000 }
+      );
+
+      mockExecutor.executeCommand.mockResolvedValue({
+        exitCode: 0,
+        stdout: '',
+        stderr: '',
+        duration: 100
+      });
+
+      await handlerWithLimits.requestConfirmation('Test?', { timeout: 600000 });
+
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining('too long')
+      );
+    });
+  });
+
+  describe('result metadata', () => {
+    it('should include duration in result', async () => {
+      mockExecutor.executeCommand.mockResolvedValue({
+        exitCode: 0,
+        stdout: '',
+        stderr: '',
+        duration: 150
+      });
+
+      const result = await handler.requestConfirmation('Test?');
+
+      expect(result.duration).toBeGreaterThanOrEqual(0);
+      expect(result.method).toBe('user');
+    });
+
+    it('should include timeout flag in result', async () => {
+      mockExecutor.executeCommand.mockRejectedValue({
+        code: 'TIMEOUT',
+        message: 'Timed out'
+      });
+
+      const result = await handler.requestConfirmation('Test?');
+
+      expect(result.timedOut).toBe(true);
+      expect(result.method).toBe('timeout');
+    });
+
+    it('should include error in result when error occurs', async () => {
+      mockExecutor.executeCommand.mockRejectedValue(new Error('Test error'));
+
+      const result = await handler.requestConfirmation('Test?');
+
+      expect(result.error).toBeInstanceOf(Error);
+      expect(result.method).toBe('error');
+    });
   });
 });

@@ -132,8 +132,10 @@ async function executeWorkflowAction(
     if (error instanceof Error) {
       const exitCode = errorHandler.getExitCode(error);
       
-      // WorkflowErrorHandler already logged comprehensive error details
-      // Only log if this is an unexpected error type that bypassed handler
+      // Always log error message for all error types
+      logger.error(`Error: ${error.message}`);
+      
+      // Only log stack trace for unexpected errors
       const isWorkflowError = error instanceof WorkflowFileError || 
                              error instanceof WorkflowValidationError ||
                              error instanceof WorkflowExecutionError ||
@@ -145,8 +147,7 @@ async function executeWorkflowAction(
                              error instanceof WorkflowParseError;
       
       if (!isWorkflowError) {
-        // Unexpected error - log it
-        logger.error(`Unexpected error: ${error.message}`);
+        // Unexpected error - log stack trace
         logger.debug(`Stack trace: ${error.stack}`);
       }
       
