@@ -61,3 +61,26 @@ export {
   ValidationResult,
   CircularityResult
 } from './state-validator';
+
+// Command executor and related components
+export {
+  CommandExecutor,
+  CommandExecutionError,
+  ExecutionErrorCode,
+  ExecutorOptions
+} from './executor';
+
+export {
+  ProcessHandle,
+  ProcessResult,
+  ProcessSpawnOptions,
+  createProcessHandle
+} from './process-handle';
+
+export {
+  OutputBuffer
+} from './output-buffer';
+
+export {
+  TUIPromptBuilder
+} from './tui-prompt-builder';
