@@ -84,3 +84,14 @@ export {
 export {
   TUIPromptBuilder
 } from './tui-prompt-builder';
+
+// Argument templating system
+export {
+  ArgumentTemplater,
+  TemplateValidator,
+  VariableResolver,
+  ProcessedCommand,
+  ValidationResult as TemplateValidationResult,
+  CLIParameterMapping,
+  TemplateVariableRegistry
+} from './argument-templater';
