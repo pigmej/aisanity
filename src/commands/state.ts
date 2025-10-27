@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import { WorkflowParser, StateMachine, CommandExecutor, ConfirmationHandler, WorkflowExecutionError, WorkflowFileError } from '../workflow';
 import { Logger } from '../utils/logger';
+import picocolors from 'picocolors';
 
 /**
  * Command options interface for state execute command
@@ -54,7 +55,7 @@ const executeSubcommand = new Command('execute')
   .argument('[state]', 'Specific state to execute (defaults to initial state)')
   .argument('[args...]', 'Additional arguments for template substitution')
   .option('--yes', 'Bypass confirmation prompts')
-  .option('--dry-run', 'Show what would be executed without running')
+  .option('--dry-run', 'Show execution plan without running commands. Shows state execution order, timing estimates, template variables, and final state. Confirmations are detected but not executed. Example: aisanity state execute my-workflow --dry-run')
   .option('-v, --verbose', 'Enable verbose logging')
   .option('--silent, --quiet', 'Suppress aisanity output')
   .action(executeWorkflowAction);
@@ -271,9 +272,9 @@ function processCLIArguments(
 }
 
 /**
- * Execute state or workflow based on parameters
- */
-async function executeStateOrWorkflow(
+   * Execute state or workflow based on parameters
+   */
+  export async function executeStateOrWorkflow(
   stateMachine: StateMachine,
   stateName: string | undefined,
   options: ExecuteOptions,
@@ -282,15 +283,34 @@ async function executeStateOrWorkflow(
   
   if (options.dryRun) {
     logger.info('DRY RUN: Showing execution plan without running commands');
-    // Note: Dry-run functionality needs to be implemented in StateMachine
-    // For now, just log what would be executed
-    logger.info(`Would execute workflow from current state`);
-    if (stateName) {
-      logger.info(`Starting from state: ${stateName}`);
+    
+    try {
+      // Use enhanced dry-run simulation
+      const context = stateMachine.getContext();
+      const dryRunResult = await stateMachine.simulateExecution({
+        startingState: stateName,
+        templateVariables: context.variables,
+        includeTimingEstimates: true,
+        includeWarnings: true,
+        assumeSuccess: true
+      });
+
+      // Format and display dry-run results
+      formatDryRunResult(dryRunResult, logger);
+      
+      return dryRunResult;
+    } catch (error) {
+      logger.error(`Dry-run simulation failed: ${error}`);
+      logger.info('Falling back to basic dry-run information');
+      
+      // Basic fallback
+      logger.info(`Would execute workflow from current state`);
+      if (stateName) {
+        logger.info(`Starting from state: ${stateName}`);
+      }
+      logger.info(`Template variables available in context`);
+      return { success: true, message: 'Basic dry run completed' };
     }
-    // TODO: Add method to StateMachine to get current context variables for display
-    logger.info(`Template variables available in context`);
-    return { success: true, message: 'Dry run completed' };
   }
   
   if (stateName) {
@@ -326,6 +346,60 @@ function reportExecutionResult(result: any, logger: Logger): void {
       logger.error(`Error: ${result.error.message}`);
     }
   }
+}
+
+/**
+ * Format and display dry-run results with color-coded output
+ */
+function formatDryRunResult(result: any, logger: Logger): void {
+  const { cyan, yellow, red, green, bold, dim } = picocolors;
+  
+  logger.info('');
+  logger.info(bold(cyan('🔍 DRY RUN: Workflow Execution Preview')));
+  logger.info('');
+  
+  if (result.executionPlan && result.executionPlan.length > 0) {
+    logger.info(bold('📋 Execution Plan:'));
+    result.executionPlan.forEach((step: any, index: number) => {
+      const duration = step.estimatedDuration;
+      const confidence = step.durationConfidence;
+      const durationText = confidence === 'high' 
+        ? `${duration}ms` 
+        : `${duration}ms (${confidence} confidence)`;
+      
+const commandText = step.hasSubstitutions 
+          ? `${step.processedCommand} ${step.processedArgs.join(' ')}`.trim()
+          : `${step.rawCommand} ${step.rawArgs.join(' ')}`.trim();
+      
+      const confirmationText = step.requiresConfirmation ? ' [CONFIRMATION REQUIRED]' : '';
+      const terminalText = step.isTerminal ? ' (TERMINAL)' : '';
+      
+      logger.info(`  ${index + 1}. ${yellow(step.stateName)} (${durationText}) - ${cyan(commandText)}${confirmationText}${terminalText}`);
+      
+      // Show template substitutions if any
+      if (step.hasSubstitutions && Object.keys(step.substitutions).length > 0) {
+        logger.info(dim(`     Substitutions: ${Object.entries(step.substitutions).map(([k, v]) => `${k}=${v}`).join(', ')}`));
+      }
+    });
+    logger.info('');
+  }
+  
+  // Summary information
+  logger.info(`${bold('🎯 Final State:')} ${result.finalState}`);
+  logger.info(`${bold('⏱️  Total Duration:')} ${result.totalDuration}ms (estimated)`);
+  logger.info(`${bold(':variables:')} ${Object.keys(result.templateVariables).length} template variables processed`);
+  
+  if (result.warnings && result.warnings.length > 0) {
+    logger.info(`${bold(red('⚠️  Warnings:'))} ${result.warnings.join(', ')}`);
+  }
+  
+  if (result.hasConfirmationPrompts) {
+    logger.info(`${bold(yellow(`📝 Confirmations: ${result.totalConfirmations} confirmation prompt(s)`))}`);
+  }
+  
+  logger.info('');
+  logger.info(green('Would execute workflow with these parameters. No commands were actually run.'));
+  logger.info('');
 }
 
 /**
