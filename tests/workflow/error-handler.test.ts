@@ -238,7 +238,7 @@ describe('WorkflowErrorHandler', () => {
     it('should map ENOENT errors correctly', () => {
       const error = new Error('Command not found: ENOENT');
       const exitCode = errorHandler.getExitCode(error);
-      expect(exitCode).toBe(3); // COMMAND_NOT_FOUND as defined in EXIT_CODES
+      expect(exitCode).toBe(127); // COMMAND_NOT_FOUND as defined in EXIT_CODES
     });
 
     it('should map EACCES errors correctly', () => {
@@ -250,7 +250,7 @@ describe('WorkflowErrorHandler', () => {
     it('should map timeout messages correctly', () => {
       const error = new Error('Operation timeout occurred');
       const exitCode = errorHandler.getExitCode(error);
-      expect(exitCode).toBe(6); // TIMEOUT_ERROR as defined in EXIT_CODES
+      expect(exitCode).toBe(124); // TIMEOUT_ERROR as defined in EXIT_CODES
     });
   });
 

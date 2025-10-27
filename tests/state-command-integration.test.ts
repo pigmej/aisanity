@@ -83,6 +83,27 @@ metadata:
   });
 
   test('should validate template arguments', async () => {
+    // Create a minimal workflow file for testing
+    const workflowContent = `
+workflows:
+  test:
+    name: "Test Workflow"
+    description: "A minimal workflow for testing"
+    initialState: "start"
+    states:
+      start:
+        command: "echo"
+        args: ["Starting"]
+        transitions:
+          success: "done"
+      done:
+        command: "echo"
+        args: ["Finished"]
+        transitions: {}
+`;
+
+    await $`echo '${workflowContent}' > .aisanity-workflows.yml`.quiet();
+    
     try {
       const result = await $`bun run dist/index.js state execute test 'key=\`rm -rf\`'`.text();
       // If we get here, the command succeeded (unexpected)
@@ -91,20 +112,45 @@ metadata:
       // Command failed as expected, check the error output
       const stderr = error.stderr?.toString() || '';
       expect(stderr).toContain('Error:');
-      expect(stderr).toContain('alphanumeric');
+      expect(stderr).toContain('potentially dangerous characters');
+    } finally {
+      await $`rm -f .aisanity-workflows.yml`.quiet();
     }
   });
 
   test('should handle template argument validation', async () => {
+    // Create a minimal workflow file for testing
+    const workflowContent = `
+workflows:
+  test:
+    name: "Test Workflow"
+    description: "A minimal workflow for testing"
+    initialState: "start"
+    states:
+      start:
+        command: "echo"
+        args: ["Starting"]
+        transitions:
+          success: "done"
+      done:
+        command: "echo"
+        args: ["Finished"]
+        transitions: {}
+`;
+
+    await $`echo '${workflowContent}' > .aisanity-workflows.yml`.quiet();
+    
     try {
-      const result = await $`bun run dist/index.js state execute test invalid-format`.text();
+      const result = await $`bun run dist/index.js state execute test start invalid-format=`.text();
       // If we get here, the command succeeded (unexpected)
       expect(result).toBe('Expected command to fail');
     } catch (error: any) {
       // Command failed as expected, check the error output
       const stderr = error.stderr?.toString() || '';
       expect(stderr).toContain('Error:');
-      expect(stderr).toContain('not found');
+      expect(stderr).toContain('Invalid template argument format');
+    } finally {
+      await $`rm -f .aisanity-workflows.yml`.quiet();
     }
   });
 });

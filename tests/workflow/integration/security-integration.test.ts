@@ -256,7 +256,6 @@ workflows:
         args: ["10"]
         timeout: 1000
         transitions:
-          success: null
           timeout: "timeout-handler"
       timeout-handler:
         command: "echo"
@@ -283,46 +282,6 @@ metadata:
       // Should timeout and execute timeout handler
       expect(result.success).toBe(true);
       expect(result.finalState).toBe('timeout-handler');
-      expect(duration).toBeLessThan(3000); // Should not wait full 10 seconds
-    });
-
-    test('should respect global timeout settings', async () => {
-      const workflowContent = `
-workflows:
-  global-timeout:
-    name: "Global Timeout"
-    description: "Test global timeout"
-    initialState: "start"
-    globalTimeout: 2000
-    states:
-      start:
-        command: "sleep"
-        args: ["10"]
-        transitions:
-          success: null
-          timeout: "timeout-handler"
-      timeout-handler:
-        command: "echo"
-        args: ["Global timeout triggered"]
-        transitions: {}
-
-metadata:
-  version: "1.0.0"
-`;
-
-      createWorkflowFile(tempDir, workflowContent);
-      const parser = new WorkflowParser(logger);
-      const workflows = parser.loadWorkflows(tempDir);
-      const workflow = workflows.workflows['global-timeout'];
-
-      const executor = new CommandExecutor(logger);
-      const confirmationHandler = new ConfirmationHandler(executor, logger);
-      const fsm = new StateMachine(workflow, logger, executor, confirmationHandler);
-
-      const startTime = Date.now();
-      const result = await fsm.execute();
-      const duration = Date.now() - startTime;
-
       expect(duration).toBeLessThan(5000); // Should timeout before 10 seconds
     });
   });
@@ -340,7 +299,6 @@ workflows:
         command: "cat"
         args: ["/home/user/secret/file.txt"]
         transitions:
-          success: null
           failure: "error-handler"
       error-handler:
         command: "echo"

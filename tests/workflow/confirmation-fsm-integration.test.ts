@@ -188,6 +188,14 @@ describe('Confirmation FSM Integration', () => {
         duration: 50
       });
     
+    // Mock successful command execution for cancelled state
+    executor.executeCommand.mockResolvedValue({
+      exitCode: 0,
+      stdout: 'Cancelled!',
+      stderr: '',
+      duration: 50
+    });
+    
     const result = await fsm.execute();
     
     expect(result.success).toBe(true); // Workflow completes successfully

@@ -13,11 +13,10 @@ describe('ConfirmationBuilder', () => {
         false
       );
       
-      expect(command).toContain('timeout 30');
-      expect(command).toContain('bash -c');
-      expect(command).toContain('read -p');
+      expect(command).toContain('read -t 30');
       expect(command).toContain('Continue?');
       expect(command).toContain('[y/N]');
+      expect(command).toContain('/dev/tty');
     });
 
     it('should handle default value true', () => {
@@ -37,9 +36,9 @@ describe('ConfirmationBuilder', () => {
         45500,  // 45.5 seconds
         false
       );
-      
+
       // Should round up to 46 seconds
-      expect(command).toContain('timeout 46');
+      expect(command).toContain('read -t 46');
     });
 
     it('should handle zero timeout', () => {
@@ -48,8 +47,8 @@ describe('ConfirmationBuilder', () => {
         0,
         false
       );
-      
-      expect(command).toContain('timeout 0');
+
+      expect(command).toContain('read -t 0');
     });
   });
 
@@ -147,8 +146,8 @@ describe('ConfirmationBuilder', () => {
       // Should be a single line after trimming
       expect(command).not.toContain('\n');
       
-      // Should have proper timeout structure
-      expect(command).toMatch(/^timeout \d+ bash -c '.*' \|\| \{.*\}$/);
+      // Should have proper read -t structure
+      expect(command).toMatch(/^if read -t \d+ -p ".*" -n 1 answer < \/dev\/tty; then echo; \[\[ "\$answer" =~ \^\[Yy\]\$ \]\] && exit 0 \|\| \[\[ "\$answer" =~ \^\[Nn\]\$ \]\] && exit 1 \|\| exit 1; else echo; exit 1; fi$/);
     });
 
     it('should handle timeout exit code correctly', () => {
@@ -162,7 +161,7 @@ describe('ConfirmationBuilder', () => {
       const command = ConfirmationBuilder.buildTimedConfirmation('Test?', 5000, false);
       
       // Should have proper read and conditional logic
-      expect(command).toContain('read -p');
+      expect(command).toContain('read -t');
       expect(command).toContain('[[ "$answer" =~ ^[Yy]$ ]]');
       expect(command).toContain('[[ "$answer" =~ ^[Nn]$ ]]');
     });
