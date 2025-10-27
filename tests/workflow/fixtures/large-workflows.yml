@@ -1,0 +1,162 @@
+workflows:
+  large-deploy:
+    name: "Large Deployment Pipeline"
+    description: "Complex deployment workflow with many states"
+    initialState: "setup"
+    globalTimeout: 3600
+    states:
+      setup:
+        description: "Setup deployment environment"
+        command: "npm run setup"
+        timeout: 120
+        transitions:
+          success: "validate"
+          failure: "cleanup"
+      validate:
+        description: "Validate deployment configuration"
+        command: "npm run validate"
+        args: ["--strict", "--verbose"]
+        timeout: 180
+        confirmation:
+          message: "Continue with deployment validation?"
+          timeout: 60
+          defaultAccept: false
+        transitions:
+          success: "build"
+          failure: "setup"
+      build:
+        description: "Build application artifacts"
+        command: "npm run build"
+        args: ["--production", "--optimize"]
+        timeout: 600
+        transitions:
+          success: "test-unit"
+          failure: "cleanup"
+      test-unit:
+        description: "Run unit tests"
+        command: "npm run test:unit"
+        args: ["--coverage", "--watchAll=false"]
+        timeout: 300
+        transitions:
+          success: "test-integration"
+          failure: "build"
+      test-integration:
+        description: "Run integration tests"
+        command: "npm run test:integration"
+        timeout: 450
+        confirmation:
+          message: "Run integration tests? (may take several minutes)"
+          timeout: 120
+          defaultAccept: true
+        transitions:
+          success: "test-e2e"
+          failure: "test-unit"
+      test-e2e:
+        description: "Run end-to-end tests"
+        command: "npm run test:e2e"
+        timeout: 900
+        transitions:
+          success: "security-scan"
+          failure: "test-integration"
+      security-scan:
+        description: "Run security vulnerability scan"
+        command: "npm run security:scan"
+        timeout: 300
+        transitions:
+          success: "package"
+          failure: "test-e2e"
+      package:
+        description: "Package application for deployment"
+        command: "npm run package"
+        args: ["--compress", "--sign"]
+        timeout: 240
+        transitions:
+          success: "deploy-staging"
+          failure: "security-scan"
+      deploy-staging:
+        description: "Deploy to staging environment"
+        command: "npm run deploy:staging"
+        timeout: 600
+        confirmation:
+          message: "Deploy to staging environment?"
+          timeout: 180
+          defaultAccept: true
+        transitions:
+          success: "smoke-test"
+          failure: "package"
+      smoke-test:
+        description: "Run smoke tests on staging"
+        command: "npm run test:smoke"
+        args: ["--env=staging"]
+        timeout: 300
+        transitions:
+          success: "approve-production"
+          failure: "deploy-staging"
+      approve-production:
+        description: "Manual approval for production deployment"
+        command: "echo 'Awaiting production deployment approval'"
+        confirmation:
+          message: "Approve deployment to production?"
+          timeout: 600
+          defaultAccept: false
+        transitions:
+          success: "deploy-production"
+          failure: "cleanup"
+      deploy-production:
+        description: "Deploy to production environment"
+        command: "npm run deploy:production"
+        timeout: 900
+        confirmation:
+          message: "DEPLOY TO PRODUCTION? This cannot be undone!"
+          timeout: 300
+          defaultAccept: false
+        transitions:
+          success: "verify-production"
+          failure: "rollback"
+      verify-production:
+        description: "Verify production deployment"
+        command: "npm run verify:production"
+        timeout: 300
+        transitions:
+          success: "notify"
+          failure: "rollback"
+      rollback:
+        description: "Rollback failed deployment"
+        command: "npm run rollback"
+        timeout: 600
+        transitions:
+          success: "notify-failure"
+          failure: "emergency"
+      notify:
+        description: "Notify successful deployment"
+        command: "npm run notify:success"
+        timeout: 60
+        transitions:
+          success: "complete"
+      notify-failure:
+        description: "Notify deployment failure"
+        command: "npm run notify:failure"
+        timeout: 60
+        transitions:
+          success: "complete"
+      emergency:
+        description: "Emergency procedures"
+        command: "npm run emergency"
+        timeout: 120
+        transitions:
+          success: "complete"
+      cleanup:
+        description: "Clean up deployment artifacts"
+        command: "npm run cleanup"
+        timeout: 180
+        transitions:
+          success: "complete"
+      complete:
+        description: "Deployment process complete"
+        command: "echo 'Deployment completed successfully'"
+        transitions: {}
+
+metadata:
+  version: "2.0.0"
+  created: "2025-01-20"
+  modified: "2025-01-20"

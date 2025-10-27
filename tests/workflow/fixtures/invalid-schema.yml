@@ -1,0 +1,38 @@
+workflows:
+  deploy:
+    name: "Deploy Application"
+    description: "Build and deploy application to production"
+    initialState: "build"  # This state doesn't exist below
+    states:
+      build:
+        description: "Build the application"
+        command: ""  # Empty command - invalid
+        timeout: -100  # Negative timeout - invalid
+        transitions:
+          success: "test"
+          failure: "cleanup"
+      test:
+        description: "Run test suite"
+        command: "npm test"
+        args: "not-an-array"  # Should be array - invalid
+        transitions:
+          success: "deploy"
+          failure: "nonexistent"  # References non-existent state - invalid
+      cleanup:
+        description: "Clean up build artifacts"
+        command: "npm run clean"
+        transitions:
+          success: "complete"
+      complete:
+        description: "Deployment complete"
+        command: "echo 'Deployment finished'"
+        transitions: {}
+
+  invalid-workflow:
+    name: ""  # Empty name - invalid
+    # Missing initialState - invalid
+    states: {}  # Empty states - invalid
+
+metadata:
+  version: 123  # Should be string - invalid
+  created: "2025-01-20"
