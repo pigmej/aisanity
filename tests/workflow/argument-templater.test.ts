@@ -119,7 +119,7 @@ describe('ArgumentTemplater', () => {
 
       const result = await templater.processCommandArgs(command, args, cliParams);
 
-      expect(result.command).toBe('echo "Current branch: feature/100_4_20"');
+      expect(result.command).toBe('echo "Current branch: feature/100-fsm"');
       expect(result.hasPlaceholders).toBe(true);
       expect(result.substitutions).toHaveProperty('branch');
     });
@@ -167,7 +167,7 @@ describe('ArgumentTemplater', () => {
       expect(variables).toHaveProperty('branch');
       expect(variables).toHaveProperty('workspace');
       expect(variables).toHaveProperty('timestamp');
-      expect(variables.branch).toBe('feature/100_4_20');
+      expect(variables.branch).toBe('feature/100-fsm');
     });
 
     it('should include context variables', async () => {
@@ -365,7 +365,7 @@ describe('VariableResolver', () => {
       // Note: This test now checks actual git behavior rather than mocked behavior
       const branch = await resolver.getCurrentBranch();
 
-      expect(branch).toBe('feature/100_4_20');
+      expect(branch).toBe('feature/100-fsm');
       expect(typeof branch).toBe('string');
     });
 
@@ -373,7 +373,7 @@ describe('VariableResolver', () => {
       // Test actual behavior - we're not in detached HEAD state, so we get the branch name
       const branch = await resolver.getCurrentBranch();
 
-      expect(branch).toBe('feature/100_4_20');
+      expect(branch).toBe('feature/100-fsm');
       expect(typeof branch).toBe('string');
     });
 
@@ -467,7 +467,7 @@ describe('VariableResolver', () => {
       const branch2 = await testResolver.getCurrentBranch();
 
       expect(branch1).toBe(branch2);
-      expect(branch1).toBe('feature/100_4_20');
+      expect(branch1).toBe('feature/100-fsm');
     });
   });
 });
