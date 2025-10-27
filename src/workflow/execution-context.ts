@@ -59,6 +59,7 @@ export interface ExecutionOptions {
   timeout?: number;
   cwd?: string;
   env?: Record<string, string>;
+  stdin?: 'inherit' | 'pipe' | null; // stdin configuration for interactive commands
 }
 
 /**

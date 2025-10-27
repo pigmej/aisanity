@@ -7,15 +7,16 @@ workflows:
     states:
       build:
         description: "Build the application"
-        command: "npm run build"
+        command: "npm"
+        args: ["run", "build"]
         timeout: 300
         transitions:
           success: "test"
           failure: "cleanup"
       test:
         description: "Run test suite"
-        command: "npm test"
-        args: ["--coverage"]
+        command: "npm"
+        args: ["test", "--coverage"]
         timeout: 600
         confirmation:
           message: "Run tests before deployment?"
@@ -26,24 +27,28 @@ workflows:
           failure: "cleanup"
       deploy:
         description: "Deploy to production"
-        command: "npm run deploy"
+        command: "npm"
+        args: ["run", "deploy"]
         timeout: 900
         transitions:
           success: "complete"
           failure: "rollback"
       cleanup:
         description: "Clean up build artifacts"
-        command: "npm run clean"
+        command: "npm"
+        args: ["run", "clean"]
         transitions:
           success: "complete"
       rollback:
         description: "Rollback deployment"
-        command: "npm run rollback"
+        command: "npm"
+        args: ["run", "rollback"]
         transitions:
           success: "complete"
       complete:
         description: "Deployment complete"
-        command: "echo 'Deployment finished'"
+        command: "echo"
+        args: ["Deployment finished"]
         transitions: {}
 
   simple:
@@ -52,11 +57,13 @@ workflows:
     initialState: "start"
     states:
       start:
-        command: "echo 'Starting'"
+        command: "echo"
+        args: ["Starting"]
         transitions:
           success: "end"
       end:
-        command: "echo 'Finished'"
+        command: "echo"
+        args: ["Finished"]
         transitions: {}
 
 metadata:

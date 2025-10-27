@@ -213,7 +213,8 @@ export class StateMachine {
           {
             timeout: state.timeout,
             cwd: undefined,
-            env: undefined
+            env: undefined,
+            stdin: state.stdin
           }
         );
 
@@ -316,6 +317,115 @@ export class StateMachine {
   }
 
   /**
+   * Simulate workflow execution without running actual commands
+   * Returns comprehensive dry-run results with execution plan and timing estimates
+   */
+  async simulateExecution(options: {
+    startingState?: string;
+    templateVariables?: Record<string, string>;
+    includeTimingEstimates?: boolean;
+    includeWarnings?: boolean;
+    assumeSuccess?: boolean;
+  } = {}): Promise<any> {
+    // This will be implemented with DryRunSimulator integration
+    // For now, provide a basic implementation that can be enhanced
+    
+    const {
+      startingState,
+      templateVariables = {},
+      includeTimingEstimates = true,
+      includeWarnings = true,
+      assumeSuccess = true
+    } = options;
+
+    try {
+      // Import and use DryRunSimulator
+      const { DryRunSimulator } = await import('./dry-run-simulator');
+      const simulator = new DryRunSimulator(this, this.logger);
+      
+      return await simulator.simulate({
+        startingState,
+        templateVariables,
+        includeTimingEstimates,
+        includeWarnings,
+        assumeSuccess
+      });
+    } catch (error) {
+      // Fallback to basic simulation if DryRunSimulator is not available
+      this.logger?.warn('DryRunSimulator not available, using basic simulation');
+      return this.basicSimulateExecution(options);
+    }
+  }
+
+  /**
+   * Basic simulation method for fallback
+   */
+  private basicSimulateExecution(options: {
+    startingState?: string;
+    templateVariables?: Record<string, string>;
+  } = {}): any {
+    const { startingState, templateVariables = {} } = options;
+    const workflow = this.workflow;
+    let currentState = startingState || workflow.initialState;
+    const executionPlan: any[] = [];
+    let totalDuration = 0;
+    let iterations = 0;
+
+    // Validate starting state
+    if (!workflow.states[currentState]) {
+      throw new Error(`Starting state '${currentState}' not found in workflow`);
+    }
+
+    while (currentState && iterations < this.maxIterations) {
+      iterations++;
+      const state = workflow.states[currentState];
+      
+      if (!state) break;
+
+      const step = {
+        stateName: currentState,
+        description: state.description || 'No description',
+        command: state.command,
+        args: state.args || [],
+        estimatedDuration: 1000, // Default estimate
+        durationConfidence: 'low' as const,
+        requiresConfirmation: !!state.confirmation,
+        isTerminal: !state.transitions.success && !state.transitions.failure,
+        transitionOnSuccess: state.transitions.success,
+        transitionOnFailure: state.transitions.failure
+      };
+
+      executionPlan.push(step);
+      totalDuration += step.estimatedDuration;
+
+      // Default to success transition
+      const nextState = state.transitions.success;
+      if (!nextState) {
+        break;
+      }
+      currentState = nextState;
+    }
+
+    const finalState = executionPlan.length > 0 
+      ? executionPlan[executionPlan.length - 1].stateName
+      : this.currentState;
+
+    return {
+      success: true,
+      finalState,
+      totalDuration,
+      executionPlan,
+      executionPath: executionPlan.map((step: any) => step.stateName),
+      templateVariables: { ...templateVariables },
+      processedSubstitutions: {},
+      warnings: [],
+      estimatedComplexity: 'medium' as const,
+      hasConfirmationPrompts: executionPlan.some((step: any) => step.requiresConfirmation),
+      totalConfirmations: executionPlan.filter((step: any) => step.requiresConfirmation).length
+    };
+  }
+
+  /**
    * Update execution context (creates new immutable context)
    */
   updateContext(updates: Partial<Omit<ExecutionContext, 'workflowName' | 'startedAt'>>): void {
@@ -350,6 +460,13 @@ export class StateMachine {
       success: true, // Will be updated based on execution result
       finalState: this.currentState
     };
+  }
+
+  /**
+   * Get the workflow definition (for dry-run integration)
+   */
+  getWorkflow(): Workflow {
+    return this.workflow;
   }
 
   /**

@@ -113,6 +113,12 @@ export function isState(data: unknown): data is State {
     return false;
   }
   
+  if (state.stdin !== undefined) {
+    if (state.stdin !== 'inherit' && state.stdin !== 'pipe' && state.stdin !== null) {
+      return false;
+    }
+  }
+  
   if (state.confirmation !== undefined && !isConfirmationConfig(state.confirmation)) {
     return false;
   }

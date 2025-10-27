@@ -62,8 +62,8 @@ describe('FSM Parser Integration', () => {
     test('should execute deploy workflow (failure path)', async () => {
       const workflow = parser.getWorkflow('deploy', fixturesPath);
       
-      // Simulate build failure
-      const executor = new MockStateExecutor({ 'npm run build': 1 });
+      // Simulate build failure only, let cleanup succeed
+      const executor = new MockStateExecutor({ 'npm run build': 1, 'npm run clean': 0 });
       const fsm = new StateMachine(workflow, logger, executor);
 
       const result = await fsm.execute();
