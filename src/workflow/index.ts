@@ -33,5 +33,31 @@ export {
 export {
   WorkflowParseError,
   WorkflowValidationError,
-  WorkflowFileError
+  WorkflowFileError,
+  StateTransitionError,
+  WorkflowExecutionError,
+  StateNotFoundError
 } from './errors';
+
+// Execution context types
+export {
+  ExecutionContext,
+  ExecutionResult,
+  StateExecutionResult,
+  StateHistoryEntry,
+  ExecutionOptions,
+  CommandResult,
+  StateExecutionCoordinator,
+  TransitionResult,
+  ExecutionSummary
+} from './execution-context';
+
+// State machine
+export { StateMachine } from './fsm';
+
+// State validator
+export {
+  StateTransitionValidator,
+  ValidationResult,
+  CircularityResult
+} from './state-validator';

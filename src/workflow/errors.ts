@@ -83,3 +83,75 @@ export class WorkflowFileError extends Error {
     return `${this.name}: ${this.message} (${this.reason}: ${this.filePath})`;
   }
 }
+
+/**
+ * Error thrown when a state transition is invalid or fails
+ */
+export class StateTransitionError extends Error {
+  constructor(
+    message: string,
+    public readonly fromState: string,
+    public readonly exitCode: number,
+    public readonly workflowName: string
+  ) {
+    super(message);
+    this.name = 'StateTransitionError';
+    
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, StateTransitionError);
+    }
+  }
+
+  toString(): string {
+    return `${this.name}: ${this.message} (workflow: ${this.workflowName}, state: ${this.fromState}, exit code: ${this.exitCode})`;
+  }
+}
+
+/**
+ * Error thrown during workflow execution
+ */
+export class WorkflowExecutionError extends Error {
+  constructor(
+    message: string,
+    public readonly workflowName: string,
+    public readonly currentState: string,
+    public readonly cause?: Error
+  ) {
+    super(message);
+    this.name = 'WorkflowExecutionError';
+    
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, WorkflowExecutionError);
+    }
+  }
+
+  toString(): string {
+    let result = `${this.name}: ${this.message} (workflow: ${this.workflowName}, state: ${this.currentState})`;
+    if (this.cause) {
+      result += ` - Caused by: ${this.cause.message}`;
+    }
+    return result;
+  }
+}
+
+/**
+ * Error thrown when a requested state is not found in the workflow
+ */
+export class StateNotFoundError extends Error {
+  constructor(
+    message: string,
+    public readonly stateName: string,
+    public readonly workflowName: string
+  ) {
+    super(message);
+    this.name = 'StateNotFoundError';
+    
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, StateNotFoundError);
+    }
+  }
+
+  toString(): string {
+    return `${this.name}: ${this.message} (workflow: ${this.workflowName}, state: ${this.stateName})`;
+  }
+}

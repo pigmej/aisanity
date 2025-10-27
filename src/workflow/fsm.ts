@@ -1,0 +1,370 @@
+/**
+ * Finite State Machine for workflow execution
+ * Manages state transitions, execution context, and workflow flow
+ */
+
+import { Workflow } from './interfaces';
+import {
+  ExecutionContext,
+  ExecutionResult,
+  StateExecutionResult,
+  StateHistoryEntry,
+  StateExecutionCoordinator,
+  TransitionResult,
+  ExecutionSummary
+} from './execution-context';
+import { StateTransitionValidator } from './state-validator';
+import { WorkflowParser } from './parser';
+import { Logger } from '../utils/logger';
+import {
+  WorkflowValidationError,
+  WorkflowExecutionError,
+  StateNotFoundError
+} from './errors';
+
+/**
+ * Main StateMachine class for workflow execution
+ * Provides deterministic state management with exit code-based transitions
+ */
+export class StateMachine {
+  private currentState: string;
+  private context: ExecutionContext;
+  private stateHistory: StateHistoryEntry[];
+  private executor?: StateExecutionCoordinator;
+  private maxIterations: number = 1000; // Prevent infinite loops
+
+  constructor(
+    private workflow: Workflow,
+    private logger?: Logger,
+    executor?: StateExecutionCoordinator
+  ) {
+    // Validate workflow structure on construction
+    const validationResult = StateTransitionValidator.validateWorkflow(workflow);
+    if (!validationResult.valid) {
+      throw new WorkflowValidationError(
+        `Invalid workflow structure: ${validationResult.errors.join(', ')}`,
+        workflow.name,
+        'structure'
+      );
+    }
+
+    // Log warnings
+    if (this.logger && validationResult.warnings.length > 0) {
+      for (const warning of validationResult.warnings) {
+        this.logger.warn(`Workflow validation warning: ${warning}`);
+      }
+    }
+
+    this.currentState = workflow.initialState;
+    this.stateHistory = [];
+    this.executor = executor;
+    this.context = {
+      workflowName: workflow.name,
+      startedAt: new Date(),
+      variables: {},
+      metadata: {}
+    };
+
+    this.logger?.debug(`StateMachine initialized for workflow '${workflow.name}'`);
+  }
+
+  /**
+   * Factory method to create StateMachine from workflow name
+   */
+  static fromWorkflowName(
+    workflowName: string,
+    workspacePath: string,
+    logger?: Logger
+  ): StateMachine {
+    const parser = new WorkflowParser(logger);
+    const workflow = parser.getWorkflow(workflowName, workspacePath);
+    return new StateMachine(workflow, logger);
+  }
+
+  /**
+   * Execute the complete workflow sequentially
+   * Returns execution result with history and final state
+   */
+  async execute(): Promise<ExecutionResult> {
+    const startTime = Date.now();
+    let iterations = 0;
+
+    this.logger?.info(`Starting workflow: ${this.workflow.name}`);
+
+    try {
+      while (this.currentState) {
+        // Check for infinite loop protection
+        if (iterations++ >= this.maxIterations) {
+          throw new WorkflowExecutionError(
+            `Maximum iteration limit (${this.maxIterations}) reached - possible infinite loop`,
+            this.workflow.name,
+            this.currentState
+          );
+        }
+
+        this.logger?.debug(`Executing state: ${this.currentState}`);
+
+        // Execute current state
+        const result = await this.executeState(this.currentState);
+
+        // Record in history
+        this.recordStateExecution(result);
+
+        // Determine next state based on exit code
+        const nextState = this.getNextState(result.exitCode);
+
+        if (nextState) {
+          this.logger?.debug(
+            `State transition: ${this.currentState} → ${nextState} (exit code: ${result.exitCode})`
+          );
+          this.currentState = nextState;
+        } else {
+          this.logger?.debug(
+            `Reached terminal state: ${this.currentState} (exit code: ${result.exitCode})`
+          );
+          break;
+        }
+      }
+
+      const totalDuration = Date.now() - startTime;
+      this.logger?.info(`Workflow completed in ${totalDuration}ms`);
+
+      return {
+        success: true,
+        finalState: this.currentState,
+        stateHistory: this.stateHistory,
+        totalDuration
+      };
+    } catch (error) {
+      const totalDuration = Date.now() - startTime;
+      this.logger?.error(`Workflow execution failed: ${error instanceof Error ? error.message : String(error)}`);
+
+      return {
+        success: false,
+        finalState: this.currentState,
+        stateHistory: this.stateHistory,
+        totalDuration,
+        error: error instanceof Error ? error : new Error(String(error))
+      };
+    }
+  }
+
+  /**
+   * Execute a single state
+   * Returns the execution result for that state
+   */
+  async executeState(stateName: string): Promise<StateExecutionResult> {
+    // Validate state exists
+    const state = this.workflow.states[stateName];
+    if (!state) {
+      throw new StateNotFoundError(
+        `State '${stateName}' not found in workflow`,
+        stateName,
+        this.workflow.name
+      );
+    }
+
+    const startTime = Date.now();
+    const executedAt = new Date();
+
+    this.logger?.debug(`Executing command in state '${stateName}': ${state.command}`);
+
+    // If executor is provided, execute the command
+    if (this.executor) {
+      try {
+        const result = await this.executor.executeCommand(
+          state.command,
+          state.args || [],
+          {
+            timeout: state.timeout,
+            cwd: undefined,
+            env: undefined
+          }
+        );
+
+        const duration = Date.now() - startTime;
+        this.logger?.info(`State '${stateName}' executed in ${duration}ms (exit code: ${result.exitCode})`);
+
+        return {
+          stateName,
+          exitCode: result.exitCode,
+          executedAt,
+          duration,
+          output: result.stdout
+        };
+      } catch (error) {
+        const duration = Date.now() - startTime;
+        this.logger?.error(`State '${stateName}' execution failed: ${error instanceof Error ? error.message : String(error)}`);
+
+        // Return failure result
+        return {
+          stateName,
+          exitCode: 1,
+          executedAt,
+          duration,
+          output: error instanceof Error ? error.message : String(error)
+        };
+      }
+    } else {
+      // No executor provided - stub execution for Phase 1
+      const duration = Date.now() - startTime;
+      this.logger?.debug(`No executor provided - stub execution for state '${stateName}'`);
+
+      return {
+        stateName,
+        exitCode: 0,
+        executedAt,
+        duration,
+        output: `Stub execution: ${state.command}`
+      };
+    }
+  }
+
+  /**
+   * Get current state name
+   */
+  getCurrentState(): string {
+    return this.currentState;
+  }
+
+  /**
+   * Check if transition is possible from current state with given exit code
+   */
+  canTransition(exitCode: number): boolean {
+    const nextState = this.getNextState(exitCode);
+    return nextState !== null;
+  }
+
+  /**
+   * Attempt to transition to next state based on exit code
+   * Returns transition result
+   */
+  transition(exitCode: number): TransitionResult {
+    const nextState = this.getNextState(exitCode);
+
+    if (nextState === null) {
+      return {
+        canTransition: false,
+        nextState: null,
+        reason: 'No transition defined for this exit code (terminal state)'
+      };
+    }
+
+    // Validate the transition exists
+    if (!StateTransitionValidator.validateTransition(
+      this.currentState,
+      nextState,
+      this.workflow
+    )) {
+      return {
+        canTransition: false,
+        nextState: null,
+        reason: `Invalid transition from '${this.currentState}' to '${nextState}'`
+      };
+    }
+
+    // Perform the transition
+    this.currentState = nextState;
+
+    return {
+      canTransition: true,
+      nextState,
+      reason: undefined
+    };
+  }
+
+  /**
+   * Get immutable execution context
+   */
+  getContext(): Readonly<ExecutionContext> {
+    return this.context;
+  }
+
+  /**
+   * Update execution context (creates new immutable context)
+   */
+  updateContext(updates: Partial<Omit<ExecutionContext, 'workflowName' | 'startedAt'>>): void {
+    this.context = {
+      ...this.context,
+      ...updates
+    };
+    this.logger?.debug('Execution context updated');
+  }
+
+  /**
+   * Get state execution history
+   */
+  getStateHistory(): ReadonlyArray<StateHistoryEntry> {
+    return this.stateHistory;
+  }
+
+  /**
+   * Get execution summary
+   */
+  getExecutionSummary(): ExecutionSummary {
+    const totalDuration = this.stateHistory.reduce(
+      (sum, entry) => sum + entry.duration,
+      0
+    );
+
+    return {
+      workflowName: this.workflow.name,
+      totalStates: Object.keys(this.workflow.states).length,
+      executedStates: this.stateHistory.length,
+      totalDuration,
+      success: true, // Will be updated based on execution result
+      finalState: this.currentState
+    };
+  }
+
+  /**
+   * Determine next state based on exit code
+   * Returns null if no transition exists (terminal state)
+   */
+  private getNextState(exitCode: number): string | null {
+    const currentState = this.workflow.states[this.currentState];
+
+    if (!currentState) {
+      throw new StateNotFoundError(
+        `Current state '${this.currentState}' not found in workflow`,
+        this.currentState,
+        this.workflow.name
+      );
+    }
+
+    // Check for success transition (exit code 0)
+    if (exitCode === 0 && currentState.transitions.success) {
+      return currentState.transitions.success;
+    }
+
+    // Check for failure transition (non-zero exit code)
+    if (exitCode !== 0 && currentState.transitions.failure) {
+      return currentState.transitions.failure;
+    }
+
+    // Check for timeout transition (future implementation)
+    // This would be handled by special exit code or external signal
+
+    // No transition = terminal state
+    return null;
+  }
+
+  /**
+   * Record state execution in history
+   */
+  private recordStateExecution(result: StateExecutionResult): void {
+    const nextState = this.getNextState(result.exitCode);
+
+    const historyEntry: StateHistoryEntry = {
+      stateName: result.stateName,
+      enteredAt: result.executedAt,
+      exitedAt: new Date(result.executedAt.getTime() + result.duration),
+      exitCode: result.exitCode,
+      duration: result.duration,
+      transitionedTo: nextState
+    };
+
+    this.stateHistory.push(historyEntry);
+    this.logger?.debug(`Recorded state execution: ${result.stateName}`);
+  }
+}
