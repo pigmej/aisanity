@@ -24,8 +24,10 @@ export const startAndAttachCommand = new Command("start-and-attach")
     }
 
     // Start opencode serve in background using nohup
+    // TODO: Should be checked for the actual binary name, to not require BUN etc.
+    // but hardcoding aisanity is also not ideal
     const { spawn: spawnBg } = await import("child_process");
-    const backgroundProcess = spawnBg("nohup", ["bun", "src/index.ts", "run", "opencode", "serve", "-h", "0.0.0.0"], {
+    const backgroundProcess = spawnBg("nohup", ["aisanity", "run", "opencode", "serve", "-h", "0.0.0.0"], {
       detached: true,
       stdio: "ignore",
       cwd: process.cwd(),

@@ -258,7 +258,7 @@ describe('Argument Templater Integration', () => {
       expect(variables).toHaveProperty('workspace');
       expect(variables).toHaveProperty('timestamp');
       console.log('DEBUG variables:', JSON.stringify(variables, null, 2));
-      expect(variables.branch).toBe('feature/100_4_20');
+      expect(variables.branch).toBe('feature/100-fsm');
     });
 
     it('should merge context variables with built-in and CLI variables', async () => {
@@ -322,9 +322,9 @@ describe('Argument Templater Integration', () => {
       const processed = await templater.processCommandArgs(command, args, cliParams);
 
       // Should still execute but with built-in variables resolved
-      expect(processed.command).toBe('echo "Branch: feature/100_4_20, Env: {environment}"');
+      expect(processed.command).toBe('echo "Branch: feature/100-fsm, Env: {environment}"');
       expect(processed.hasPlaceholders).toBe(true); // Built-in variable substitution occurred
-      expect(processed.substitutions).toEqual({ branch: 'feature/100_4_20' });
+      expect(processed.substitutions).toEqual({ branch: 'feature/100-fsm' });
     });
 
     it('should validate and reject dangerous CLI parameters', async () => {
@@ -352,8 +352,8 @@ describe('Argument Templater Integration', () => {
       const processed = await templater.processCommandArgs(command, args, cliParams);
 
       // Should resolve to the current branch name
-      expect(processed.command).toBe('echo "Branch: feature/100_4_20"');
-      expect(processed.substitutions.branch).toBe('feature/100_4_20');
+      expect(processed.command).toBe('echo "Branch: feature/100-fsm"');
+      expect(processed.substitutions.branch).toBe('feature/100-fsm');
       
       // Verify that error handling infrastructure is in place
       expect(processed.executionReady).toBe(true);

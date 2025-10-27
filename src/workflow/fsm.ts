@@ -104,6 +104,22 @@ export class StateMachine {
 
     this.logger?.info(`Starting workflow: ${this.workflow.name}`);
 
+    // Set up global timeout if specified
+    let globalTimeoutHandle: NodeJS.Timeout | undefined;
+    let globalTimeoutOccurred = false;
+    this.logger?.info(`Global timeout setting: ${this.workflow.globalTimeout}`);
+    this.logger?.info(`Workflow object keys: ${Object.keys(this.workflow)}`);
+    this.logger?.info(`Workflow globalTimeout type: ${typeof this.workflow.globalTimeout}`);
+    if (this.workflow.globalTimeout) {
+      this.logger?.info(`Setting global timeout: ${this.workflow.globalTimeout}ms`);
+      globalTimeoutHandle = setTimeout(() => {
+        this.logger?.error(`Global timeout triggered: ${this.workflow.globalTimeout}ms`);
+        globalTimeoutOccurred = true;
+      }, this.workflow.globalTimeout);
+    } else {
+      this.logger?.info('No global timeout specified');
+    }
+
     try {
       while (this.currentState) {
         // Check for infinite loop protection
@@ -120,6 +136,38 @@ export class StateMachine {
         }
 
         this.logger?.debug(`Executing state: ${this.currentState}`);
+
+        // Check if global timeout occurred
+        if (globalTimeoutOccurred) {
+          this.logger?.error(`Global timeout occurred during state '${this.currentState}' execution`);
+          // Simulate timeout result for current state
+          const timeoutResult = {
+            stateName: this.currentState,
+            exitCode: 124, // TIMEOUT_ERROR
+            executedAt: new Date(),
+            duration: 0,
+            output: `Global timeout: ${this.workflow.globalTimeout}ms exceeded`
+          };
+          
+          // Record in history
+          this.recordStateExecution(timeoutResult);
+          
+          // Determine next state based on timeout exit code
+          const nextState = this.getNextState(timeoutResult.exitCode);
+          
+          if (nextState) {
+            this.logger?.debug(
+              `State transition: ${this.currentState} → ${nextState} (global timeout)`
+            );
+            this.currentState = nextState;
+          } else {
+            this.logger?.debug(
+              `Reached terminal state: ${this.currentState} (global timeout)`
+            );
+            break;
+          }
+          continue;
+        }
 
         // Execute current state
         const result = await this.executeState(this.currentState, options);
@@ -146,8 +194,17 @@ export class StateMachine {
       const totalDuration = Date.now() - startTime;
       this.logger?.info(`Workflow completed in ${totalDuration}ms`);
 
+      // Clear global timeout
+      if (globalTimeoutHandle) {
+        clearTimeout(globalTimeoutHandle);
+      }
+
+      // Determine success based on final state execution
+      const lastExecution = this.stateHistory[this.stateHistory.length - 1];
+      const success = lastExecution ? lastExecution.exitCode === 0 : false;
+
       return {
-        success: true,
+        success,
         finalState: this.currentState,
         stateHistory: this.stateHistory,
         totalDuration
@@ -155,15 +212,24 @@ export class StateMachine {
     } catch (error) {
       const totalDuration = Date.now() - startTime;
       
+      // Clear global timeout
+      if (globalTimeoutHandle) {
+        clearTimeout(globalTimeoutHandle);
+      }
+      
       // Handle error with error handler if available
       // Skip errors that were already handled by executeState()
       if (this.errorHandler && error instanceof Error) {
-        if (error instanceof WorkflowExecutionError) {
+        if (error instanceof WorkflowExecutionError && error.message.includes('global timeout')) {
+          // Global timeout - don't handle through error handler, just re-throw
+          throw error;
+        } else if (error instanceof WorkflowExecutionError) {
           this.logger?.error(`Workflow execution failed: ${error instanceof Error ? error.message : String(error)}`);
           this.errorHandler.handleExecutionError(error, createFSMContext('execute', this.workflow.name, this.currentState));
         } else if (error instanceof CommandExecutionError) {
-          // CommandExecutionError was already handled by executor
-          // Just re-throw without additional handling
+          // CommandExecutionError should have been handled at state level
+          // If we get here, it's an unexpected error
+          this.logger?.error(`Unexpected command execution error: ${error.message}`);
           throw error;
         } else {
           this.logger?.error(`Workflow execution failed: ${error instanceof Error ? error.message : String(error)}`);
@@ -263,6 +329,17 @@ export class StateMachine {
       } catch (error) {
         const duration = Date.now() - startTime;
         this.logger?.error(`State '${stateName}' execution failed: ${error instanceof Error ? error.message : String(error)}`);
+
+        // Handle timeout errors specially - return timeout exit code for transition handling
+        if (error instanceof CommandExecutionError && error.message.includes('timed out')) {
+          return {
+            stateName,
+            exitCode: 124, // Standard timeout exit code
+            executedAt,
+            duration,
+            output: error.message
+          };
+        }
 
         // Handle error with error handler if available
         if (this.errorHandler && error instanceof Error) {
@@ -532,13 +609,15 @@ export class StateMachine {
       return currentState.transitions.success;
     }
 
-    // Check for failure transition (non-zero exit code)
-    if (exitCode !== 0 && currentState.transitions.failure) {
-      return currentState.transitions.failure;
+    // Check for timeout transition (exit code 124)
+    if (exitCode === 124 && currentState.transitions.timeout) {
+      return currentState.transitions.timeout;
     }
 
-    // Check for timeout transition (future implementation)
-    // This would be handled by special exit code or external signal
+    // Check for failure transition (non-zero exit code, but not timeout)
+    if (exitCode !== 0 && exitCode !== 124 && currentState.transitions.failure) {
+      return currentState.transitions.failure;
+    }
 
     // No transition = terminal state
     return null;

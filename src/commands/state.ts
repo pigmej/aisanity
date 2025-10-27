@@ -86,6 +86,13 @@ async function executeWorkflowAction(
   args: string[],
   options: ExecuteOptions
 ): Promise<void> {
+  // Handle case where template arguments are parsed as stateName
+  if (stateName && stateName.includes('=')) {
+    // Move template arguments from stateName to args
+    args = [stateName, ...args];
+    stateName = undefined;
+  }
+
   // Initialize logger with proper precedence
   const logger = new Logger(
     options.silent || options.quiet || false,
@@ -360,7 +367,16 @@ function processCLIArguments(
   
   if (stateName) {
     logger.info(`Executing state '${stateName}' in workflow`);
-    return await stateMachine.executeState(stateName, { yesFlag: options.yes });
+    const stateResult = await stateMachine.executeState(stateName, { yesFlag: options.yes });
+    
+    // Convert StateExecutionResult to ExecutionResult format
+    return {
+      success: stateResult.exitCode === 0,
+      finalState: stateResult.stateName,
+      currentState: stateResult.stateName, // For backward compatibility
+      stateHistory: [stateResult],
+      totalDuration: stateResult.duration
+    };
   } else {
     logger.info(`Executing workflow from initial state`);
     return await stateMachine.execute({ yesFlag: options.yes });
