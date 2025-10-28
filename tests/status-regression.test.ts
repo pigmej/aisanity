@@ -120,15 +120,24 @@ describe('aisanity status - regression prevention', () => {
     expect(typeof detectOrphanedContainers).toBe('function');
     expect(typeof getAllWorktrees).toBe('function');
     
-    // Test that it can be called without errors (actual orphaned detection depends on Docker environment)
+    // Test that it can be called without errors and returns expected structure
     const worktrees = getAllWorktrees(tempDir);
     const result = await detectOrphanedContainers(false, worktrees);
     
-    // Should return the expected structure
+    // Should return the expected structure regardless of environment
     expect(result).toHaveProperty('orphaned');
     expect(result).toHaveProperty('worktreePaths');
     expect(Array.isArray(result.orphaned)).toBe(true);
     expect(Array.isArray(result.worktreePaths)).toBe(true);
+    
+    // Should include main workspace path in worktreePaths (handle path normalization)
+    expect(result.worktreePaths.length).toBeGreaterThan(0);
+    // Check that at least one path contains the temp directory name
+    const tempDirName = path.basename(tempDir);
+    expect(result.worktreePaths.some(p => p.includes(tempDirName))).toBe(true);
+    
+    // Function should not throw and should handle gracefully
+    expect(() => detectOrphanedContainers(false, worktrees)).not.toThrow();
   });
 
   it('should not modify container labels', async () => {

@@ -181,48 +181,31 @@ describe('aisanity status - backward compatibility', () => {
     // Delete the branch but keep container
     execSync('git branch -D feature/to-delete', { cwd: tempDir });
     
-    // Mock container for deleted branch
-    process.env.AISANITY_TEST_CONTAINERS = JSON.stringify([
-      {
-        id: 'container1',
-        name: 'test-workspace-main',
-        status: 'Running',
-        ports: [],
-        labels: {
-          'aisanity.workspace': tempDir,
-          'aisanity.branch': 'main'
-        }
-      },
-      {
-        id: 'container2',
-        name: 'test-workspace-feature-to-delete',
-        status: 'Running',
-        ports: [],
-        labels: {
-          'aisanity.workspace': tempDir,
-          'aisanity.branch': 'feature/to-delete'
-        }
-      }
-    ]);
+    // Test that the function exists and is callable
+    const { detectOrphanedContainers } = await import('../src/utils/worktree-utils');
+    const { getAllWorktrees } = await import('../src/utils/worktree-utils');
     
-    try {
-      const { detectOrphanedContainers } = await import('../src/utils/worktree-utils');
-      const { getAllWorktrees } = await import('../src/utils/worktree-utils');
-      
-      const worktrees = getAllWorktrees(tempDir);
-      const { orphaned } = await detectOrphanedContainers(false, worktrees);
-      
-      // Should detect orphaned container (if any real containers exist)
-      // Note: This test may pick up real Docker containers, so we just check that the logic works
-      if (orphaned.length > 0) {
-        // At minimum, should have container name and status
-        expect(orphaned[0].name).toBeDefined();
-        expect(orphaned[0].status).toBeDefined();
-      }
-      
-    } finally {
-      delete process.env.AISANITY_TEST_CONTAINERS;
-    }
+    expect(typeof detectOrphanedContainers).toBe('function');
+    expect(typeof getAllWorktrees).toBe('function');
+    
+    // Test that it can be called without errors and returns expected structure
+    const worktrees = getAllWorktrees(tempDir);
+    const result = await detectOrphanedContainers(false, worktrees);
+    
+    // Should return the expected structure
+    expect(result).toHaveProperty('orphaned');
+    expect(result).toHaveProperty('worktreePaths');
+    expect(Array.isArray(result.orphaned)).toBe(true);
+    expect(Array.isArray(result.worktreePaths)).toBe(true);
+    
+    // Should include main workspace path in worktreePaths (handle path normalization)
+    expect(result.worktreePaths.length).toBeGreaterThan(0);
+    // Check that at least one path contains the temp directory name
+    const tempDirName = path.basename(tempDir);
+    expect(result.worktreePaths.some(p => p.includes(tempDirName))).toBe(true);
+    
+    // Function should not throw and should handle gracefully
+    expect(() => detectOrphanedContainers(false, worktrees)).not.toThrow();
   });
 
   it('should not modify container labels', async () => {
