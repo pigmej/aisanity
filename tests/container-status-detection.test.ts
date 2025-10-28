@@ -1,15 +1,46 @@
-import { describe, it, expect } from 'bun:test';
+import { describe, it, expect, beforeAll } from 'bun:test';
 import { executeDockerCommand, getContainerStatus, discoverWorkspaceContainers, getContainerInfo, parseDockerOutputToContainers } from '../src/utils/container-utils';
+
+/**
+ * Container Status Detection Tests
+ * 
+ * These tests verify Docker container status detection functionality.
+ * Docker-dependent tests are skipped if Docker is not available (e.g., on macOS GitHub Actions).
+ * 
+ * Tests that don't require Docker (like pure parsing functions) always run.
+ */
+
+// Helper to check if Docker is available
+let dockerAvailable = false;
+
+beforeAll(async () => {
+  const result = await executeDockerCommand('docker --version', { silent: true });
+  dockerAvailable = result.success;
+  
+  if (!dockerAvailable) {
+    console.warn('⚠️  Docker is not available. Skipping Docker-dependent tests.');
+  }
+});
 
 describe('Container Status Detection - Task 150', () => {
   describe('executeDockerCommand', () => {
     it('should execute successful Docker commands', async () => {
+      if (!dockerAvailable) {
+        console.log('Skipping test: Docker not available');
+        return;
+      }
+      
       const result = await executeDockerCommand('docker --version', { silent: true });
       expect(result.success).toBe(true);
       expect(result.stdout).toContain('Docker');
     });
 
     it('should handle Docker command failures gracefully', async () => {
+      if (!dockerAvailable) {
+        console.log('Skipping test: Docker not available');
+        return;
+      }
+      
       const result = await executeDockerCommand('docker nonexistent-command', { silent: true });
       expect(result.success).toBe(false);
       expect(result.stderr).toBeDefined();
@@ -26,12 +57,22 @@ describe('Container Status Detection - Task 150', () => {
 
   describe('getContainerStatus', () => {
     it('should return correct status for non-existent containers', async () => {
+      if (!dockerAvailable) {
+        console.log('Skipping test: Docker not available');
+        return;
+      }
+      
       const result = await getContainerStatus('nonexistent-container-id');
       expect(result.status).toBe('Not created');
       expect(result.ports).toEqual([]);
     });
 
     it('should handle container status queries', async () => {
+      if (!dockerAvailable) {
+        console.log('Skipping test: Docker not available');
+        return;
+      }
+      
       // Test with a fake container ID
       const result = await getContainerStatus('fake-container-id');
       expect(['Not created', 'Running', 'Stopped']).toContain(result.status);
@@ -59,6 +100,11 @@ describe('Container Status Detection - Task 150', () => {
 
   describe('getContainerInfo', () => {
     it('should handle non-existent container info requests', async () => {
+      if (!dockerAvailable) {
+        console.log('Skipping test: Docker not available');
+        return;
+      }
+      
       try {
         await getContainerInfo('nonexistent-container-id');
         expect(false).toBe(true); // Should not reach here
@@ -151,7 +197,7 @@ describe('Container Status Detection - Task 150', () => {
 
   describe('Integration Tests', () => {
     it('should handle Docker daemon unavailability gracefully', async () => {
-      // Test with a command that would fail if Docker is not available
+      // This test works even without Docker - it just checks return types
       const result = await executeDockerCommand('docker ps', { silent: true });
       expect(typeof result.success).toBe('boolean');
       expect(typeof result.stdout).toBe('string');
@@ -159,6 +205,11 @@ describe('Container Status Detection - Task 150', () => {
     });
 
     it('should maintain backward compatibility with existing interfaces', async () => {
+      if (!dockerAvailable) {
+        console.log('Skipping test: Docker not available');
+        return;
+      }
+      
       // Ensure the new functions don't break existing functionality
       const containers = await discoverWorkspaceContainers('/test');
       expect(Array.isArray(containers)).toBe(true);
