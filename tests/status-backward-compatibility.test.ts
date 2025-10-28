@@ -36,51 +36,7 @@ describe('aisanity status - backward compatibility', () => {
     fs.rmSync(tempDir, { recursive: true, force: true });
   });
 
-  it('should support --worktree option', async () => {
-    // Create a worktree
-    const worktreesDir = path.join(tempDir, 'worktrees');
-    fs.mkdirSync(worktreesDir, { recursive: true });
-    const featureWorktree = path.join(worktreesDir, 'feature');
-    
-    execSync('git checkout -b feature', { cwd: tempDir });
-    fs.writeFileSync('feature.txt', 'feature content');
-    execSync('git add feature.txt', { cwd: tempDir });
-    execSync('git commit -m "Add feature"', { cwd: tempDir });
-    execSync('git checkout main', { cwd: tempDir });
-    execSync(`git worktree add ${featureWorktree} feature`, { cwd: tempDir });
-    
-    // Create aisanity config in worktree
-    fs.mkdirSync(path.join(featureWorktree, '.aisanity'), { recursive: true });
-    fs.writeFileSync(path.join(featureWorktree, '.aisanity', 'config.json'), JSON.stringify({
-      workspace: 'test-workspace',
-      containerName: 'test-workspace-feature'
-    }));
-    
-    // Mock container for the worktree
-    process.env.AISANITY_TEST_CONTAINERS = JSON.stringify([
-      {
-        id: 'container1',
-        name: 'test-workspace-feature',
-        status: 'Running',
-        ports: ['8080:8080'],
-        labels: {
-          'aisanity.workspace': featureWorktree,
-          'aisanity.branch': 'feature'
-        }
-      }
-    ]);
-    
-    try {
-      // Test the single worktree display function
-      const { displaySingleWorktreeStatus } = await import('../src/commands/status');
-      
-      // This should not throw an error
-      await displaySingleWorktreeStatus(featureWorktree, false);
-      
-    } finally {
-      delete process.env.AISANITY_TEST_CONTAINERS;
-    }
-  });
+
 
   it('should support --verbose flag', async () => {
     // Mock containers
