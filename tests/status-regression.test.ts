@@ -13,8 +13,14 @@ describe('aisanity status - regression prevention', () => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'aisanity-test-'));
     process.chdir(tempDir);
     
-    // Initialize a git repository
-    execSync('git init', { cwd: tempDir });
+    // Initialize a git repository with main as default branch
+    try {
+      execSync('git init --initial-branch=main', { cwd: tempDir });
+    } catch {
+      // Fallback for older git versions
+      execSync('git init', { cwd: tempDir });
+      execSync('git branch -m main', { cwd: tempDir });
+    }
     execSync('git config user.name "Test User"', { cwd: tempDir });
     execSync('git config user.email "test@example.com"', { cwd: tempDir });
     
