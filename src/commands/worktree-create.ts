@@ -12,15 +12,18 @@ import {
   shouldCopyDevContainer,
   copyDevContainerToWorktree
 } from '../utils/worktree-utils';
-import { loadAisanityConfig, getCurrentBranch, checkWorktreeEnabled } from '../utils/config';
+import { loadAisanityConfig, checkWorktreeEnabled } from '../utils/config';
+import { createLoggerFromCommandOptions } from '../utils/logger';
 
 
 export const worktreeCreateCommand = new Command('create')
   .description('Create a new worktree')
   .argument('<branch>', 'Branch name for the new worktree')
   .option('--no-switch', 'Do not switch to the new worktree after creation')
-  .option('-v, --verbose', 'Enable verbose logging')
+  .option('-v, --verbose', 'Show detailed worktree creation steps')
+  .option('-d, --debug', 'Show system debugging information (git operations, timing)')
   .action(async (branch: string, options) => {
+    const logger = createLoggerFromCommandOptions(options);
     const cwd = process.cwd();
     
     // Check if worktree functionality is enabled

@@ -53,7 +53,8 @@ describe('Run Command Silent Functionality', () => {
       
       const logger = new Logger(
         options.silent || options.quiet || false,
-        options.verbose && !options.silent && !options.quiet || false
+        options.verbose && !options.silent && !options.quiet || false,
+        false
       );
       
       logger.info('Test message');
@@ -69,7 +70,8 @@ describe('Run Command Silent Functionality', () => {
       
       const logger = new Logger(
         options.silent || options.quiet || false,
-        options.verbose && !options.silent && !options.quiet || false
+        options.verbose && !options.silent && !options.quiet || false,
+        false
       );
       
       logger.info('Test message');
@@ -85,7 +87,8 @@ describe('Run Command Silent Functionality', () => {
       
       const logger = new Logger(
         options.silent || options.quiet || false,
-        options.verbose && !options.silent && !options.quiet || false
+        options.verbose && !options.silent && !options.quiet || false,
+        false
       );
       
       logger.info('Test message');
@@ -101,15 +104,16 @@ describe('Run Command Silent Functionality', () => {
       
       const logger = new Logger(
         options.silent || options.quiet || false,
-        options.verbose && !options.silent && !options.quiet || false
+        options.verbose && !options.silent && !options.quiet || false,
+        false
       );
       
       logger.info('Test message');
-      logger.debug('Debug message');
+      logger.verbose('Verbose message');
       
       expect(logOutput).toHaveLength(2);
       expect(logOutput).toContain('Test message');
-      expect(logOutput).toContain('Debug message');
+      expect(logOutput).toContain('Verbose message');
     });
 
     test('should prioritize silent over verbose when both are true', () => {
@@ -121,11 +125,12 @@ describe('Run Command Silent Functionality', () => {
       
       const logger = new Logger(
         options.silent || options.quiet || false,
-        options.verbose && !options.silent && !options.quiet || false
+        options.verbose && !options.silent && !options.quiet || false,
+        false
       );
       
       logger.info('Test message');
-      logger.debug('Debug message');
+      logger.verbose('Verbose message');
       
       expect(logOutput).toHaveLength(0);
     });
@@ -139,11 +144,12 @@ describe('Run Command Silent Functionality', () => {
       
       const logger = new Logger(
         options.silent || options.quiet || false,
-        options.verbose && !options.silent && !options.quiet || false
+        options.verbose && !options.silent && !options.quiet || false,
+        false
       );
       
       logger.info('Test message');
-      logger.debug('Debug message');
+      logger.verbose('Verbose message');
       
       expect(logOutput).toHaveLength(0);
     });
@@ -159,7 +165,8 @@ describe('Run Command Silent Functionality', () => {
       
       const logger = new Logger(
         options.silent || options.quiet || false,
-        options.verbose && !options.silent && !options.quiet || false
+        options.verbose && !options.silent && !options.quiet || false,
+        false
       );
       
       logger.error('Error message');
@@ -176,7 +183,8 @@ describe('Run Command Silent Functionality', () => {
       
       const logger = new Logger(
         options.silent || options.quiet || false,
-        options.verbose && !options.silent && !options.quiet || false
+        options.verbose && !options.silent && !options.quiet || false,
+        false
       );
       
       logger.error('Error message');
@@ -193,7 +201,8 @@ describe('Run Command Silent Functionality', () => {
       
       const logger = new Logger(
         options.silent || options.quiet || false,
-        options.verbose && !options.silent && !options.quiet || false
+        options.verbose && !options.silent && !options.quiet || false,
+        false
       );
       
       logger.error('Error message');
@@ -210,7 +219,8 @@ describe('Run Command Silent Functionality', () => {
       
       const logger = new Logger(
         options.silent || options.quiet || false,
-        options.verbose && !options.silent && !options.quiet || false
+        options.verbose && !options.silent && !options.quiet || false,
+        false
       );
       
       logger.error('Error message');
@@ -229,7 +239,8 @@ describe('Run Command Silent Functionality', () => {
       
       const logger = new Logger(
         options.silent || options.quiet || false,
-        options.verbose && !options.silent && !options.quiet || false
+        options.verbose && !options.silent && !options.quiet || false,
+        false
       );
       
       // Info should be suppressed
@@ -237,7 +248,7 @@ describe('Run Command Silent Functionality', () => {
       expect(logOutput).toHaveLength(0);
       
       // Debug should be suppressed
-      logger.debug('Debug message');
+      logger.verbose('Verbose message');
       expect(logOutput).toHaveLength(0);
       
       // Error should still show
@@ -254,7 +265,8 @@ describe('Run Command Silent Functionality', () => {
       
       const logger = new Logger(
         options.silent || options.quiet || false,
-        options.verbose && !options.silent && !options.quiet || false
+        options.verbose && !options.silent && !options.quiet || false,
+        false
       );
       
       // Info should be suppressed
@@ -262,7 +274,7 @@ describe('Run Command Silent Functionality', () => {
       expect(logOutput).toHaveLength(0);
       
       // Debug should be suppressed
-      logger.debug('Debug message');
+      logger.verbose('Verbose message');
       expect(logOutput).toHaveLength(0);
       
       // Error should still show
@@ -279,7 +291,8 @@ describe('Run Command Silent Functionality', () => {
       
       const logger = new Logger(
         options.silent || options.quiet || false,
-        options.verbose && !options.silent && !options.quiet || false
+        options.verbose && !options.silent && !options.quiet || false,
+        false
       );
       
       // Info should be suppressed
@@ -287,7 +300,7 @@ describe('Run Command Silent Functionality', () => {
       expect(logOutput).toHaveLength(0);
       
       // Debug should be suppressed
-      logger.debug('Debug message');
+      logger.verbose('Verbose message');
       expect(logOutput).toHaveLength(0);
       
       // Error should still show
@@ -298,10 +311,10 @@ describe('Run Command Silent Functionality', () => {
 
   describe('Message type behavior', () => {
     test('should handle all message types in silent mode', () => {
-      const logger = new Logger(true);
+      const logger = new Logger(true, false, false);
       
       logger.info('Info message');
-      logger.debug('Debug message');
+      logger.verbose('Verbose message');
       logger.error('Error message');
       logger.warn('Warning message');
       
@@ -312,26 +325,26 @@ describe('Run Command Silent Functionality', () => {
     });
 
     test('should handle all message types in verbose mode', () => {
-      const logger = new Logger(false, true);
+      const logger = new Logger(false, true, false);
       
       logger.info('Info message');
-      logger.debug('Debug message');
+      logger.verbose('Verbose message');
       logger.error('Error message');
       logger.warn('Warning message');
       
       expect(logOutput).toHaveLength(2);
       expect(logOutput).toContain('Info message');
-      expect(logOutput).toContain('Debug message');
+      expect(logOutput).toContain('Verbose message');
       expect(errorOutput).toHaveLength(2);
       expect(errorOutput).toContain('Error message');
       expect(errorOutput).toContain('Warning message');
     });
 
     test('should handle all message types in normal mode', () => {
-      const logger = new Logger();
+      const logger = new Logger(false, false, false);
       
       logger.info('Info message');
-      logger.debug('Debug message');
+      logger.verbose('Verbose message');
       logger.error('Error message');
       logger.warn('Warning message');
       
@@ -415,9 +428,10 @@ describe('Run Command Silent Functionality', () => {
       testCases.forEach(options => {
         const isSilent = isSilentMode(options);
         const logger = new Logger(
-          options.silent || options.quiet || false,
-          options.verbose && !options.silent && !options.quiet || false
-        );
+        options.silent || options.quiet || false,
+        options.verbose && !options.silent && !options.quiet || false,
+        false
+      );
         
         // Test logger behavior to verify silent mode
         logger.info('Test message');
@@ -441,7 +455,8 @@ describe('Run Command Silent Functionality', () => {
       // Logger should behave as silent (info suppressed)
       const logger = new Logger(
         options.silent || options.quiet || false,
-        options.verbose && !options.silent && !options.quiet || false
+        options.verbose && !options.silent && !options.quiet || false,
+        false
       );
       logger.info('Test message');
       expect(logOutput).toHaveLength(0);

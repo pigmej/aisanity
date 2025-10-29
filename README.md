@@ -288,6 +288,105 @@ aisanity stop --all-worktrees
 aisanity stop --worktree feature-auth
 ```
 
+### Verbose and Debug Output
+
+Aisanity supports two levels of detailed output to help you understand what's happening:
+
+#### Verbose Mode (`--verbose`)
+
+Shows user-facing detailed information about your containers and worktrees:
+
+```bash
+# See detailed container status
+aisanity status --verbose
+
+# View detailed worktree information
+aisanity worktree list --verbose
+
+# See step-by-step worktree creation
+aisanity worktree create feature-branch --verbose
+```
+
+**What you'll see:**
+- Orphaned container details with workspace paths
+- Detailed container status and port mappings
+- Worktree creation and removal steps
+- Container rebuild progress
+
+#### Debug Mode (`--debug`)
+
+Shows system-level debugging information for troubleshooting:
+
+```bash
+# Debug container discovery issues
+aisanity status --debug
+
+# See timing and performance metrics
+aisanity stop --all-worktrees --debug
+
+# Debug git operations during worktree creation
+aisanity worktree create feature-branch --debug
+```
+
+**What you'll see:**
+- Container discovery process details
+- Timing and performance metrics
+- Git operation details
+- Validation process information
+
+#### Combined Usage
+
+Use both flags together for maximum information:
+
+```bash
+# See both user details and system internals
+aisanity status --verbose --debug
+
+# Debug complex worktree scenarios
+aisanity worktree remove old-branch --verbose --debug
+```
+
+**Example output comparison:**
+
+```bash
+# Default output
+$ aisanity status
+Running: my-project-main
+
+# Verbose output (user-focused)
+$ aisanity status --verbose
+Workspace: my-project
+Current: main
+Container: my-project-main (Running)
+Ports: 3000:3000
+
+⚠️  Warning: 1 orphaned container detected
+Orphaned containers:
+  - old-feature (exited)
+    Workspace: /path/to/old-feature
+    Reason: Worktree directory not found
+
+# Debug output (system-focused)
+$ aisanity status --debug
+[Discovery] Found 3 labeled containers
+[Discovery] Found 0 additional devcontainer containers
+[Discovery] Completed in 45ms
+[Discovery] Total: 3, Labeled: 3, Unlabeled: 0, Orphaned: 1
+[Validation] Validated 3 worktrees (2 valid, 1 invalid)
+
+# Combined output (both)
+$ aisanity status --verbose --debug
+[Discovery] Found 3 labeled containers
+[Discovery] Completed in 45ms
+Workspace: my-project
+Current: main
+Container: my-project-main (Running)
+⚠️  Warning: 1 orphaned container detected
+Orphaned containers:
+  - old-feature (exited)
+    Reason: Worktree directory not found
+```
+
 ## Worktree Workflows
 
 ### Parallel Development Example

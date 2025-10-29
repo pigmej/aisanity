@@ -129,6 +129,164 @@ try {
 - Test Docker integration thoroughly
 - Verify error handling consistency
 
+### Logging Guidelines
+
+Aisanity uses a four-tier logging system to separate user-facing information from system-level debugging. Follow these guidelines when adding logging to commands:
+
+#### Logger Tiers
+
+1. **`logger.info()`** - Normal command output
+   - Standard command results
+   - Success messages
+   - Default status information
+   - **Example:** `Container started successfully`
+
+2. **`logger.verbose()`** - User-facing details (requires `--verbose`)
+   - What's happening (user perspective)
+   - Orphaned container information
+   - Warning explanations
+   - Worktree resolution details
+   - **Example:** `Orphaned containers: old-feature (exited) - Worktree directory not found`
+
+3. **`logger.debug()`** - System internals (requires `--debug`)
+   - How it's working (developer perspective)
+   - Discovery process steps
+   - Performance metrics and timing
+   - Validation process details
+   - **Example:** `[Discovery] Found 3 labeled containers in 45ms`
+
+4. **`logger.error()` and `logger.warn()`** - Always visible
+   - Critical errors and non-fatal issues
+   - Always shown regardless of flags
+   - **Example:** `Error: Container not found`
+
+#### Message Classification Guidelines
+
+**Use `logger.verbose()` for:**
+```typescript
+// User-relevant information
+logger.verbose('Worktree: main');
+logger.verbose('Container: my-project-main (running)');
+logger.verbose('⚠️  Warning: 1 orphaned containers detected');
+logger.verbose(`Orphaned containers:
+  - old-feature (exited)
+    Workspace: /path/to/old-feature
+    Reason: Worktree directory not found`);
+```
+
+**Use `logger.debug()` for:**
+```typescript
+// System internals
+logger.debug('[Discovery] Found 3 labeled containers');
+logger.debug('[Discovery] Completed in 45ms');
+logger.debug('[Validation] Validated 3 worktrees (2 valid, 1 invalid)');
+logger.debug('[Performance] Container discovery: 57ms');
+```
+
+#### Creating Loggers in Commands
+
+```typescript
+import { createLogger } from '../utils/logger';
+
+export const myCommand = new Command('my-command')
+  .description('Do something')
+  .option('-v, --verbose', 'Show detailed user information')
+  .option('-d, --debug', 'Show system debugging information')
+  .action(async (options) => {
+    // Create logger with both flags
+    const logger = createLogger({
+      silent: false,
+      verbose: options.verbose || false,
+      debug: options.debug || false
+    });
+    
+    // Use logger throughout command
+    logger.info('Starting operation...');
+    logger.verbose('Processing 5 items...');
+    logger.debug('[Timer] Operation started at ' + Date.now());
+  });
+```
+
+#### Flag Descriptions
+
+When adding flags to commands, use descriptive text:
+
+```typescript
+// ✅ Good - Describes what information you'll see
+.option('-v, --verbose', 'Show detailed container status and orphaned container information')
+.option('-d, --debug', 'Show system debugging information (discovery process, timing)')
+
+// ❌ Bad - Generic and not helpful
+.option('-v, --verbose', 'Enable verbose logging')
+.option('-d, --debug', 'Enable debug mode')
+```
+
+#### Testing Logging Behavior
+
+```typescript
+import { Logger } from '../src/utils/logger';
+
+test('should separate verbose and debug output', () => {
+  let output: string[] = [];
+  const originalLog = console.log;
+  console.log = (...args: any[]) => output.push(args.join(' '));
+  
+  try {
+    // Verbose-only logger
+    const logger = new Logger(false, true, false);
+    logger.verbose('User info');
+    logger.debug('System internal');
+    
+    expect(output).toContain('User info');
+    expect(output).not.toContain('System internal');
+  } finally {
+    console.log = originalLog;
+  }
+});
+```
+
+#### Common Patterns
+
+**Container Discovery:**
+```typescript
+// Verbose: Show user what was found
+logger.verbose('Found 3 containers for workspace');
+logger.verbose('⚠️  Warning: 1 orphaned container detected');
+
+// Debug: Show discovery process
+logger.debug('[Discovery] Starting label-based discovery');
+logger.debug('[Discovery] Found 3 labeled containers');
+logger.debug('[Discovery] Completed in 45ms');
+```
+
+**Worktree Operations:**
+```typescript
+// Verbose: Show user progress
+logger.verbose('Creating worktree for branch: feature-auth');
+logger.verbose('Copied .aisanity config to worktree');
+
+// Debug: Show git operations
+logger.debug('[Git] Executing: git worktree add');
+logger.debug('[Git] Operation completed in 120ms');
+logger.debug('[Validation] Branch exists: true');
+```
+
+**Error Scenarios:**
+```typescript
+// Always visible
+logger.error('Failed to create container: Docker daemon not running');
+logger.warn('Container may be orphaned - worktree not found');
+
+// Verbose: Explain to user
+logger.verbose('Container old-feature appears orphaned');
+logger.verbose('  Reason: Worktree directory not found');
+
+// Debug: Show investigation
+logger.debug('[Validation] Checking worktree path: /path/to/worktree');
+logger.debug('[Validation] Path exists: false');
+logger.debug('[Validation] Marking container as orphaned');
+```
+
 ## Runtime-Specific Features
 
 ### Bun Enhancements

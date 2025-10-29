@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { execSync } from 'child_process';
 import { AisanityConfig, loadAisanityConfig, getWorkspaceName, sanitizeBranchName, getCurrentBranch } from './config';
-import { discoverContainers, DockerContainer } from './container-utils';
+import { discoverContainers, discoverAllAisanityContainers, DockerContainer, WorktreeValidationResult } from './container-utils';
 
 export interface WorktreeInfo {
   path: string;          // Absolute path to worktree directory
@@ -16,6 +16,8 @@ export interface WorktreeList {
   main: WorktreeInfo;           // Main workspace worktree
   worktrees: WorktreeInfo[];    // Array of additional worktrees
 }
+
+
 
 /**
  * Check if current directory is a worktree by examining .git file for gitdir: reference
@@ -392,39 +394,62 @@ export function getWorktreeByName(worktreeName: string, topLevelPath: string): W
 }
 
 /**
- * Detect orphaned containers from manually deleted worktrees
+ * UPDATED: Detect orphaned containers using unified discovery
  */
-export async function detectOrphanedContainers(verbose: boolean = false, worktrees?: WorktreeList): Promise<{
+export async function detectOrphanedContainers(
+  verbose: boolean = false,
+  cachedWorktrees?: WorktreeList
+): Promise<{
   orphaned: DockerContainer[];
   worktreePaths: string[];
+  allContainers?: DockerContainer[];
+  validationResults?: Map<string, WorktreeValidationResult>;
 }> {
-  try {
-    // Use provided worktrees or fetch them once if not provided
-    const worktreeData = worktrees || getAllWorktrees(process.cwd());
-    const discoveryResult = await discoverContainers(verbose, worktreeData);
-    const existingWorktreePaths = new Set([
-      worktreeData.main.path,
-      ...worktreeData.worktrees.map(wt => wt.path)
-    ]);
-
-    const orphaned = discoveryResult.containers.filter(container => {
-      const workspacePath = container.labels['aisanity.workspace'];
-      return workspacePath && !existingWorktreePaths.has(workspacePath);
+  
+  // Use new unified discovery
+  const discoveryResult = await discoverAllAisanityContainers({
+    mode: 'global',
+    includeOrphaned: true,
+    validationMode: 'permissive',
+    verbose,
+    cachedWorktrees
+  });
+  
+  if (verbose) {
+    console.log(`[Orphaned Detection] Found ${discoveryResult.orphaned.length} orphaned containers out of ${discoveryResult.containers.length} total`);
+    
+    discoveryResult.orphaned.forEach(container => {
+      const validation = discoveryResult.validationResults.get(container.id);
+      console.log(`  - ${container.name}: workspace=${validation?.workspacePath}, exists=${validation?.exists}`);
     });
-
-    return {
-      orphaned,
-      worktreePaths: Array.from(existingWorktreePaths)
-    };
-  } catch (error) {
-    if (verbose) {
-      console.warn('Failed to detect orphaned containers:', error);
-    }
-    return {
-      orphaned: [],
-      worktreePaths: []
-    };
   }
+  
+  // Extract worktree paths for backward compatibility
+  const worktreePaths = Array.from(discoveryResult.validationResults.values())
+    .map(validation => validation.workspacePath)
+    .filter((path): path is string => path !== undefined);
+  
+  // Also include paths from cachedWorktrees if provided
+  if (cachedWorktrees) {
+    // Add main worktree path
+    if (cachedWorktrees.main?.path && !worktreePaths.includes(cachedWorktrees.main.path)) {
+      worktreePaths.push(cachedWorktrees.main.path);
+    }
+    
+    // Add additional worktree paths
+    cachedWorktrees.worktrees.forEach(worktree => {
+      if (worktree.path && !worktreePaths.includes(worktree.path)) {
+        worktreePaths.push(worktree.path);
+      }
+    });
+  }
+  
+  return {
+    orphaned: discoveryResult.orphaned,
+    worktreePaths: [...new Set(worktreePaths)], // Remove duplicates
+    allContainers: discoveryResult.containers,
+    validationResults: discoveryResult.validationResults
+  };
 }
 
 /**
@@ -468,6 +493,8 @@ export function copyDevContainerToWorktree(sourcePath: string, worktreePath: str
 
   fs.cpSync(sourceDevcontainer, destDevcontainer, { recursive: true });
 }
+
+
 
 /**
  * Clean up orphaned containers

@@ -245,10 +245,10 @@ describe('aisanity status - backward compatibility', () => {
   });
 
   it('should maintain CLI interface compatibility', async () => {
-    // Test that the status command still has the same options
+    // Test that the status command has expected options (updated for debug flag)
     const { statusCommand } = await import('../src/commands/status');
     
-    expect(statusCommand.options).toHaveLength(2);
+    expect(statusCommand.options).toHaveLength(3);
     
     const worktreeOption = statusCommand.options.find(opt => opt.flags === '--worktree <path>');
     expect(worktreeOption).toBeDefined();
@@ -256,6 +256,10 @@ describe('aisanity status - backward compatibility', () => {
     
     const verboseOption = statusCommand.options.find(opt => opt.flags === '-v, --verbose');
     expect(verboseOption).toBeDefined();
-    expect(verboseOption?.description).toContain('Enable verbose logging');
+    expect(verboseOption?.description).toBeDefined();
+    
+    const debugOption = statusCommand.options.find(opt => opt.flags === '-d, --debug');
+    expect(debugOption).toBeDefined();
+    expect(debugOption?.description).toBeDefined();
   });
 });
