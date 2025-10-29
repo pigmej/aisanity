@@ -9,6 +9,10 @@ import { discoverAllAisanityContainers, ContainerDiscoveryOptions, executeDocker
  * 
  * These tests verify container discovery functionality with real Docker containers.
  * Docker-dependent tests are skipped if Docker is not available (e.g., on macOS GitHub Actions).
+ * 
+ * CI Behavior:
+ * - ubuntu-latest: All tests run (Docker available)
+ * - macos-latest: Tests skipped gracefully (Docker not available)
  */
 
 // Helper to check if Docker is available
@@ -52,13 +56,15 @@ describe('Container Discovery Docker Integration', () => {
   });
   
   afterEach(async () => {
-    // Cleanup test containers
-    for (const containerId of testContainers) {
-      try {
-        execSync(`docker stop ${containerId}`, { stdio: 'ignore' });
-        execSync(`docker rm ${containerId}`, { stdio: 'ignore' });
-      } catch (error) {
-        // Ignore cleanup errors
+    // Cleanup test containers (only if Docker is available)
+    if (dockerAvailable && testContainers.length > 0) {
+      for (const containerId of testContainers) {
+        try {
+          execSync(`docker stop ${containerId}`, { stdio: 'ignore' });
+          execSync(`docker rm ${containerId}`, { stdio: 'ignore' });
+        } catch (error) {
+          // Ignore cleanup errors
+        }
       }
     }
     
