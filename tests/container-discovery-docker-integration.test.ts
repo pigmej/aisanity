@@ -1,8 +1,27 @@
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach, beforeAll } from 'bun:test';
 import { execSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
-import { discoverAllAisanityContainers, ContainerDiscoveryOptions } from '../src/utils/container-utils';
+import { discoverAllAisanityContainers, ContainerDiscoveryOptions, executeDockerCommand } from '../src/utils/container-utils';
+
+/**
+ * Container Discovery Docker Integration Tests
+ * 
+ * These tests verify container discovery functionality with real Docker containers.
+ * Docker-dependent tests are skipped if Docker is not available (e.g., on macOS GitHub Actions).
+ */
+
+// Helper to check if Docker is available
+let dockerAvailable = false;
+
+beforeAll(async () => {
+  const result = await executeDockerCommand('docker --version', { silent: true });
+  dockerAvailable = result.success;
+  
+  if (!dockerAvailable) {
+    console.warn('⚠️  Docker is not available. Skipping Docker integration tests.');
+  }
+});
 
 describe('Container Discovery Docker Integration', () => {
   let testWorkspace: string;
@@ -50,6 +69,11 @@ describe('Container Discovery Docker Integration', () => {
   });
   
   it('should discover containers from deleted worktrees', async () => {
+    if (!dockerAvailable) {
+      console.log('Skipping test: Docker not available');
+      return;
+    }
+
     // 1. Create worktree with container
     const worktreePath = path.join(testWorkspace, 'worktrees', 'feature');
     execSync(`git worktree add "${worktreePath}" -b feature`, { cwd: testWorkspace });
@@ -104,6 +128,11 @@ describe('Container Discovery Docker Integration', () => {
   });
   
   it('should handle multiple orphaned containers consistently', async () => {
+    if (!dockerAvailable) {
+      console.log('Skipping test: Docker not available');
+      return;
+    }
+
     const worktrees = ['feature1', 'feature2', 'feature3'];
     const containerIds: string[] = [];
     
@@ -171,6 +200,11 @@ describe('Container Discovery Docker Integration', () => {
   });
   
   it('should distinguish between valid and orphaned containers', async () => {
+    if (!dockerAvailable) {
+      console.log('Skipping test: Docker not available');
+      return;
+    }
+
     // Create a valid worktree with container
     const validWorktreePath = path.join(testWorkspace, 'worktrees', 'valid-feature');
     execSync(`git worktree add "${validWorktreePath}" -b valid-feature`, { cwd: testWorkspace });
