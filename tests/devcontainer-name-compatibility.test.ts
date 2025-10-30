@@ -1,5 +1,5 @@
 import { expect, test, describe, spyOn, beforeEach, afterEach } from 'bun:test';
-import { discoverContainers } from '../src/utils/container-utils';
+import { discoverAllAisanityContainers } from '../src/utils/container-utils';
 import * as fs from 'fs';
 
 describe('Devcontainer Name Parameter Compatibility - Issue #150', () => {
@@ -33,7 +33,7 @@ describe('Devcontainer Name Parameter Compatibility - Issue #150', () => {
 
     // Mock container utils
     const containerUtilsModule = require('../src/utils/container-utils');
-    mockDiscoverContainers = spyOn(containerUtilsModule, 'discoverContainers').mockResolvedValue([]);
+    mockDiscoverContainers = spyOn(containerUtilsModule, 'discoverAllAisanityContainers').mockResolvedValue({ containers: [], labeled: [], unlabeled: [], orphaned: [], errors: [], validationResults: new Map(), discoveryMetadata: {} });
     mockDiscoverByLabels = spyOn(containerUtilsModule, 'discoverByLabels').mockResolvedValue([]);
     mockDiscoverByDevcontainerMetadata = spyOn(containerUtilsModule, 'discoverByDevcontainerMetadata').mockResolvedValue([]);
     mockGenerateContainerLabels = spyOn(containerUtilsModule, 'generateContainerLabels').mockResolvedValue({});
@@ -72,17 +72,25 @@ describe('Devcontainer Name Parameter Compatibility - Issue #150', () => {
     const containerName = 'my-dev-container';
     
     // Mock successful container discovery
-    mockDiscoverContainers.mockResolvedValue([{
-      id: 'container-123',
-      name: containerName,
-      status: 'running',
-      labels: {}
-    }]);
+    mockDiscoverContainers.mockResolvedValue({
+      containers: [{
+        id: 'container-123',
+        name: containerName,
+        status: 'running',
+        labels: {}
+      }],
+      labeled: [],
+      unlabeled: [],
+      orphaned: [],
+      errors: [],
+      validationResults: new Map(),
+      discoveryMetadata: {}
+    });
 
-    const containers = await discoverContainers();
+    const result = await discoverAllAisanityContainers({ mode: 'global', includeOrphaned: true, validationMode: 'permissive' });
     
-    expect(containers).toBeDefined();
-    expect(Array.isArray(containers)).toBe(true);
+    expect(result).toBeDefined();
+    expect(Array.isArray(result.containers)).toBe(true);
     expect(mockDiscoverContainers).toHaveBeenCalled();
   });
 
@@ -206,23 +214,39 @@ describe('Devcontainer Name Parameter Compatibility - Issue #150', () => {
       { id: 'container-3', name: 'container-3', status: 'paused' }
     ];
 
-    mockDiscoverContainers.mockResolvedValue(containerStates);
+    mockDiscoverContainers.mockResolvedValue({
+      containers: containerStates,
+      labeled: [],
+      unlabeled: [],
+      orphaned: [],
+      errors: [],
+      validationResults: new Map(),
+      discoveryMetadata: {}
+    });
 
-    const containers = await discoverContainers();
+    const result = await discoverAllAisanityContainers({ mode: 'global', includeOrphaned: true, validationMode: 'permissive' });
     
-    expect(containers).toHaveLength(3);
-    expect(containers[0].status).toBe('running');
-    expect(containers[1].status).toBe('stopped');
-    expect(containers[2].status).toBe('paused');
+    expect(result.containers).toHaveLength(3);
+    expect(result.containers[0].status).toBe('running');
+    expect(result.containers[1].status).toBe('stopped');
+    expect(result.containers[2].status).toBe('paused');
   });
 
   test('should handle empty container list', async () => {
-    mockDiscoverContainers.mockResolvedValue([]);
+    mockDiscoverContainers.mockResolvedValue({
+      containers: [],
+      labeled: [],
+      unlabeled: [],
+      orphaned: [],
+      errors: [],
+      validationResults: new Map(),
+      discoveryMetadata: {}
+    });
 
-    const containers = await discoverContainers();
+    const result = await discoverAllAisanityContainers({ mode: 'global', includeOrphaned: true, validationMode: 'permissive' });
     
-    expect(containers).toHaveLength(0);
-    expect(Array.isArray(containers)).toBe(true);
+    expect(result.containers).toHaveLength(0);
+    expect(Array.isArray(result.containers)).toBe(true);
   });
 
   test('should validate workspace path format', () => {

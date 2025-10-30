@@ -16,16 +16,7 @@ export function getWorkspaceName(cwd: string): string {
   // First check if .aisanity config exists and has a workspace defined
   const existingConfig = loadAisanityConfig(cwd);
   if (existingConfig && existingConfig.workspace) {
-    // Check if this is a legacy config (workspace includes branch separator)
-    if (existingConfig.workspace.includes('_')) {
-      // Legacy mode: extract project name from workspace_branch format
-      const parts = existingConfig.workspace.split('_');
-      if (parts.length > 1) {
-        // Return just the project name part (everything before the last underscore)
-        return parts.slice(0, -1).join('_');
-      }
-    }
-    // New mode: workspace is already branch-agnostic
+    // Modern workspace format is branch-agnostic
     return existingConfig.workspace;
   }
 
