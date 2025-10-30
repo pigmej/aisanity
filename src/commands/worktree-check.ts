@@ -2,12 +2,15 @@ import { Command } from 'commander';
 import * as path from 'path';
 import { getMainWorkspacePath, getWorktreeByName, getAllWorktrees, isWorktree } from '../utils/worktree-utils';
 import { checkWorktreeEnabled } from '../utils/config';
+import { createLoggerFromCommandOptions } from '../utils/logger';
 
 export const worktreeCheckCommand = new Command('check')
   .description('Check worktree status and display information')
   .argument('<path>', 'Worktree path or name to check')
-  .option('-v, --verbose', 'Enable verbose logging')
+  .option('-v, --verbose', 'Show detailed worktree information')
+  .option('-d, --debug', 'Show system debugging information (validation process, timing)')
   .action(async (worktreeIdentifier: string, options) => {
+    const logger = createLoggerFromCommandOptions(options);
     const cwd = process.cwd();
     
     // Check if worktree functionality is enabled

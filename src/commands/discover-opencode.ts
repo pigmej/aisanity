@@ -3,6 +3,7 @@ import * as YAML from 'yaml';
 import pc from 'picocolors';
 import { $ } from 'bun';
 import { loadAisanityConfig, getContainerName as getAisanityContainerName } from '../utils/config';
+import { createLoggerFromCommandOptions } from '../utils/logger';
 
 export interface OpencodeInstance {
   containerId: string;
@@ -426,28 +427,30 @@ export const discoverOpencodeCommand = new Command('discover-opencode')
   .option('-a, --all', 'Return all discovered instances instead of just the most recent')
   .option('-f, --format <format>', 'Output format (text, json, yaml, plain)', 'text')
   .option('--filter <pattern>', 'Filter containers by name or label')
-  .option('-v, --verbose', 'Enable verbose logging')
+  .option('-v, --verbose', 'Show detailed user information (container status, orphaned containers)')
+  .option('-d, --debug', 'Show system debugging information (discovery process, timing)')
    .action(async (options) => {
      try {
+       const logger = createLoggerFromCommandOptions(options);
        const result = await discoverOpencodeInstances(options);
 
        switch (options.format) {
          case 'json':
-           console.log(JSON.stringify(result, null, 2));
+           logger.info(JSON.stringify(result, null, 2));
            break;
          case 'yaml':
-           console.log(YAML.stringify(result));
+           logger.info(YAML.stringify(result));
            break;
          case 'plain':
-           console.log(formatPlain(result));
+           logger.info(formatPlain(result));
            break;
          default: // text format
-           console.log(formatText(result, options.all));
+           logger.info(formatText(result, options.all));
            break;
        }
      } catch (error) {
        const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error(pc.red('Error discovering opencode instances:'), errorMessage);
+       console.error(pc.red('Error discovering opencode instances:'), errorMessage);
        process.exit(1);
      }
    });

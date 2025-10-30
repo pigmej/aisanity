@@ -4,7 +4,7 @@ import { $ } from 'bun';
 import { loadAisanityConfig, getContainerName, getCurrentBranch } from '../utils/config';
 import { generateContainerLabels, validateContainerLabels, ContainerLabels } from '../utils/container-utils';
 import { isWorktree, getMainGitDirPath } from '../utils/worktree-utils';
-import { Logger } from '../utils/logger';
+import { createLoggerFromCommandOptions } from '../utils/logger';
 import { processEnvironmentVariables, generateDevcontainerEnvFlags } from '../utils/env-utils';
 import * as fs from 'fs';
 
@@ -17,14 +17,12 @@ export const runCommand = new Command('run')
   .option('--env <key=value>', 'Set environment variable (can be used multiple times). Bypasses whitelist filtering.', 
           (value, previous: string[] = []) => [...previous, value])
   .option('--dry-run', 'Show environment variables that would be passed to container without executing command')
-  .option('-v, --verbose', 'Enable verbose logging')
+  .option('-v, --verbose', 'Show detailed user information (container status, orphaned containers)')
+  .option('-d, --debug', 'Show system debugging information (discovery process, timing)')
   .option('--silent, --quiet', 'Suppress aisanity output, show only tool output')
   .action(async (commandArgs: string[], options) => {
-    // Initialize logger with silent taking precedence over verbose
-    const logger = new Logger(
-      options.silent || options.quiet || false,
-      options.verbose && !options.silent && !options.quiet || false
-    );
+    // Initialize logger with factory function
+    const logger = createLoggerFromCommandOptions(options);
     
     let cwd = process.cwd();
     

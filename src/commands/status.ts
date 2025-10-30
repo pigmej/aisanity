@@ -3,8 +3,10 @@ import { execSync } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
 import { loadAisanityConfig, getContainerName, getCurrentBranch } from '../utils/config';
-import { getAllWorktrees, getWorktreeName, WorktreeInfo, WorktreeList, detectOrphanedContainers } from '../utils/worktree-utils';
-import { executeDockerCommand, discoverWorkspaceContainers, Container, parseDockerOutputToContainers } from '../utils/container-utils';
+import { getAllWorktrees, getWorktreeName, WorktreeInfo, WorktreeList } from '../utils/worktree-utils';
+import { executeDockerCommand, discoverWorkspaceContainers, Container, discoverAllAisanityContainers } from '../utils/container-utils';
+import { createLoggerFromCommandOptions } from '../utils/logger';
+import { formatOrphanedContainerInfo } from '../utils/logger-helpers';
 
 // Internal interfaces for status display
 
@@ -215,7 +217,7 @@ export function resolveWorktreeStatus(
  */
 export async function groupContainersByWorkspace(
   workspacePath: string,
-  options: { verbose?: boolean }
+  options: { verbose?: boolean; debug?: boolean }
 ): Promise<{
   workspaceName: string;
   rows: WorkspaceStatusRow[];
@@ -247,7 +249,7 @@ export async function groupContainersByWorkspace(
     // Discover containers with error handling
     let containers: Container[];
     try {
-      containers = await discoverWorkspaceContainers(workspacePath, { verbose: options.verbose || false });
+      containers = await discoverWorkspaceContainers(workspacePath, { debug: options.debug || false });
     } catch (error) {
       errors.push({
         type: 'docker_communication',
@@ -375,8 +377,10 @@ export async function groupContainersByWorkspace(
 export const statusCommand = new Command('status')
   .description('Display the status of all containers used for the current workspace')
   .option('--worktree <path>', 'Show status for specific worktree')
-  .option('-v, --verbose', 'Enable verbose logging')
+  .option('-v, --verbose', 'Show detailed user information (container status, orphaned containers)')
+  .option('-d, --debug', 'Show system debugging information (discovery process, timing)')
   .action(async (options) => {
+    const logger = createLoggerFromCommandOptions(options);
     let cwd = process.cwd();
     let worktrees: WorktreeList | null = null;
     
@@ -386,9 +390,9 @@ export const statusCommand = new Command('status')
       if (!fs.existsSync(worktreePath)) {
         throw new Error(`Worktree path does not exist: ${worktreePath}`);
       }
-      console.log(`Showing status for worktree: ${worktreePath}`);
+      logger.info(`Showing status for worktree: ${worktreePath}`);
       cwd = worktreePath;
-      await displaySingleWorktreeStatus(cwd, options.verbose || false);
+      await displaySingleWorktreeStatus(cwd, options.verbose || false, options.debug || false);
       return;
     }
     
@@ -399,9 +403,9 @@ export const statusCommand = new Command('status')
       
       // Decision logic: use unified table for multiple worktrees, detailed for single
       if (totalWorktrees > 1) {
-        await displayUnifiedWorktreeStatus(worktrees, options.verbose || false);
+        await displayUnifiedWorktreeStatus(worktrees, options.verbose || false, options.debug || false);
       } else {
-        await displaySingleWorktreeStatus(cwd, options.verbose || false);
+        await displaySingleWorktreeStatus(cwd, options.verbose || false, options.debug || false);
       }
 
     } catch (error) {
@@ -469,11 +473,11 @@ export const statusCommand = new Command('status')
 /**
  * Display unified table format for multiple worktrees (workspace-centric)
  */
-async function displayUnifiedWorktreeStatus(worktrees: WorktreeList, verbose: boolean): Promise<void> {
+async function displayUnifiedWorktreeStatus(worktrees: WorktreeList, verbose: boolean, debug: boolean): Promise<void> {
   const workspacePath = worktrees.main.path;
   
   // Use new workspace-centric grouping
-  const { workspaceName, rows, errors, warnings } = await groupContainersByWorkspace(workspacePath, { verbose });
+  const { workspaceName, rows, errors, warnings } = await groupContainersByWorkspace(workspacePath, { verbose, debug });
   
   // Display errors and warnings
   displayErrorsAndWarnings(errors, warnings, verbose);
@@ -489,28 +493,42 @@ async function displayUnifiedWorktreeStatus(worktrees: WorktreeList, verbose: bo
   console.log(`Total: ${summary.totalContainers} containers (${summary.runningContainers} running, ${summary.stoppedContainers} stopped)`);
   console.log(`Worktrees: ${summary.containersWithWorktrees} with worktree, ${summary.containersWithoutWorktrees} without worktree`);
 
-  // Check for orphaned containers (preserve existing functionality)
+  // UPDATED: Check for orphaned containers using unified discovery
   try {
-    const { orphaned } = await detectOrphanedContainers(verbose, worktrees);
-    if (orphaned.length > 0) {
-      console.log(`\n⚠️  Warning: ${orphaned.length} orphaned containers detected`);
+    const discoveryResult = await discoverAllAisanityContainers({
+      mode: 'global',
+      includeOrphaned: true,
+      validationMode: 'permissive',
+      verbose,
+      debug,
+      cachedWorktrees: worktrees
+    });
+    
+    if (discoveryResult.orphaned.length > 0) {
+      console.log(`\n⚠️  Warning: ${discoveryResult.orphaned.length} orphaned containers detected`);
       console.log('These containers may be from manually deleted worktrees.');
       console.log('Consider running "aisanity stop --all-worktrees" to clean them up.');
+      
       if (verbose) {
-        orphaned.forEach(container => {
-          console.log(`  - ${container.name} (${container.status})`);
-        });
+        const orphanedInfo = formatOrphanedContainerInfo(
+          discoveryResult.orphaned,
+          discoveryResult.validationResults
+        );
+        console.log(orphanedInfo);
       }
     }
   } catch (error) {
-    // Ignore errors in orphaned container detection for status display
+    // Log error but don't fail status display
+    if (verbose) {
+      console.warn('Failed to detect orphaned containers:', error);
+    }
   }
 }
 
 /**
  * Display detailed format for single worktree (maintains existing behavior)
  */
-export async function displaySingleWorktreeStatus(cwd: string, verbose: boolean): Promise<void> {
+export async function displaySingleWorktreeStatus(cwd: string, verbose: boolean, debug: boolean = false): Promise<void> {
   const config = loadAisanityConfig(cwd);
 
    if (!config) {

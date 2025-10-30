@@ -1,6 +1,7 @@
 import { Command } from 'commander';
 import * as fs from 'fs';
 import * as path from 'path';
+import { createLoggerFromCommandOptions } from '../utils/logger';
 
 interface MessageData {
   id?: string;
@@ -315,8 +316,10 @@ export const statsCommand = new Command('stats')
   .option('--days <number>', 'Number of days to show (default: 30)', '30')
   .option('--sort <field>', 'Sort by field: date, model, messages, tokens, cost')
   .option('--model <name>', 'Filter by specific model name')
-  .option('--verbose', 'Enable verbose logging for debugging')
+  .option('-v, --verbose', 'Show detailed user information (container status, orphaned containers)')
+  .option('-d, --debug', 'Show system debugging information (discovery process, timing)')
   .action(async (options) => {
+    const logger = createLoggerFromCommandOptions(options);
     await generateStats(options);
   });
 

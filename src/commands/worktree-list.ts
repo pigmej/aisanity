@@ -3,11 +3,14 @@ import * as path from 'path';
 import { $ } from 'bun';
 import { getAllWorktrees, isWorktree } from '../utils/worktree-utils';
 import { checkWorktreeEnabled } from '../utils/config';
+import { createLoggerFromCommandOptions } from '../utils/logger';
 
 export const worktreeListCommand = new Command('list')
   .description('List all worktrees and their container status')
-  .option('-v, --verbose', 'Enable verbose logging')
+  .option('-v, --verbose', 'Show detailed worktree and container information')
+  .option('-d, --debug', 'Show system debugging information (discovery process, timing)')
   .action(async (options) => {
+    const logger = createLoggerFromCommandOptions(options);
     const cwd = process.cwd();
     
     // Check if worktree functionality is enabled

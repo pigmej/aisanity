@@ -5,13 +5,16 @@ import { execSync } from 'child_process';
 import { getMainWorkspacePath, getWorktreeByName, getAllWorktrees } from '../utils/worktree-utils';
 import { checkWorktreeEnabled } from '../utils/config';
 import { discoverByLabels, stopContainers, removeContainers } from '../utils/container-utils';
+import { createLoggerFromCommandOptions } from '../utils/logger';
 
 export const worktreeRemoveCommand = new Command('remove')
   .description('Remove a worktree and clean up associated containers')
   .argument('<path>', 'Worktree path or name to remove')
   .option('--force', 'Force removal without confirmation')
-  .option('-v, --verbose', 'Enable verbose logging')
+  .option('-v, --verbose', 'Show detailed removal steps and container cleanup')
+  .option('-d, --debug', 'Show system debugging information (git operations, timing)')
   .action(async (worktreeIdentifier: string, options) => {
+    const logger = createLoggerFromCommandOptions(options);
     const cwd = process.cwd();
     
     // Check if worktree functionality is enabled
