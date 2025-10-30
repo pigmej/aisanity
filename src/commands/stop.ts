@@ -2,9 +2,9 @@ import { Command } from 'commander';
 import { execSync } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
-import { loadAisanityConfig, getContainerName } from '../utils/config';
+import { loadAisanityConfig, getCurrentBranch } from '../utils/config';
 import { getAllWorktrees } from '../utils/worktree-utils';
-import { discoverContainers, stopContainers, discoverAllAisanityContainers } from '../utils/container-utils';
+import { stopContainers, discoverAllAisanityContainers } from '../utils/container-utils';
 import { createLoggerFromCommandOptions } from '../utils/logger';
 
 export const stopCommand = new Command('stop')
@@ -37,63 +37,41 @@ export const stopCommand = new Command('stop')
          logger.info(`Stopping containers for worktree: ${worktreePath}`);
        }
       
-       config = loadAisanityConfig(cwd);
+config = loadAisanityConfig(cwd);
 
-       if (!config) {
-         throw new Error('No .aisanity config found. Run "aisanity init" first.');
+        if (!config) {
+          throw new Error('No .aisanity config found. Run "aisanity init" first.');
+        }
+
+       const workspaceName = config.workspace;
+       const currentBranch = getCurrentBranch(cwd);
+
+       logger.info(`Stopping containers for workspace: ${workspaceName} (branch: ${currentBranch})`);
+
+       // Discover containers using unified label-based discovery
+       const discoveryResult = await discoverAllAisanityContainers({
+         mode: 'workspace',
+         workspace: cwd,
+         includeOrphaned: false,
+         validationMode: 'strict'
+       });
+
+       // Filter containers by both workspace and current branch
+       const branchContainers = discoveryResult.containers.filter(container => 
+         container.labels['aisanity.workspace'] === cwd && 
+         container.labels['aisanity.branch'] === currentBranch
+       );
+
+       if (branchContainers.length === 0) {
+         logger.info(`No containers found for branch: ${currentBranch}`);
+         return;
        }
 
-      const workspaceName = config.workspace;
-      const containerName = getContainerName(cwd, options.verbose || false);
+       // Extract container IDs and stop them
+       const containerIds = branchContainers.map(container => container.id);
+       await stopContainers(containerIds, options.verbose || false);
 
-      logger.info(`Stopping containers for workspace: ${workspaceName}`);
-
-      try {
-        // Try to stop the container using docker
-        execSync(`docker stop ${containerName}`, { stdio: 'inherit' });
-        logger.info(`Stopped container: ${containerName}`);
-      } catch (error) {
-        logger.info(`Container ${containerName} not found or already stopped`);
-      }
-
-      // Also try to stop any devcontainer-related containers for this workspace
-      try {
-        const output = execSync(`docker ps --filter "label=devcontainer.local_folder=${cwd}" --format "{{.Names}}"`, {
-          encoding: 'utf8'
-        });
-
-        const containers = output.trim().split('\n').filter(name => name.trim() !== '');
-
-        for (const container of containers) {
-          if (container) {
-            execSync(`docker stop ${container}`, { stdio: 'inherit' });
-            logger.info(`Stopped devcontainer: ${container}`);
-          }
-        }
-      } catch (error) {
-        // No devcontainers found for this workspace, that's okay
-      }
-
-      // Also stop any containers with the specific workspace name pattern
-      // Search for both old format (aisanity-${workspaceName}) and new format (${workspaceName}-)
-      try {
-        const output = execSync(`docker ps --filter "name=aisanity-${workspaceName}" --filter "name=${workspaceName}-" --format "{{.Names}}"`, {
-          encoding: 'utf8'
-        });
-
-        const containers = output.trim().split('\n').filter(name => name.trim() !== '');
-
-        for (const container of containers) {
-          if (container) {
-            execSync(`docker stop ${container}`, { stdio: 'inherit' });
-            logger.info(`Stopped aisanity container: ${container}`);
-          }
-        }
-      } catch (error) {
-        // No aisanity containers found for this workspace, that's okay
-      }
-
-      logger.info('All workspace containers stopped successfully');
+       logger.info(`Stopped ${containerIds.length} containers for branch: ${currentBranch}`);
 
     } catch (error) {
        console.error('Failed to stop containers:', error);
