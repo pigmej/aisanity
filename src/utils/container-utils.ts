@@ -245,34 +245,6 @@ export async function discoverWorkspaceContainers(
     // Continue to next strategy
   }
 
-  // Strategy 2: Discover by container name pattern (fallback) - DISABLED
-  // This fallback is too broad and includes non-aisanity containers
-  // We only want to manage containers that have explicit aisanity.workspace labels
-  /*
-  if (containers.length === 0) {
-    try {
-      const result = await executeDockerCommand(
-        `docker ps -a --format "{{.ID}}\t{{.Names}}\t{{.Status}}\t{{.Ports}}\t{{.Labels}}"`,
-        { silent: true, debug },
-      );
-
-      if (result.success) {
-        const allContainers = parseDockerOutputToContainers(result.stdout, workspaceId);
-        // Filter by name pattern that suggests workspace containers
-        const workspaceContainers = allContainers.filter(
-          (container) => container.name.includes(workspaceId) || container.labels["aisanity.workspace"] === workspaceId,
-        );
-        containers.push(...workspaceContainers);
-      }
-    } catch (error: unknown) {
-      if (debug) {
-        console.log(`Strategy 2 (name pattern) failed: ${error instanceof Error ? error.message : "Unknown error"}`);
-      }
-      // Continue to next strategy
-    }
-  }
-  */
-
   if (debug) {
     const duration = Date.now() - startTime;
     console.log(`[Performance] Container discovery completed in ${duration}ms, found ${containers.length} containers`);
@@ -749,28 +721,9 @@ async function discoverContainersPhase(
     if (debug) {
       console.log(`[Discovery] Found ${labeledContainers.length} labeled containers`);
     }
-  } catch (error) {
+    } catch (error) {
     handleDiscoveryError(error, "Label-based discovery", debug);
   }
-
-  // Strategy 2: Devcontainer metadata discovery (fallback) - DISABLED
-  // This fallback was too broad and included non-aisanity containers as orphaned
-  // Only containers with aisanity.workspace label should be managed by aisanity
-  // Keeping this commented for reference in case we need a more targeted fallback later
-  /*
-  try {
-    const devcontainerContainers = await discoverByDevcontainerMetadata(debug);
-    const newContainers = deduplicateContainers(devcontainerContainers, containers);
-    containers.push(...newContainers);
-    unlabeled.push(...newContainers);
-
-    if (debug) {
-      console.log(`[Discovery] Found ${newContainers.length} additional devcontainer containers`);
-    }
-  } catch (error) {
-    handleDiscoveryError(error, "Devcontainer discovery", debug);
-  }
-  */
 }
 
 /**
@@ -874,68 +827,6 @@ function logDiscoveryResults(
   
   // User-facing verbose information - intentionally empty here
   // Orphaned container details should be displayed by caller using formatOrphanedContainerInfo()
-}
-
-/**
- * Legacy wrapper for backward compatibility.
- * Now delegates to new unified discovery system.
- *
- * Use this function when:
- * - You're maintaining existing code that uses the old API
- * - You need backward compatibility with existing function signatures
- * - You're working with code that hasn't been migrated to the new API yet
- *
- * For new code, prefer using `discoverAllAisanityContainers()` instead.
- *
- * Key differences from `discoverAllAisanityContainers()`:
- * - Uses fixed 'global' mode with permissive validation
- * - Returns legacy `ContainerDiscoveryResult` format instead of enhanced format
- * - Does not provide access to validation metadata or discovery timestamps
- * - Maintains backward compatibility for existing callers
- *
- * @param verbose - Enable verbose logging (passed through to new discovery system)
- * @param cachedWorktrees - Optional cached worktree data (passed through to new discovery system)
- * @returns Legacy discovery result format for backward compatibility
- *
- * @deprecated Use `discoverAllAisanityContainers()` for new code. This function exists for backward compatibility.
- *
- * @example
- * // Legacy usage (existing code)
- * const result = await discoverContainers(true);
- * console.log(`Found ${result.containers.length} containers`);
- *
- * @example
- * // New approach (recommended for new code)
- * const result = await discoverAllAisanityContainers({
- *   mode: 'global',
- *   includeOrphaned: true,
- *   validationMode: 'permissive',
- *   verbose: true
- * });
- * console.log(`Found ${result.containers.length} containers`);
- * console.log(`Discovery metadata:`, result.discoveryMetadata);
- */
-export async function discoverContainers(
-  verbose: boolean = false,
-  cachedWorktrees?: WorktreeList,
-): Promise<ContainerDiscoveryResult> {
-  // Use new unified discovery with permissive validation
-  const result = await discoverAllAisanityContainers({
-    mode: "global",
-    includeOrphaned: true,
-    validationMode: "permissive",
-    verbose,
-    cachedWorktrees,
-  });
-
-  // Return in legacy format for backward compatibility
-  return {
-    containers: result.containers,
-    labeled: result.labeled,
-    unlabeled: result.unlabeled,
-    orphaned: result.orphaned,
-    errors: result.errors,
-  };
 }
 
 /**

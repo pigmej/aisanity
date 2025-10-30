@@ -1,5 +1,5 @@
 import { Command } from 'commander';
-import { discoverContainers, stopContainers, removeContainers } from '../utils/container-utils';
+import { discoverAllAisanityContainers, stopContainers, removeContainers } from '../utils/container-utils';
 import { createLoggerFromCommandOptions } from '../utils/logger';
 
 export const cleanupCommand = new Command('cleanup')
@@ -15,7 +15,12 @@ export const cleanupCommand = new Command('cleanup')
       logger.info('Discovering orphaned containers...');
 
       // Discover all containers
-      const discoveryResult = await discoverContainers(options.verbose);
+      const discoveryResult = await discoverAllAisanityContainers({
+        mode: 'global',
+        includeOrphaned: true,
+        validationMode: 'permissive',
+        verbose: options.verbose || false
+      });
 
       if (discoveryResult.errors.length > 0 && options.verbose) {
         logger.warn('Discovery errors encountered:');

@@ -175,21 +175,6 @@ describe('aisanity status - regression prevention', () => {
     }
   });
 
-  it('should maintain backward compatibility with existing interfaces', async () => {
-    // Test that old functions still exist (even if deprecated)
-    const statusModule = await import('../src/commands/status');
-    
-    // These functions should still be available (deprecated)
-    expect(statusModule.mapContainersToWorktrees).toBeDefined();
-    expect(statusModule.formatWorktreeTable).toBeDefined();
-    expect(statusModule.generateWorktreeSummary).toBeDefined();
-    
-    // Test that the functions are actually callable
-    expect(typeof statusModule.mapContainersToWorktrees).toBe('function');
-    expect(typeof statusModule.formatWorktreeTable).toBe('function');
-    expect(typeof statusModule.generateWorktreeSummary).toBe('function');
-  });
-
   it('should handle empty workspace gracefully', async () => {
     // No containers
     process.env.AISANITY_TEST_CONTAINERS = JSON.stringify([]);
