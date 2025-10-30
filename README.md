@@ -13,8 +13,8 @@ Run AI agents in isolated containers while keeping your host OS safe. Aisanity c
 - **🛡️ Secure Isolation** - Run AI agents in sandboxed containers, protecting your host system
 - **⚡ Instant Setup** - One-command initialization for any project type
 - **🔄 Parallel Development** - Work on multiple features simultaneously with git worktrees
-- **🤖 AI-Ready** - Pre-configured for OpenCode and other AI coding agents
-- **🎯 IDE Agnostic** - Works with VS Code, IntelliJ, Vim, or any terminal tool
+- **🤖 AI-Ready** - Pre-configured for OpenCode, ACP, and other AI coding agents
+- **🎯 IDE Agnostic** - Works with VS Code, IntelliJ, Zed, Vim, or any terminal tool
 
 I highly recommend to use Aisanity with my [opencode workflow](https://github.com/pigmej/opencode_tools) to fully benefit from Aisanity's features.
 
@@ -95,7 +95,7 @@ aisanity worktree list
 # Switch between features seamlessly
 cd worktrees/feature-auth
 aisanity run  # Work on auth
-cd ../feature-ui  
+cd ../feature-ui
 aisanity run  # Work on UI
 ```
 
@@ -119,7 +119,7 @@ Aisanity automatically detects and configures:
 - **🐍 Python** - Flask, Django, FastAPI with uv, ruff, and AI tools
 - **🟨 Node.js** - Express, TypeScript with modern tooling
 - **⚡ Bun** - Ultra-fast TypeScript with native runtime
-- **🐹 Go** - Go 1.24+ with extensions and tools  
+- **🐹 Go** - Go 1.24+ with extensions and tools
 - **🦀 Rust** - Rust toolchain with rust-analyzer
 - **📦 Any Project** - Base Ubuntu environment with Node.js
 
@@ -155,10 +155,35 @@ While OpenCode is the default, Aisanity works with any AI coding agent. All cont
 - Shared configuration and session state
 - Isolated AI environments per feature branch
 
+#### ACP (Agent Client Protocol) Support
+Aisanity also supports running ACP servers seamlessly:
+
+```bash
+# Run ACP server in sandboxed environment
+aisanity run -- opencode acp
+```
+
+This makes it easy to integrate with editors like Zed. Simply add this to your ACP configuration:
+
+```json
+{
+    "agent_servers":
+    {
+    "aisanity OC": {
+        "command": "aisanity",
+            "args": ["run", "--", "opencode", "acp"],
+            "env": {}
+        }
+    }
+}
+```
+
+Now you can use Aisanity's sandboxed environment with any ACP-compatible editor or tool, keeping your AI coding sessions isolated and secure.
+
 ### IDE Integration
 Works seamlessly with your favorite tools:
 - **VS Code** - Full devcontainer support
-- **IntelliJ** - Compatible with devcontainer environments  
+- **IntelliJ** - Compatible with devcontainer environments
 - **Vim/Neovim** - Terminal-based development
 - **Emacs** - TRAMP integration via `/docker`
 
@@ -215,7 +240,7 @@ bun run build
 
 ---
 
-**Ready to transform your development workflow?** 
+**Ready to transform your development workflow?**
 
 ```bash
 # Download and install (macOS example)
