@@ -93,7 +93,7 @@ aisanity worktree create feature-ui
 aisanity worktree list
 
 # Switch between features seamlessly
-cd worktrees/feature-auth
+cd ../worktrees/feature-auth
 aisanity run  # Work on auth
 cd ../feature-ui
 aisanity run  # Work on UI
