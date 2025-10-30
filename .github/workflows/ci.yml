@@ -47,6 +47,14 @@ jobs:
       - name: Run linting
         run: bun run lint || echo "Linting issues found (non-fatal)"
 
+      - name: Pre-pull Docker images for tests
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          echo "Pre-pulling alpine:latest for Docker integration tests..."
+          docker pull alpine:latest || echo "Pre-pull failed, tests will pull on-demand"
+          docker images alpine
+        continue-on-error: true
+
       - name: Run tests
         run: bun test
 
@@ -56,6 +64,13 @@ jobs:
         with:
           file: ./coverage/lcov.info
           fail_ci_if_error: false
+
+      - name: Cleanup Docker containers
+        if: matrix.os == 'ubuntu-latest' && always()
+        run: |
+          echo "Cleaning up any remaining test containers..."
+          docker ps -aq --filter "label=aisanity.workspace" | xargs -r docker rm -f || true
+          docker system prune -f || true
 
   security:
     runs-on: ubuntu-latest

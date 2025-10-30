@@ -5,6 +5,180 @@ import * as path from 'path';
 import { discoverAllAisanityContainers, ContainerDiscoveryOptions, executeDockerCommand } from '../src/utils/container-utils';
 
 /**
+ * Environment-aware test configuration
+ */
+interface TestConfig {
+  isCI: boolean;
+  timeout: number;
+  cleanupTimeout: number;
+  parallelCleanup: boolean;
+  dockerCommandTimeout: number;
+}
+
+/**
+ * Docker command result interface
+ */
+interface DockerCommandResult {
+  stdout: string;
+  stderr: string;
+  success: boolean;
+}
+
+/**
+ * Container cleanup context interface
+ */
+interface CleanupContext {
+  containerIds: string[];
+  startTime: number;
+  timeout: number;
+  parallel: boolean;
+}
+
+/**
+ * Get environment-aware test configuration
+ */
+function getTestConfig(): TestConfig {
+  return {
+    isCI: process.env.CI === 'true',
+    timeout: process.env.CI === 'true' ? 20000 : 10000,
+    cleanupTimeout: process.env.CI === 'true' ? 15000 : 8000,
+    parallelCleanup: true,
+    dockerCommandTimeout: process.env.CI === 'true' ? 8000 : 5000
+  };
+}
+
+/**
+ * Check if running in CI environment
+ */
+function isCIEnvironment(): boolean {
+  return process.env.CI === 'true';
+}
+
+/**
+ * Get timeout for specific operation type
+ */
+function getTimeout(operation: 'test' | 'cleanup' | 'docker'): number {
+  const config = getTestConfig();
+  switch (operation) {
+    case 'test': return config.timeout;
+    case 'cleanup': return config.cleanupTimeout;
+    case 'docker': return config.dockerCommandTimeout;
+    default: return config.timeout;
+  }
+}
+
+/**
+ * Execute Docker command with timeout protection
+ */
+export async function executeDockerCommandWithTimeout(
+  command: string,
+  options?: {
+    silent?: boolean;
+    timeout?: number;
+    context?: string;
+  }
+): Promise<DockerCommandResult> {
+  const config = getTestConfig();
+  const timeout = options?.timeout || config.dockerCommandTimeout;
+  const context = options?.context || 'Docker operation';
+  
+  return Promise.race([
+    executeDockerCommand(command, { 
+      silent: options?.silent, 
+      timeout: timeout 
+    }),
+    new Promise<DockerCommandResult>((resolve) => 
+      setTimeout(() => {
+        resolve({
+          stdout: '',
+          stderr: `${context} timed out after ${timeout}ms`,
+          success: false
+        });
+      }, timeout)
+    )
+  ]);
+}
+
+/**
+ * Parallel container cleanup with timeout protection
+ */
+async function parallelCleanup(containers: string[]): Promise<void> {
+  const config = getTestConfig();
+  
+  if (containers.length === 0) {
+    return;
+  }
+  
+  console.log(`🧹 Starting parallel cleanup of ${containers.length} containers...`);
+  const startTime = Date.now();
+  
+  const cleanupPromises = containers.map(async (containerId) => {
+    try {
+      // Force remove container directly (faster than stop then remove)
+      await executeDockerCommandWithTimeout(`docker rm -f ${containerId}`, {
+        silent: true,
+        timeout: 3000,
+        context: `Force remove container ${containerId}`
+      });
+    } catch (error) {
+      console.warn(`⚠️  Failed to cleanup ${containerId}:`, error instanceof Error ? error.message : String(error));
+    }
+  });
+  
+  // Race between cleanup completion and overall timeout
+  await Promise.race([
+    Promise.all(cleanupPromises),
+    new Promise(resolve => setTimeout(resolve, config.cleanupTimeout))
+  ]);
+  
+  const duration = Date.now() - startTime;
+  console.log(`✅ Parallel cleanup completed in ${duration}ms`);
+}
+
+/**
+ * Sequential cleanup fallback
+ */
+async function sequentialCleanup(containers: string[]): Promise<void> {
+  const config = getTestConfig();
+  
+  if (containers.length === 0) {
+    return;
+  }
+  
+  console.log(`🧹 Starting sequential cleanup of ${containers.length} containers...`);
+  const startTime = Date.now();
+  
+  for (const containerId of containers) {
+    try {
+      // Force remove container directly (faster than stop then remove)
+      await executeDockerCommandWithTimeout(`docker rm -f ${containerId}`, {
+        silent: true,
+        timeout: 3000,
+        context: `Force remove container ${containerId}`
+      });
+    } catch (error) {
+      console.warn(`⚠️  Failed to cleanup ${containerId}:`, error instanceof Error ? error.message : String(error));
+    }
+  }
+  
+  const duration = Date.now() - startTime;
+  console.log(`✅ Sequential cleanup completed in ${duration}ms`);
+}
+
+/**
+ * Cleanup with timeout and error handling
+ */
+async function cleanupWithTimeout(containers: string[], timeout: number): Promise<void> {
+  const config = getTestConfig();
+  
+  if (config.parallelCleanup) {
+    await parallelCleanup(containers);
+  } else {
+    await sequentialCleanup(containers);
+  }
+}
+
+/**
  * Container Discovery Docker Integration Tests
  * 
  * These tests verify container discovery functionality with real Docker containers.
@@ -30,6 +204,7 @@ beforeAll(async () => {
 describe('Container Discovery Docker Integration', () => {
   let testWorkspace: string;
   let testContainers: string[] = [];
+  const config = getTestConfig();
   
   beforeEach(async () => {
     // Setup test workspace with orphaned containers
@@ -56,22 +231,18 @@ describe('Container Discovery Docker Integration', () => {
   });
   
   afterEach(async () => {
-    // Cleanup test containers (only if Docker is available)
+    // Cleanup test containers using parallel cleanup (only if Docker is available)
     if (dockerAvailable && testContainers.length > 0) {
-      for (const containerId of testContainers) {
-        try {
-          execSync(`docker stop ${containerId}`, { stdio: 'ignore' });
-          execSync(`docker rm ${containerId}`, { stdio: 'ignore' });
-        } catch (error) {
-          // Ignore cleanup errors
-        }
-      }
+      await cleanupWithTimeout(testContainers, config.cleanupTimeout);
     }
     
     // Cleanup test workspace
     if (fs.existsSync(testWorkspace)) {
       fs.rmSync(testWorkspace, { recursive: true, force: true });
     }
+    
+    // Reset test containers array
+    testContainers = [];
   });
   
   it('should discover containers from deleted worktrees', async () => {
