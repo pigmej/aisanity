@@ -109,6 +109,9 @@ function getNodeJsDevContainer(): DevContainerTemplate {
         "ghcr.io/devcontainers/features/node:1": {
           version: "lts",
         },
+        "ghcr.io/devcontainers/features/python:1": {
+          installTools: false,
+        },
         "ghcr.io/gvatsal60/dev-container-features/uv:0": {},
       },
       customizations: {
@@ -152,6 +155,9 @@ function getBunDevContainer(): DevContainerTemplate {
           // npx etc
           version: "lts",
         },
+        "ghcr.io/devcontainers/features/python:1": {
+          installTools: false,
+        },
         "ghcr.io/gvatsal60/dev-container-features/uv:0": {},
       },
       customizations: {
@@ -187,6 +193,9 @@ function getGoDevContainer(): DevContainerTemplate {
       features: {
         "ghcr.io/devcontainers/features/go:1": {
           version: "1.21",
+        },
+        "ghcr.io/devcontainers/features/python:1": {
+          installTools: false,
         },
         "ghcr.io/gvatsal60/dev-container-features/uv:0": {},
         "ghcr.io/devcontainers/features/node:1": {
@@ -227,6 +236,9 @@ function getRustDevContainer(): DevContainerTemplate {
         "ghcr.io/devcontainers/features/node:1": {
           version: "lts",
         },
+        "ghcr.io/devcontainers/features/python:1": {
+          installTools: false,
+        },
         "ghcr.io/gvatsal60/dev-container-features/uv:0": {},
       },
       customizations: {
@@ -266,7 +278,10 @@ function getJavaDevContainer(): DevContainerTemplate {
         "ghcr.io/devcontainers/features/node:1": {
           version: "lts",
         },
-        "ghcr.io/devcontainers/features/uv:0": {},
+        "ghcr.io/devcontainers/features/python:1": {
+          installTools: false,
+        },
+        "ghcr.io/gvatsal60/dev-container-features/uv:0": {},
       },
       customizations: {
         vscode: {
@@ -302,7 +317,10 @@ function getEmptyDevContainer(): DevContainerTemplate {
         "ghcr.io/devcontainers/features/node:1": {
           version: "lts",
         },
-        "ghcr.io/devcontainers/features/uv:0": {},
+        "ghcr.io/devcontainers/features/python:1": {
+          installTools: false,
+        },
+        "ghcr.io/gvatsal60/dev-container-features/uv:0": {},
       },
       customizations: {
         vscode: {
