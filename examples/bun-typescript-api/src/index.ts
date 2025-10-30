@@ -69,8 +69,8 @@ const server = Bun.serve({
   }
 });
 
-console.log(`🚀 Bun API server running on http://localhost:${server.port}`);
-console.log(`📝 Try: curl http://localhost:${server.port}`);
-console.log(`💚 Health: curl http://localhost:${server.port}/health`);
-console.log(`👥 Users: curl http://localhost:${server.port}/api/users`);
-console.log(`⚡️ Performance: Bun's native HTTP server for maximum speed`);
+console.log(`Bun API server running on http://localhost:${server.port}`);
+console.log(`Try: curl http://localhost:${server.port}`);
+console.log(`Health: curl http://localhost:${server.port}/health`);
+console.log(`Users: curl http://localhost:${server.port}/api/users`);
+console.log(`Performance: Bun's native HTTP server for maximum speed`);

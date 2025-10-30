@@ -2,9 +2,9 @@
 
 This directory contains example projects demonstrating how to use aisanity with different programming languages and frameworks. Each example includes proper devcontainer configuration for seamless sandboxed development.
 
-## 📁 Available Examples
+## Available Examples
 
-### 🚀 [Go Hello World](./go-hello-world/)
+### [Go Hello World](./go-hello-world/)
 A simple Go web application with health check endpoints.
 
 **Features:**
@@ -20,7 +20,7 @@ aisanity init
 aisanity run go run main.go
 ```
 
-### 🐍 [Python Flask API](./python-flask-api/)
+### [Python Flask API](./python-flask-api/)
 A simple Flask REST API with Python 3.11.
 
 **Features:**
@@ -37,7 +37,7 @@ aisanity init
 aisanity run python app.py
 ```
 
-### 🟨 [Node.js TypeScript API](./node-typescript-api/)
+### [Node.js TypeScript API](./node-typescript-api/)
 A TypeScript REST API with Express.js framework.
 
 **Features:**
@@ -54,7 +54,7 @@ aisanity init
 aisanity run npm run dev
 ```
 
-### ⚡️ [Bun TypeScript API](./bun-typescript-api/)
+### [Bun TypeScript API](./bun-typescript-api/)
 A high-performance TypeScript REST API using Bun runtime.
 
 **Features:**
@@ -72,7 +72,7 @@ aisanity init
 aisanity run bun run dev
 ```
 
-## 🛠️ General Usage Pattern
+## General Usage Pattern
 
 For any example project:
 
@@ -101,7 +101,7 @@ For any example project:
    aisanity stop
    ```
 
-## 🏗️ Devcontainer Features
+## Devcontainer Features
 
 Each example includes:
 
@@ -111,7 +111,7 @@ Each example includes:
 - **Port forwarding** - Automatic port exposure for web applications
 - **Post-create commands** - Automatic dependency installation
 
-## 🔧 Adding New Examples
+## Adding New Examples
 
 To add a new example:
 
@@ -123,7 +123,7 @@ To add a new example:
 4. Add a comprehensive README.md
 5. Update this main README.md
 
-## 🎯 Best Practices
+## Best Practices
 
 - **Keep examples simple** - Focus on demonstrating core concepts
 - **Include proper documentation** - Clear setup and usage instructions
@@ -131,7 +131,7 @@ To add a new example:
 - **Use latest stable versions** - Keep dependencies up to date
 - **Include health checks** - Make it easy to verify the application is running
 
-## 🤝 Contributing
+## Contributing
 
 When adding new examples:
 
@@ -140,7 +140,7 @@ When adding new examples:
 3. Test thoroughly with `aisanity run`, `aisanity status`, and `aisanity stop`
 4. Update this README with the new example
 
-## 📞 Support
+## Support
 
 If you encounter issues with any example:
 

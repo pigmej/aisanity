@@ -116,12 +116,12 @@ Each feature gets its own container, dependencies, and AI agent session.
 
 Aisanity automatically detects and configures:
 
-- **🐍 Python** - Flask, Django, FastAPI with uv, ruff, and AI tools
-- **🟨 Node.js** - Express, TypeScript with modern tooling
-- **⚡ Bun** - Ultra-fast TypeScript with native runtime
-- **🐹 Go** - Go 1.24+ with extensions and tools
-- **🦀 Rust** - Rust toolchain with rust-analyzer
-- **📦 Any Project** - Base Ubuntu environment with Node.js
+- **Python** - Flask, Django, FastAPI with uv, ruff, and AI tools
+- **Node.js** - Express, TypeScript with modern tooling
+- **Bun** - Ultra-fast TypeScript with native runtime
+- **Go** - Go 1.24+ with extensions and tools  
+- **Rust** - Rust toolchain with rust-analyzer
+- **Any Project** - Base Ubuntu environment with Node.js
 
 ## Tool Compatibility
 
