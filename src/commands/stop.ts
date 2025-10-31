@@ -2,16 +2,20 @@ import { Command } from 'commander';
 import { execSync } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
-import { loadAisanityConfig, getContainerName } from '../utils/config';
+import { loadAisanityConfig, getCurrentBranch } from '../utils/config';
 import { getAllWorktrees } from '../utils/worktree-utils';
-import { discoverContainers, stopContainers } from '../utils/container-utils';
+import { stopContainers, discoverAllAisanityContainers } from '../utils/container-utils';
+import { createLoggerFromCommandOptions } from '../utils/logger';
 
 export const stopCommand = new Command('stop')
   .description('Stop all containers used for the current workspace')
   .option('--worktree <path>', 'Stop containers for specific worktree')
   .option('--all-worktrees', 'Stop containers for all worktrees')
-  .option('-v, --verbose', 'Enable verbose logging')
+  .option('-v, --verbose', 'Show detailed user information (container status, orphaned containers)')
+  .option('-d, --debug', 'Show system debugging information (discovery process, timing)')
   .action(async (options) => {
+    const logger = createLoggerFromCommandOptions(options);
+    
     try {
       let cwd = process.cwd();
       let config;
@@ -19,8 +23,8 @@ export const stopCommand = new Command('stop')
        // Handle worktree options
        if (options.allWorktrees) {
          // Stop all worktree containers with confirmation
-         await stopAllWorktreeContainers(options.verbose);
-         console.log('All worktree containers stopped successfully');
+         await stopAllWorktreeContainers(logger, options.verbose, options.debug);
+         logger.info('All worktree containers stopped successfully');
          return;
        }
       
@@ -30,66 +34,44 @@ export const stopCommand = new Command('stop')
            throw new Error(`Worktree path does not exist: ${worktreePath}`);
          }
          cwd = worktreePath;
-         console.log(`Stopping containers for worktree: ${worktreePath}`);
+         logger.info(`Stopping containers for worktree: ${worktreePath}`);
        }
       
-       config = loadAisanityConfig(cwd);
+config = loadAisanityConfig(cwd);
 
-       if (!config) {
-         throw new Error('No .aisanity config found. Run "aisanity init" first.');
+        if (!config) {
+          throw new Error('No .aisanity config found. Run "aisanity init" first.');
+        }
+
+       const workspaceName = config.workspace;
+       const currentBranch = getCurrentBranch(cwd);
+
+       logger.info(`Stopping containers for workspace: ${workspaceName} (branch: ${currentBranch})`);
+
+       // Discover containers using unified label-based discovery
+       const discoveryResult = await discoverAllAisanityContainers({
+         mode: 'workspace',
+         workspace: cwd,
+         includeOrphaned: false,
+         validationMode: 'strict'
+       });
+
+       // Filter containers by both workspace and current branch
+       const branchContainers = discoveryResult.containers.filter(container => 
+         container.labels['aisanity.workspace'] === cwd && 
+         container.labels['aisanity.branch'] === currentBranch
+       );
+
+       if (branchContainers.length === 0) {
+         logger.info(`No containers found for branch: ${currentBranch}`);
+         return;
        }
 
-      const workspaceName = config.workspace;
-      const containerName = getContainerName(cwd, options.verbose || false);
+       // Extract container IDs and stop them
+       const containerIds = branchContainers.map(container => container.id);
+       await stopContainers(containerIds, options.verbose || false);
 
-      console.log(`Stopping containers for workspace: ${workspaceName}`);
-
-      try {
-        // Try to stop the container using docker
-        execSync(`docker stop ${containerName}`, { stdio: 'inherit' });
-        console.log(`Stopped container: ${containerName}`);
-      } catch (error) {
-        console.log(`Container ${containerName} not found or already stopped`);
-      }
-
-      // Also try to stop any devcontainer-related containers for this workspace
-      try {
-        const output = execSync(`docker ps --filter "label=devcontainer.local_folder=${cwd}" --format "{{.Names}}"`, {
-          encoding: 'utf8'
-        });
-
-        const containers = output.trim().split('\n').filter(name => name.trim() !== '');
-
-        for (const container of containers) {
-          if (container) {
-            execSync(`docker stop ${container}`, { stdio: 'inherit' });
-            console.log(`Stopped devcontainer: ${container}`);
-          }
-        }
-      } catch (error) {
-        // No devcontainers found for this workspace, that's okay
-      }
-
-      // Also stop any containers with the specific workspace name pattern
-      // Search for both old format (aisanity-${workspaceName}) and new format (${workspaceName}-)
-      try {
-        const output = execSync(`docker ps --filter "name=aisanity-${workspaceName}" --filter "name=${workspaceName}-" --format "{{.Names}}"`, {
-          encoding: 'utf8'
-        });
-
-        const containers = output.trim().split('\n').filter(name => name.trim() !== '');
-
-        for (const container of containers) {
-          if (container) {
-            execSync(`docker stop ${container}`, { stdio: 'inherit' });
-            console.log(`Stopped aisanity container: ${container}`);
-          }
-        }
-      } catch (error) {
-        // No aisanity containers found for this workspace, that's okay
-      }
-
-      console.log('All workspace containers stopped successfully');
+       logger.info(`Stopped ${containerIds.length} containers for branch: ${currentBranch}`);
 
     } catch (error) {
        console.error('Failed to stop containers:', error);
@@ -98,36 +80,51 @@ export const stopCommand = new Command('stop')
   });
 
 /**
- * Stop containers for all worktrees
+ * UPDATED: Stop containers for all worktrees using unified discovery
  */
-async function stopAllWorktreeContainers(verbose: boolean = false): Promise<void> {
+async function stopAllWorktreeContainers(logger: any, verbose: boolean = false, debug: boolean = false): Promise<void> {
   try {
-    console.log('Discovering all aisanity-related containers...');
+    logger.info('Discovering all aisanity-related containers...');
 
-    // Use multi-strategy container discovery
-    const discoveryResult = await discoverContainers(verbose);
+    // UPDATED: Use new unified discovery with permissive validation
+    const discoveryResult = await discoverAllAisanityContainers({
+      mode: 'global',
+      includeOrphaned: true,
+      validationMode: 'permissive',  // KEY CHANGE: Don't filter by worktree validity
+      verbose,
+      debug
+    });
 
+    // Report discovery errors if any
     if (discoveryResult.errors.length > 0 && verbose) {
-      console.warn('Discovery errors encountered:');
+      logger.warn('Discovery errors encountered:');
       discoveryResult.errors.forEach(error => {
-        console.warn(`  ${error.container}: ${error.error}`);
+        logger.warn(`  ${error.container}: ${error.error}`);
       });
     }
 
     const allContainers = discoveryResult.containers;
 
     if (allContainers.length === 0) {
-      console.log('No aisanity containers found');
+      logger.info('No aisanity containers found');
       return;
     }
 
-    console.log(`Found ${allContainers.length} containers (${discoveryResult.labeled.length} labeled, ${discoveryResult.unlabeled.length} unlabeled)`);
+    // UPDATED: Show discovery breakdown (user-facing info)
+    logger.info(`Found ${allContainers.length} containers (${discoveryResult.labeled.length} labeled, ${discoveryResult.unlabeled.length} unlabeled)`);
 
+    // UPDATED: Report orphaned containers with details (user-facing verbose)
     if (discoveryResult.orphaned.length > 0) {
-      console.log(`Warning: ${discoveryResult.orphaned.length} orphaned containers detected`);
+      logger.info(`Warning: ${discoveryResult.orphaned.length} orphaned containers detected`);
+      
       if (verbose) {
+        logger.verbose('\nOrphaned containers:');
         discoveryResult.orphaned.forEach(container => {
-          console.log(`  Orphaned: ${container.name} (${container.id})`);
+          const validation = discoveryResult.validationResults.get(container.id);
+          logger.verbose(`  - ${container.name} (${container.id})`);
+          logger.verbose(`    Workspace: ${validation?.workspacePath || 'unknown'}`);
+          logger.verbose(`    Exists: ${validation?.exists ? 'yes' : 'no'}`);
+          logger.verbose(`    Reason: ${validation?.error || 'Worktree directory not found'}`);
         });
       }
     }
@@ -146,7 +143,7 @@ async function stopAllWorktreeContainers(verbose: boolean = false): Promise<void
     rl.close();
 
     if (answer.toLowerCase() !== 'y' && answer.toLowerCase() !== 'yes') {
-      console.log('Container stop operation cancelled');
+      logger.info('Container stop operation cancelled');
       return;
     }
 
@@ -154,10 +151,10 @@ async function stopAllWorktreeContainers(verbose: boolean = false): Promise<void
     const containerIds = allContainers.map(c => c.id);
     await stopContainers(containerIds, verbose);
 
-    console.log(`Successfully stopped ${containerIds.length} containers`);
+    logger.info(`Successfully stopped ${containerIds.length} containers`);
 
   } catch (error) {
-    console.error('Failed to stop all worktree containers:', error);
+    logger.error('Failed to stop all worktree containers:', error);
     throw error;
   }
 }

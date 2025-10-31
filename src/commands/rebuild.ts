@@ -2,13 +2,16 @@ import { Command } from 'commander';
 import * as path from 'path';
 import { execSync } from 'child_process';
 import { loadAisanityConfig, getContainerName } from '../utils/config';
+import { createLoggerFromCommandOptions } from '../utils/logger';
 
 export const rebuildCommand = new Command('rebuild')
   .description('Rebuild the devcontainer')
   .option('--devcontainer-json <path>', 'Path to devcontainer.json file')
   .option('--clean', 'Remove containers instead of just stopping them')
-  .option('-v, --verbose', 'Enable verbose logging')
+  .option('-v, --verbose', 'Show detailed container rebuild information')
+  .option('-d, --debug', 'Show system debugging information (rebuild process, timing)')
   .action(async (options) => {
+    const logger = createLoggerFromCommandOptions(options);
     try {
       const cwd = process.cwd();
       const config = loadAisanityConfig(cwd);

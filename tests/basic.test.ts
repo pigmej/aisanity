@@ -11,9 +11,9 @@ test('Bun test runner works', () => {
 test('Container utils module can be imported', () => {
   const containerModule = require('../src/utils/container-utils');
   
-  expect(containerModule.discoverContainers).toBeDefined();
-  expect(typeof containerModule.discoverContainers).toBe('function');
-  console.log('✓ discoverContainers function imported');
+  expect(containerModule.discoverAllAisanityContainers).toBeDefined();
+  expect(typeof containerModule.discoverAllAisanityContainers).toBe('function');
+  console.log('✓ discoverAllAisanityContainers function imported');
 });
 
 test('Basic assertions work', () => {

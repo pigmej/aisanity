@@ -1,6 +1,6 @@
 {
     "name": "aisanity",
-    "version": "0.3.0",
+    "version": "0.4.2",
     "description": "Devcontainer wrapper for sandboxed development environments (Bun runtime required)",
     "main": "src/index.ts",
     "bin": {

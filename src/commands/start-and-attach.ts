@@ -1,16 +1,17 @@
 import { Command } from "commander";
 import { discoverOpencodeInstances, formatPlain } from "./discover-opencode";
-import { Logger } from "../utils/logger";
+import { createLoggerFromCommandOptions } from "../utils/logger";
 import { exec } from "child_process";
 
 export const startAndAttachCommand = new Command("start-and-attach")
   .description("Start opencode serve in background and attach to it")
   .option("--timeout <seconds>", "Maximum time to wait for discovery", "30")
   .option("--retry-interval <seconds>", "Initial retry interval", "1")
-  .option("-v, --verbose", "Enable verbose logging")
+  .option("-v, --verbose", "Show detailed user information")
+  .option("-d, --debug", "Show system debugging information")
   .option("--dry-run", "Show what would be done without executing")
   .action(async (options) => {
-    const logger = new Logger(false, options.verbose || false);
+    const logger = createLoggerFromCommandOptions(options);
     const timeout = parseInt(options.timeout) || 30;
     const retryInterval = parseInt(options.retryInterval) || 1;
 
@@ -46,7 +47,7 @@ export const startAndAttachCommand = new Command("start-and-attach")
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       if (attempt > 0) {
-        logger.debug(`Attempt ${attempt + 1}/${maxAttempts}...`);
+        logger.verbose(`Attempt ${attempt + 1}/${maxAttempts}...`);
         await new Promise((resolve) => setTimeout(resolve, retryInterval * 1000));
       }
 
@@ -63,7 +64,7 @@ export const startAndAttachCommand = new Command("start-and-attach")
           break;
         }
       } catch (error) {
-        logger.debug(`Discovery attempt ${attempt + 1} failed: ${error}`);
+        logger.verbose(`Discovery attempt ${attempt + 1} failed: ${error}`);
       }
     }
 

@@ -110,7 +110,7 @@ bun test
 | GET    | `/api/users`   | List all users               |
 | POST   | `/api/users`   | Create a new user            |
 
-## ⚡️ Performance Benefits
+## Performance Benefits
 
 Bun provides significant performance improvements over Node.js:
 
@@ -120,7 +120,7 @@ Bun provides significant performance improvements over Node.js:
 4. **Optimized Runtime**: Built on JavaScriptCore (Safari's engine)
 5. **Native APIs**: Bun.serve() is faster than Express/Fastify
 
-## 🔧 Bun-Specific Features
+## Bun-Specific Features
 
 ### Native HTTP Server
 
@@ -170,7 +170,7 @@ Run tests with:
 bun test
 ```
 
-## 📦 DevContainer Configuration
+## DevContainer Configuration
 
 The Bun template uses the official Bun Docker image:
 

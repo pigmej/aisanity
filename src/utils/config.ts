@@ -16,16 +16,7 @@ export function getWorkspaceName(cwd: string): string {
   // First check if .aisanity config exists and has a workspace defined
   const existingConfig = loadAisanityConfig(cwd);
   if (existingConfig && existingConfig.workspace) {
-    // Check if this is a legacy config (workspace includes branch separator)
-    if (existingConfig.workspace.includes('_')) {
-      // Legacy mode: extract project name from workspace_branch format
-      const parts = existingConfig.workspace.split('_');
-      if (parts.length > 1) {
-        // Return just the project name part (everything before the last underscore)
-        return parts.slice(0, -1).join('_');
-      }
-    }
-    // New mode: workspace is already branch-agnostic
+    // Modern workspace format is branch-agnostic
     return existingConfig.workspace;
   }
 
@@ -150,8 +141,22 @@ export function loadAisanityConfig(cwd: string): AisanityConfig | null {
   }
 
   try {
-    const configContent = fs.readFileSync(configPath, 'utf8');
-    return YAML.parse(configContent) as AisanityConfig;
+    let configContent: string;
+    
+    // Check if .aisanity is a directory (new format) or file (old format)
+    if (fs.statSync(configPath).isDirectory()) {
+      const configFile = path.join(configPath, 'config.json');
+      if (!fs.existsSync(configFile)) {
+        return null;
+      }
+      configContent = fs.readFileSync(configFile, 'utf8');
+      // Parse as JSON for new format
+      return JSON.parse(configContent) as AisanityConfig;
+    } else {
+      // Old format - .aisanity is a file
+      configContent = fs.readFileSync(configPath, 'utf8');
+      return YAML.parse(configContent) as AisanityConfig;
+    }
   } catch (error) {
     console.error('Failed to parse .aisanity config:', error);
     return null;

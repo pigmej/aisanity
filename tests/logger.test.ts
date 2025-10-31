@@ -68,7 +68,7 @@ describe('Logger', () => {
 
   describe('Silent mode', () => {
     test('should suppress info messages', () => {
-      const logger = new Logger(true);
+      const logger = new Logger(true, false, false);
       logger.info('Test info message');
       
       expect(logOutput).toHaveLength(0);
@@ -76,15 +76,23 @@ describe('Logger', () => {
     });
 
     test('should still log error messages', () => {
-      const logger = new Logger(true);
+      const logger = new Logger(true, false, false);
       logger.error('Test error message');
       
       expect(errorOutput).toContain('Test error message');
       expect(logOutput).toHaveLength(0);
     });
 
-    test('should suppress debug messages even when verbose is true', () => {
-      const logger = new Logger(true, true);
+    test('should suppress verbose messages', () => {
+      const logger = new Logger(true, true, false);
+      logger.verbose('Test verbose message');
+      
+      expect(logOutput).toHaveLength(0);
+      expect(errorOutput).toHaveLength(0);
+    });
+
+    test('should suppress debug messages even when debug is true', () => {
+      const logger = new Logger(true, false, true);
       logger.debug('Test debug message');
       
       expect(logOutput).toHaveLength(0);
@@ -92,7 +100,7 @@ describe('Logger', () => {
     });
 
     test('should still log warning messages', () => {
-      const logger = new Logger(true);
+      const logger = new Logger(true, false, false);
       logger.warn('Test warning message');
       
       expect(errorOutput).toContain('Test warning message');
@@ -102,7 +110,7 @@ describe('Logger', () => {
 
   describe('Verbose mode', () => {
     test('should log info messages', () => {
-      const logger = new Logger(false, true);
+      const logger = new Logger(false, true, false);
       logger.info('Test info message');
       
       expect(logOutput).toContain('Test info message');
@@ -110,23 +118,31 @@ describe('Logger', () => {
     });
 
     test('should log error messages', () => {
-      const logger = new Logger(false, true);
+      const logger = new Logger(false, true, false);
       logger.error('Test error message');
       
       expect(errorOutput).toContain('Test error message');
       expect(logOutput).toHaveLength(0);
     });
 
-    test('should log debug messages', () => {
-      const logger = new Logger(false, true);
+    test('should log verbose messages', () => {
+      const logger = new Logger(false, true, false);
+      logger.verbose('Test verbose message');
+      
+      expect(logOutput).toContain('Test verbose message');
+      expect(errorOutput).toHaveLength(0);
+    });
+
+    test('should not log debug messages', () => {
+      const logger = new Logger(false, true, false);
       logger.debug('Test debug message');
       
-      expect(logOutput).toContain('Test debug message');
+      expect(logOutput).toHaveLength(0);
       expect(errorOutput).toHaveLength(0);
     });
 
     test('should log warning messages', () => {
-      const logger = new Logger(false, true);
+      const logger = new Logger(false, true, false);
       logger.warn('Test warning message');
       
       expect(errorOutput).toContain('Test warning message');
@@ -134,25 +150,86 @@ describe('Logger', () => {
     });
   });
 
+  describe('Debug mode', () => {
+    test('should log info messages', () => {
+      const logger = new Logger(false, false, true);
+      logger.info('Test info message');
+      
+      expect(logOutput).toContain('Test info message');
+      expect(errorOutput).toHaveLength(0);
+    });
+
+    test('should not log verbose messages', () => {
+      const logger = new Logger(false, false, true);
+      logger.verbose('Test verbose message');
+      
+      expect(logOutput).toHaveLength(0);
+      expect(errorOutput).toHaveLength(0);
+    });
+
+    test('should log debug messages', () => {
+      const logger = new Logger(false, false, true);
+      logger.debug('Test debug message');
+      
+      expect(logOutput).toContain('Test debug message');
+      expect(errorOutput).toHaveLength(0);
+    });
+  });
+
+  describe('Verbose and Debug mode combined', () => {
+    test('should log verbose messages', () => {
+      const logger = new Logger(false, true, true);
+      logger.verbose('Test verbose message');
+      
+      expect(logOutput).toContain('Test verbose message');
+      expect(errorOutput).toHaveLength(0);
+    });
+
+    test('should log debug messages', () => {
+      const logger = new Logger(false, true, true);
+      logger.debug('Test debug message');
+      
+      expect(logOutput).toContain('Test debug message');
+      expect(errorOutput).toHaveLength(0);
+    });
+
+    test('should log both verbose and debug messages', () => {
+      const logger = new Logger(false, true, true);
+      logger.verbose('Test verbose message');
+      logger.debug('Test debug message');
+      
+      expect(logOutput).toContain('Test verbose message');
+      expect(logOutput).toContain('Test debug message');
+      expect(errorOutput).toHaveLength(0);
+    });
+  });
+
   describe('Mode precedence', () => {
     test('silent should take precedence over verbose for info messages', () => {
-      const logger = new Logger(true, true);
+      const logger = new Logger(true, true, false);
       logger.info('Test info message');
       
       expect(logOutput).toHaveLength(0);
     });
 
-    test('silent should take precedence over verbose for debug messages', () => {
-      const logger = new Logger(true, true);
+    test('silent should take precedence over verbose for verbose messages', () => {
+      const logger = new Logger(true, true, false);
+      logger.verbose('Test verbose message');
+      
+      expect(logOutput).toHaveLength(0);
+    });
+
+    test('silent should take precedence over debug for debug messages', () => {
+      const logger = new Logger(true, false, true);
       logger.debug('Test debug message');
       
       expect(logOutput).toHaveLength(0);
     });
 
     test('errors should always be visible regardless of mode', () => {
-      const silentLogger = new Logger(true, true);
-      const verboseLogger = new Logger(false, true);
-      const normalLogger = new Logger();
+      const silentLogger = new Logger(true, true, true);
+      const verboseLogger = new Logger(false, true, false);
+      const normalLogger = new Logger(false, false, false);
       
       // Reset outputs between tests
       errorOutput = [];
@@ -169,9 +246,9 @@ describe('Logger', () => {
     });
 
     test('warnings should always be visible regardless of mode', () => {
-      const silentLogger = new Logger(true, true);
-      const verboseLogger = new Logger(false, true);
-      const normalLogger = new Logger();
+      const silentLogger = new Logger(true, true, true);
+      const verboseLogger = new Logger(false, true, false);
+      const normalLogger = new Logger(false, false, false);
       
       // Reset outputs between tests
       errorOutput = [];
@@ -190,7 +267,7 @@ describe('Logger', () => {
 
   describe('Multiple messages', () => {
     test('should handle multiple info messages correctly', () => {
-      const logger = new Logger();
+      const logger = new Logger(false, false, false);
       logger.info('Message 1');
       logger.info('Message 2');
       logger.info('Message 3');
@@ -201,8 +278,23 @@ describe('Logger', () => {
       expect(logOutput).toContain('Message 3');
     });
 
-    test('should handle mixed message types correctly', () => {
-      const logger = new Logger(false, true);
+    test('should handle mixed message types correctly in verbose mode', () => {
+      const logger = new Logger(false, true, false);
+      logger.info('Info message');
+      logger.verbose('Verbose message');
+      logger.error('Error message');
+      logger.warn('Warning message');
+      
+      expect(logOutput).toHaveLength(2);
+      expect(logOutput).toContain('Info message');
+      expect(logOutput).toContain('Verbose message');
+      expect(errorOutput).toHaveLength(2);
+      expect(errorOutput).toContain('Error message');
+      expect(errorOutput).toContain('Warning message');
+    });
+
+    test('should handle mixed message types correctly in debug mode', () => {
+      const logger = new Logger(false, false, true);
       logger.info('Info message');
       logger.debug('Debug message');
       logger.error('Error message');
@@ -210,6 +302,23 @@ describe('Logger', () => {
       
       expect(logOutput).toHaveLength(2);
       expect(logOutput).toContain('Info message');
+      expect(logOutput).toContain('Debug message');
+      expect(errorOutput).toHaveLength(2);
+      expect(errorOutput).toContain('Error message');
+      expect(errorOutput).toContain('Warning message');
+    });
+
+    test('should handle all message types in combined mode', () => {
+      const logger = new Logger(false, true, true);
+      logger.info('Info message');
+      logger.verbose('Verbose message');
+      logger.debug('Debug message');
+      logger.error('Error message');
+      logger.warn('Warning message');
+      
+      expect(logOutput).toHaveLength(3);
+      expect(logOutput).toContain('Info message');
+      expect(logOutput).toContain('Verbose message');
       expect(logOutput).toContain('Debug message');
       expect(errorOutput).toHaveLength(2);
       expect(errorOutput).toContain('Error message');
