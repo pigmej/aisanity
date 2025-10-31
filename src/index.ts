@@ -18,6 +18,7 @@ import { statsCommand } from './commands/stats';
 import { worktreeCommand } from './commands/worktree';
 import { cleanupCommand } from './commands/cleanup';
 import { startAndAttachCommand } from './commands/start-and-attach';
+import { stateCommand } from './commands/state';
 import { getVersion } from './utils/version';
 
 const program = new Command();
@@ -38,6 +39,7 @@ program.addCommand(statsCommand);
 program.addCommand(worktreeCommand);
 program.addCommand(cleanupCommand);
 program.addCommand(startAndAttachCommand);
+program.addCommand(stateCommand);
 
 // Parse command line arguments
 program.parse();

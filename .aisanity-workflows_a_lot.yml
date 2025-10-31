@@ -1,0 +1,636 @@
+workflows:
+  # AI-Powered Development Workflows
+  ai-feature-development:
+    name: "AI-Assisted Feature Development"
+    description: "Use opencode agents to implement features from requirements in isolated containers"
+    initialState: "parse-requirements"
+    globalTimeout: 1800
+    states:
+      parse-requirements:
+        description: "Parse and analyze feature requirements using AI"
+        command: "opencode"
+        args: ["analyze", "--file", "{requirements_file}", "--output", "analysis.json"]
+        timeout: 300
+        transitions:
+          success: "generate-plan"
+          failure: "requirements-error"
+      generate-plan:
+        description: "Generate implementation plan using AI agent"
+        command: "opencode"
+        args: ["plan", "--analysis", "analysis.json", "--output", "implementation-plan.md"]
+        timeout: 600
+        confirmation:
+          message: "Review implementation plan in implementation-plan.md. Continue?"
+          timeout: 60
+          defaultAccept: false
+        transitions:
+          success: "create-worktree"
+          failure: "plan-error"
+      create-worktree:
+        description: "Create isolated worktree for feature development"
+        command: "aisanity"
+        args: ["worktree-create", "--branch", "feature/{feature_name}"]
+        timeout: 60
+        transitions:
+          success: "launch-ai-agent"
+          failure: "worktree-error"
+      launch-ai-agent:
+        description: "Launch opencode agent in isolated container"
+        command: "aisanity"
+        args: ["run", "--worktree", "feature/{feature_name}", "opencode", "implement", "--plan", "implementation-plan.md"]
+        stdin: "inherit"
+        timeout: 900
+        transitions:
+          success: "run-tests"
+          failure: "implementation-error"
+      run-tests:
+        description: "Run tests in isolated environment"
+        command: "aisanity"
+        args: ["run", "--worktree", "feature/{feature_name}", "npm", "test"]
+        timeout: 300
+        transitions:
+          success: "create-pr"
+          failure: "test-error"
+      create-pr:
+        description: "Create PR with AI-generated description"
+        command: "opencode"
+        args: ["pr", "--feature", "{feature_name}", "--auto-description"]
+        timeout: 120
+        transitions:
+          success: "complete"
+          failure: "pr-error"
+      requirements-error:
+        description: "Failed to parse requirements"
+        command: "echo"
+        args: ["Error: Could not parse requirements file {requirements_file}"]
+        transitions: {}
+      plan-error:
+        description: "Failed to generate implementation plan"
+        command: "echo"
+        args: ["Error: AI agent could not generate implementation plan"]
+        transitions: {}
+      worktree-error:
+        description: "Failed to create worktree"
+        command: "echo"
+        args: ["Error: Could not create worktree for feature {feature_name}"]
+        transitions: {}
+      implementation-error:
+        description: "AI implementation failed"
+        command: "echo"
+        args: ["Error: AI agent failed to implement feature"]
+        transitions: {}
+      test-error:
+        description: "Tests failed"
+        command: "echo"
+        args: ["Error: Tests failed in feature worktree"]
+        transitions: {}
+      pr-error:
+        description: "Failed to create PR"
+        command: "echo"
+        args: ["Error: Could not create pull request"]
+        transitions: {}
+      complete:
+        description: "AI feature development complete"
+        command: "echo"
+        args: ["Feature {feature_name} implemented and PR created successfully"]
+        transitions: {}
+
+  ai-code-review:
+    name: "AI-Powered Code Review"
+    description: "Automated code analysis and review using AI agents in isolated containers"
+    initialState: "detect-changes"
+    globalTimeout: 1200
+    states:
+      detect-changes:
+        description: "Detect changes in current worktree"
+        command: "git"
+        args: ["diff", "--name-only", "HEAD~1"]
+        timeout: 30
+        transitions:
+          success: "launch-review-agent"
+          failure: "no-changes"
+      launch-review-agent:
+        description: "Launch opencode review agent in isolated container"
+        command: "aisanity"
+        args: ["run", "opencode", "review", "--files", "changed-files.txt", "--output", "review-report.md"]
+        timeout: 600
+        transitions:
+          success: "security-analysis"
+          failure: "review-error"
+      security-analysis:
+        description: "Run security analysis in isolated environment"
+        command: "aisanity"
+        args: ["run", "opencode", "security-scan", "--output", "security-report.md"]
+        timeout: 300
+        transitions:
+          success: "performance-analysis"
+          failure: "security-error"
+      performance-analysis:
+        description: "Run performance analysis"
+        command: "aisanity"
+        args: ["run", "opencode", "performance-scan", "--output", "performance-report.md"]
+        timeout: 300
+        transitions:
+          success: "generate-report"
+          failure: "performance-error"
+      generate-report:
+        description: "Generate comprehensive review report"
+        command: "opencode"
+        args: ["report", "--merge", "review-report.md,security-report.md,performance-report.md", "--output", "comprehensive-review.md"]
+        timeout: 120
+        transitions:
+          success: "suggest-fixes"
+          failure: "report-error"
+      suggest-fixes:
+        description: "Suggest fixes for identified issues"
+        command: "opencode"
+        args: ["fix-suggestions", "--report", "comprehensive-review.md", "--auto-apply", "{auto_fix}"]
+        confirmation:
+          message: "Apply AI-suggested fixes automatically?"
+          timeout: 30
+          defaultAccept: false
+        timeout: 300
+        transitions:
+          success: "complete"
+          failure: "fix-error"
+      no-changes:
+        description: "No changes detected"
+        command: "echo"
+        args: ["No changes detected for review"]
+        transitions: {}
+      review-error:
+        description: "Code review failed"
+        command: "echo"
+        args: ["Error: AI code review failed"]
+        transitions: {}
+      security-error:
+        description: "Security analysis failed"
+        command: "echo"
+        args: ["Error: Security analysis failed"]
+        transitions: {}
+      performance-error:
+        description: "Performance analysis failed"
+        command: "echo"
+        args: ["Error: Performance analysis failed"]
+        transitions: {}
+      report-error:
+        description: "Report generation failed"
+        command: "echo"
+        args: ["Error: Could not generate review report"]
+        transitions: {}
+      fix-error:
+        description: "Fix application failed"
+        command: "echo"
+        args: ["Error: Could not apply AI-suggested fixes"]
+        transitions: {}
+      complete:
+        description: "AI code review complete"
+        command: "echo"
+        args: ["Code review complete. See comprehensive-review.md for details"]
+        transitions: {}
+
+  ai-debug-assistant:
+    name: "AI Bug Diagnosis and Fix"
+    description: "Use AI agents to diagnose and fix bugs in isolated environments"
+    initialState: "capture-error"
+    globalTimeout: 900
+    states:
+      capture-error:
+        description: "Capture error logs and context"
+        command: "bash"
+        args: ["-c", "find . -name '*.log' -o -name 'error*.txt' | head -5 > error-files.txt"]
+        timeout: 30
+        transitions:
+          success: "launch-debug-agent"
+          failure: "no-errors"
+      launch-debug-agent:
+        description: "Launch opencode debug agent in isolated container"
+        command: "aisanity"
+        args: ["run", "opencode", "debug", "--logs", "error-files.txt", "--output", "diagnosis.md"]
+        timeout: 300
+        transitions:
+          success: "analyze-stack-trace"
+          failure: "debug-error"
+      analyze-stack-trace:
+        description: "AI analysis of stack traces and error patterns"
+        command: "opencode"
+        args: ["analyze-stack", "--diagnosis", "diagnosis.md", "--output", "root-cause.md"]
+        timeout: 180
+        transitions:
+          success: "suggest-fixes"
+          failure: "analysis-error"
+      suggest-fixes:
+        description: "AI suggests fixes based on analysis"
+        command: "opencode"
+        args: ["fix-suggestions", "--root-cause", "root-cause.md", "--output", "fix-plan.md"]
+        timeout: 240
+        confirmation:
+          message: "Review AI-suggested fixes in fix-plan.md. Apply them?"
+          timeout: 60
+          defaultAccept: false
+        transitions:
+          success: "apply-fixes"
+          failure: "complete"
+      apply-fixes:
+        description: "Apply fixes in isolated worktree"
+        command: "aisanity"
+        args: ["worktree-create", "--branch", "bugfix/{bug_id}", "--temporary"]
+        timeout: 60
+        transitions:
+          success: "execute-fixes"
+          failure: "worktree-error"
+      execute-fixes:
+        description: "Execute AI-suggested fixes"
+        command: "aisanity"
+        args: ["run", "--worktree", "bugfix/{bug_id}", "opencode", "apply-fixes", "--plan", "fix-plan.md"]
+        timeout: 300
+        transitions:
+          success: "verify-fix"
+          failure: "fix-execution-error"
+      verify-fix:
+        description: "Verify fix with tests"
+        command: "aisanity"
+        args: ["run", "--worktree", "bugfix/{bug_id}", "npm", "test"]
+        timeout: 180
+        transitions:
+          success: "cleanup"
+          failure: "verification-error"
+      cleanup:
+        description: "Clean up temporary worktree"
+        command: "aisanity"
+        args: ["worktree-remove", "--branch", "bugfix/{bug_id}", "--force"]
+        transitions:
+          success: "complete"
+          failure: "cleanup-error"
+      no-errors:
+        description: "No error files found"
+        command: "echo"
+        args: ["No error files found to analyze"]
+        transitions: {}
+      debug-error:
+        description: "Debug agent failed"
+        command: "echo"
+        args: ["Error: AI debug agent failed"]
+        transitions: {}
+      analysis-error:
+        description: "Stack trace analysis failed"
+        command: "echo"
+        args: ["Error: Could not analyze stack traces"]
+        transitions: {}
+      worktree-error:
+        description: "Worktree creation failed"
+        command: "echo"
+        args: ["Error: Could not create bugfix worktree"]
+        transitions: {}
+      fix-execution-error:
+        description: "Fix execution failed"
+        command: "echo"
+        args: ["Error: Could not execute AI-suggested fixes"]
+        transitions: {}
+      verification-error:
+        description: "Fix verification failed"
+        command: "echo"
+        args: ["Error: Fix verification failed - tests still failing"]
+        transitions: {}
+      cleanup-error:
+        description: "Cleanup failed"
+        command: "echo"
+        args: ["Warning: Could not clean up temporary worktree"]
+        transitions: {}
+      complete:
+        description: "AI debugging complete"
+        command: "echo"
+        args: ["Bug {bug_id} diagnosed and fixed successfully"]
+        transitions: {}
+
+  # Aisanity Platform Workflows
+  parallel-ai-development:
+    name: "Parallel AI Development"
+    description: "Multiple AI agents working on different features simultaneously in isolated containers"
+    initialState: "setup-worktrees"
+    globalTimeout: 2400
+    states:
+      setup-worktrees:
+        description: "Create isolated worktrees for parallel development"
+        command: "bash"
+        args: ["-c", "aisanity worktree-create --branch feature/{feature_a} && aisanity worktree-create --branch feature/{feature_b}"]
+        timeout: 120
+        transitions:
+          success: "launch-agent-a"
+          failure: "setup-error"
+      launch-agent-a:
+        description: "Launch opencode agent for feature A"
+        command: "aisanity"
+        args: ["run", "--worktree", "feature/{feature_a}", "opencode", "implement", "--feature", "{feature_a}", "--priority", "high"]
+        stdin: "inherit"
+        timeout: 600
+        transitions:
+          success: "launch-agent-b"
+          failure: "agent-a-error"
+      launch-agent-b:
+        description: "Launch opencode agent for feature B"
+        command: "aisanity"
+        args: ["run", "--worktree", "feature/{feature_b}", "opencode", "implement", "--feature", "{feature_b}", "--priority", "medium"]
+        stdin: "inherit"
+        timeout: 600
+        transitions:
+          success: "monitor-progress"
+          failure: "agent-b-error"
+      monitor-progress:
+        description: "Monitor both AI agents in parallel"
+        command: "opencode"
+        args: ["monitor", "--worktrees", "feature/{feature_a},feature/{feature_b}", "--interval", "30"]
+        timeout: 900
+        transitions:
+          success: "merge-features"
+          failure: "monitor-error"
+      merge-features:
+        description: "Merge successfully implemented features"
+        command: "bash"
+        args: ["-c", "git checkout main && git merge feature/{feature_a} && git merge feature/{feature_b}"]
+        confirmation:
+          message: "Merge both features into main branch?"
+          timeout: 30
+          defaultAccept: false
+        transitions:
+          success: "cleanup"
+          failure: "merge-error"
+      cleanup:
+        description: "Clean up feature worktrees"
+        command: "bash"
+        args: ["-c", "aisanity worktree-remove --branch feature/{feature_a} && aisanity worktree-remove --branch feature/{feature_b}"]
+        transitions:
+          success: "complete"
+          failure: "cleanup-error"
+      setup-error:
+        description: "Worktree setup failed"
+        command: "echo"
+        args: ["Error: Could not setup parallel development worktrees"]
+        transitions: {}
+      agent-a-error:
+        description: "Agent A failed"
+        command: "echo"
+        args: ["Error: AI agent for feature {feature_a} failed"]
+        transitions: {}
+      agent-b-error:
+        description: "Agent B failed"
+        command: "echo"
+        args: ["Error: AI agent for feature {feature_b} failed"]
+        transitions: {}
+      monitor-error:
+        description: "Monitoring failed"
+        command: "echo"
+        args: ["Error: Could not monitor AI agents"]
+        transitions: {}
+      merge-error:
+        description: "Merge failed"
+        command: "echo"
+        args: ["Error: Could not merge features"]
+        transitions: {}
+      cleanup-error:
+        description: "Cleanup failed"
+        command: "echo"
+        args: ["Warning: Could not clean up all worktrees"]
+        transitions: {}
+      complete:
+        description: "Parallel AI development complete"
+        command: "echo"
+        args: ["Features {feature_a} and {feature_b} implemented successfully"]
+        transitions: {}
+
+  ai-dev-environment:
+    name: "AI Development Environment Setup"
+    description: "Automated setup of complete AI-powered development environment"
+    initialState: "detect-project"
+    globalTimeout: 600
+    states:
+      detect-project:
+        description: "Detect project type and structure"
+        command: "aisanity"
+        args: ["detect-project", "--output", "project-info.json"]
+        timeout: 30
+        transitions:
+          success: "generate-devcontainer"
+          failure: "detection-error"
+      generate-devcontainer:
+        description: "Generate devcontainer configuration for AI development"
+        command: "opencode"
+        args: ["generate-devcontainer", "--project", "project-info.json", "--ai-tools", "true"]
+        timeout: 120
+        transitions:
+          success: "setup-container"
+          failure: "devcontainer-error"
+      setup-container:
+        description: "Setup devcontainer with AI tools"
+        command: "aisanity"
+        args: ["init", "--devcontainer", "--ai-tools"]
+        timeout: 180
+        transitions:
+          success: "install-opencode"
+          failure: "container-error"
+      install-opencode:
+        description: "Install and configure opencode automatically"
+        command: "aisanity"
+        args: ["run", "opencode", "install", "--auto-configure"]
+        timeout: 120
+        transitions:
+          success: "configure-ai-agents"
+          failure: "opencode-error"
+      configure-ai-agents:
+        description: "Configure AI agent preferences and workflows"
+        command: "opencode"
+        args: ["configure", "--project-type", "auto", "--workflows", "true"]
+        timeout: 60
+        transitions:
+          success: "setup-git-hooks"
+          failure: "config-error"
+      setup-git-hooks:
+        description: "Setup git hooks for AI assistance"
+        command: "opencode"
+        args: ["git-hooks", "--install", "--pre-commit", "--ai-review"]
+        timeout: 30
+        transitions:
+          success: "verify-environment"
+          failure: "hooks-error"
+      verify-environment:
+        description: "Verify AI development environment readiness"
+        command: "aisanity"
+        args: ["run", "opencode", "health-check", "--verbose"]
+        timeout: 60
+        transitions:
+          success: "complete"
+          failure: "verification-error"
+      detection-error:
+        description: "Project detection failed"
+        command: "echo"
+        args: ["Error: Could not detect project type"]
+        transitions: {}
+      devcontainer-error:
+        description: "Devcontainer generation failed"
+        command: "echo"
+        args: ["Error: Could not generate devcontainer configuration"]
+        transitions: {}
+      container-error:
+        description: "Container setup failed"
+        command: "echo"
+        args: ["Error: Could not setup development container"]
+        transitions: {}
+      opencode-error:
+        description: "OpenCode installation failed"
+        command: "echo"
+        args: ["Error: Could not install opencode"]
+        transitions: {}
+      config-error:
+        description: "AI agent configuration failed"
+        command: "echo"
+        args: ["Error: Could not configure AI agents"]
+        transitions: {}
+      hooks-error:
+        description: "Git hooks setup failed"
+        command: "echo"
+        args: ["Error: Could not setup git hooks"]
+        transitions: {}
+      verification-error:
+        description: "Environment verification failed"
+        command: "echo"
+        args: ["Error: AI development environment verification failed"]
+        transitions: {}
+      complete:
+        description: "AI development environment ready"
+        command: "echo"
+        args: ["AI development environment setup complete and ready to use"]
+        transitions: {}
+
+  # Git Town Integration Workflows
+  git-town-ai-feature:
+    name: "Git Town AI Feature Branch"
+    description: "Automated feature branch workflow with Git Town and AI assistance"
+    initialState: "git-town-hack"
+    globalTimeout: 1200
+    states:
+      git-town-hack:
+        description: "Create feature branch using Git Town"
+        command: "git"
+        args: ["town", "hack", "{feature_name}"]
+        timeout: 60
+        transitions:
+          success: "create-worktree"
+          failure: "git-town-error"
+      create-worktree:
+        description: "Create isolated worktree for feature development"
+        command: "aisanity"
+        args: ["worktree-create", "--branch", "{feature_name}"]
+        timeout: 60
+        transitions:
+          success: "ai-implementation"
+          failure: "worktree-error"
+      ai-implementation:
+        description: "Use AI agent to implement feature"
+        command: "aisanity"
+        args: ["run", "--worktree", "{feature_name}", "opencode", "implement", "--feature", "{feature_name}", "--requirements", "{requirements}"]
+        stdin: "inherit"
+        timeout: 600
+        transitions:
+          success: "run-tests"
+          failure: "implementation-error"
+      run-tests:
+        description: "Run tests in isolated environment"
+        command: "aisanity"
+        args: ["run", "--worktree", "{feature_name}", "npm", "test"]
+        timeout: 180
+        transitions:
+          success: "git-town-sync"
+          failure: "test-error"
+      git-town-sync:
+        description: "Sync branch with Git Town"
+        command: "git"
+        args: ["town", "sync"]
+        timeout: 120
+        transitions:
+          success: "git-town-ship"
+          failure: "sync-error"
+      git-town-ship:
+        description: "Ship feature to main branch"
+        command: "git"
+        args: ["town", "ship"]
+        confirmation:
+          message: "Ship feature {feature_name} to main branch?"
+          timeout: 30
+          defaultAccept: false
+        transitions:
+          success: "cleanup"
+          failure: "ship-error"
+      cleanup:
+        description: "Clean up worktree"
+        command: "aisanity"
+        args: ["worktree-remove", "--branch", "{feature_name}"]
+        transitions:
+          success: "complete"
+          failure: "cleanup-error"
+      git-town-error:
+        description: "Git Town command failed"
+        command: "echo"
+        args: ["Error: Git Town command failed"]
+        transitions: {}
+      worktree-error:
+        description: "Worktree creation failed"
+        command: "echo"
+        args: ["Error: Could not create worktree for {feature_name}"]
+        transitions: {}
+      implementation-error:
+        description: "AI implementation failed"
+        command: "echo"
+        args: ["Error: AI agent failed to implement feature"]
+        transitions: {}
+      test-error:
+        description: "Tests failed"
+        command: "echo"
+        args: ["Error: Tests failed in feature worktree"]
+        transitions: {}
+      sync-error:
+        description: "Git Town sync failed"
+        command: "echo"
+        args: ["Error: Git Town sync failed"]
+        transitions: {}
+      ship-error:
+        description: "Git Town ship failed"
+        command: "echo"
+        args: ["Error: Git Town ship failed"]
+        transitions: {}
+      cleanup-error:
+        description: "Cleanup failed"
+        command: "echo"
+        args: ["Warning: Could not clean up worktree"]
+        transitions: {}
+      complete:
+        description: "Git Town AI feature complete"
+        command: "echo"
+        args: ["Feature {feature_name} implemented and shipped successfully"]
+        transitions: {}
+
+  # Simple Getting Started Example
+  hello-world:
+    name: "Hello World Workflow"
+    description: "Minimal example to understand state machine basics"
+    initialState: "start"
+    states:
+      start:
+        command: "echo"
+        args: ["Starting AI-powered development workflow"]
+        transitions:
+          success: "middle"
+      middle:
+        command: "echo"
+        args: ["Processing with AI assistance..."]
+        transitions:
+          success: "end"
+      end:
+        command: "echo"
+        args: ["Workflow completed successfully!"]
+        transitions: {}
+
+metadata:
+  version: "2.0.0"
+  created: "2025-01-25"
+  modified: "2025-01-25"
+  description: "AI-powered development workflows for aisanity with opencode integration"

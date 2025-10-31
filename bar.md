@@ -1,0 +1,2 @@
+stra
+strt Hello bar
